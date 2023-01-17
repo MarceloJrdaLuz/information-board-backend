@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
+import { Document } from "./Document"
 import { Profile } from "./Profile"
 import { User } from "./User"
 
@@ -22,8 +23,7 @@ export class Congregation {
     @UpdateDateColumn()
     updated_at: Date
 
-
     @OneToMany(() => Profile, profile => profile.congregation)
-    @JoinColumn({name: 'congregation_id'})
+    @JoinColumn()
     users: User[]
 }
