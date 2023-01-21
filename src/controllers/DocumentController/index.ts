@@ -11,7 +11,7 @@ class DocumentController {
 
         const category = await categoryRepository.findOneBy({ id: category_id })
 
-        const congregation = await congregationRepository.findOneBy({ id: Number(congregation_id) })
+        const congregation = await congregationRepository.findOneBy({ id: congregation_id })
 
         if (!category) {
             throw new BadRequestError('Category not exists')
@@ -48,10 +48,25 @@ class DocumentController {
         const { congregation_id } = req.body
 
         const documents = await documentRepository.find({
-           
+           where:{
+            congregation:{
+                id: congregation_id
+            }
+           }
         })
 
-        console.log(documents)
+        if(!documents){
+            throw new BadRequestError('Document not found!')
+        }
+
+        const documentMap = documents.map(doc => {
+            const { id, fileName, size, key, url, category} = doc
+            return {
+                id, fileName, size, key, url
+            }
+        })
+
+        return res.status(200).json(documentMap)
     }
 }
 

@@ -7,8 +7,8 @@ export interface CustomRequest<T> extends Request {
 export interface BodyProfileCreateTypes {
     name: string
     lastName: string
-    userId: number
-    congregationId: number
+    userId: string
+    congregationId: string
 }
 
 export interface BodyProfileDeleteTypes{

@@ -1,20 +1,21 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 import { Document } from "./Document"
+import { Notice } from "./Notice"
 import { Profile } from "./Profile"
 import { User } from "./User"
 
 @Entity('congregation')
 export class Congregation {
-    @PrimaryGeneratedColumn()
-    id: number
+    @PrimaryGeneratedColumn("uuid")
+    id: string
 
-    @Column({type: 'text'})
+    @Column({ type: 'text' })
     name: string
 
-    @Column({type: 'text', unique: true})
+    @Column({ type: 'text', unique: true })
     number: string
 
-    @Column({type: 'text'})
+    @Column({ type: 'text' })
     city: string
 
     @CreateDateColumn()
@@ -24,6 +25,11 @@ export class Congregation {
     updated_at: Date
 
     @OneToMany(() => Profile, profile => profile.congregation)
-    @JoinColumn()
     users: User[]
+
+    @OneToMany(() => Document, document => document.congregation)
+    documents: Document[]
+
+    @OneToMany(() => Notice, notice => notice.congregation)
+    notices: Notice[]
 }

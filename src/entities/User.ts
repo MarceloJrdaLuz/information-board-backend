@@ -1,11 +1,12 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Congregation } from "./Congregation";
 import { Profile } from "./Profile";
+import { Role } from "./Role";
 
 @Entity('users')
 export class User {
-    @PrimaryGeneratedColumn()
-    id: number
+    @PrimaryGeneratedColumn("uuid")
+    id: string
 
     @Column({ type: 'text', unique: true })
     email: string
@@ -19,6 +20,15 @@ export class User {
     @UpdateDateColumn()
     updated_at: Date
 
-
-    // permission: string
+    @ManyToMany(() => Role, {eager: true})
+    @JoinTable({
+        name: 'user_roles',
+        joinColumns:[{
+            name: 'user_id'
+        }],
+        inverseJoinColumns:[{
+            name: 'role_id',
+        }],
+    })
+    roles: Role[]
 }

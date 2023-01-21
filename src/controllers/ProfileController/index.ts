@@ -5,19 +5,19 @@ import { profileRepository } from "../../repositories/profileRepository";
 import { userRepository } from "../../repositories/userRepository";
 import { BodyProfileCreateTypes, BodyProfileDeleteTypes, BodyUpdateProfilesTypes, CustomRequest } from "./type";
 
-class ProfileController{
-    async create(req: CustomRequest<BodyProfileCreateTypes>, res: Response){
+class ProfileController {
+    async create(req: CustomRequest<BodyProfileCreateTypes>, res: Response) {
         const { name, lastName, congregationId, userId } = req.body
 
-        const user = await userRepository.findOneBy({ id: Number(userId)})
+        const user = await userRepository.findOneBy({ id: userId })
 
-        const congregation = await congregationRepository.findOneBy({ id: Number(congregationId)})
+        const congregation = await congregationRepository.findOneBy({ id: congregationId })
 
-        if(!user){
+        if (!user) {
             throw new NotFoundError('User is not exists')
         }
 
-        if(!congregation){
+        if (!congregation) {
             throw new NotFoundError('Congregation is not exists')
         }
 
@@ -33,33 +33,33 @@ class ProfileController{
         return res.status(201).json(newProfile)
     }
 
-    async update(req: CustomRequest<BodyUpdateProfilesTypes> , res: Response){
-        const {id, name, lastName, congregationId } = req.body
+    async update(req: CustomRequest<BodyUpdateProfilesTypes>, res: Response) {
+        const { id, name, lastName, congregationId } = req.body
 
-        const profile = await profileRepository.findOneBy({id: Number(id)})
-        const congregation = await congregationRepository.findOneBy({id: Number(congregationId ? congregationId :   profile?.congregation.id)})
+        const profile = await profileRepository.findOneBy({ id })
+        const congregation = await congregationRepository.findOneBy({ id: congregationId ? congregationId : profile?.congregation.id })
 
-        if(!profile){
+        if (!profile) {
             throw new NotFoundError("Profile not exists")
         }
 
         const updateProfile = {
-            name: name || profile.name, 
+            name: name || profile.name,
             lastName: lastName || profile.lastName,
-            congregation: {...congregation}
+            congregation: { ...congregation }
         }
 
-        await profileRepository.save({id: Number(id), ...updateProfile})
+        await profileRepository.save({ id, ...updateProfile })
 
         return res.status(200).json(updateProfile)
     }
 
-    async delete(req: CustomRequest<BodyProfileDeleteTypes>, res: Response){
+    async delete(req: CustomRequest<BodyProfileDeleteTypes>, res: Response) {
         const { id } = req.body
 
-        const user = await profileRepository.findOneBy({id: Number(id)})
+        const user = await profileRepository.findOneBy({ id })
 
-        if(!user){
+        if (!user) {
             throw new NotFoundError('User is not exists')
         }
 

@@ -6,7 +6,7 @@ import { Congregation } from "./Congregation";
 export class Document {
 
     @PrimaryGeneratedColumn('uuid')
-    id: number
+    id: string
 
     @Column({ type: "text" })
     fileName: string
@@ -27,5 +27,13 @@ export class Document {
     updated_at: Date
 
     @ManyToOne(() => Category, category => category.id)
-    category: Category     
+    @JoinColumn({name: 'category_id'})
+    category: Category
+
+    @ManyToOne(() => Congregation, congregation => congregation.documents, {
+        eager: true,
+        onDelete: "CASCADE"
+    })
+    @JoinColumn({name: 'congregation_id'})
+    congregation: Congregation
 }

@@ -7,10 +7,15 @@ export interface CustomRequest<T> extends Request {
 export interface BodyUserCreateTypes {
     email: string
     password: string
+    roles: string[]
 }
 
 export interface BodyUserLoginTypes {
     email: string
     password: string
-    congregation: string
+}
+
+export interface BodyUserUpdateTypes {
+    user_id: string
+    roles: string[]
 }

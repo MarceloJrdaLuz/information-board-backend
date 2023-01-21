@@ -5,8 +5,8 @@ import { User } from "./User";
 @Entity('profile')
 export class Profile {
 
-    @PrimaryGeneratedColumn()
-    id: number
+    @PrimaryGeneratedColumn("uuid")
+    id: string
 
     @Column({ type: "text" })
     name: string
@@ -20,10 +20,11 @@ export class Profile {
     @UpdateDateColumn()
     updated_at: Date
 
-    @ManyToOne(() => Congregation, congregation => congregation.users, { eager: true, nullable: false })
+    @ManyToOne(() => Congregation, congregation => congregation.users, { eager: true, nullable: false, onDelete: "CASCADE" })
+    @JoinColumn({name: 'congregation_id'})
     congregation: Congregation
 
-    @OneToOne(() => User, {eager: true, nullable: false})
-    @JoinColumn()
+    @OneToOne(() => User, {eager: true, nullable: false, onDelete: "CASCADE"})
+    @JoinColumn({name: 'user_id'})
     user: User
 }
