@@ -18,6 +18,12 @@ export class Congregation {
     @Column({ type: 'text' })
     city: string
 
+    @Column({ type: 'text' })
+    circuit: string
+
+    @Column({ type: 'text' })
+    imageUrl: string
+
     @CreateDateColumn()
     created_at: Date
 

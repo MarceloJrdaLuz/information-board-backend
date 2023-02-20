@@ -1,11 +1,11 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { congregationRepository } from "../../repositories/congregationRepository";
-import { BodyCongregationCreateTypes, BodyCustomRequest, QueryCongregationDeleteTypes, QueryCustomRequest } from "./type";
+import { BodyCongregationCreateTypes, BodyCustomRequest, QueryCongregationDeleteTypes, QueryCustomRequest, QueryGetCongregationTypes } from "./type";
 
 class CongregationController {
     async create(req: BodyCustomRequest<BodyCongregationCreateTypes>, res: Response) {
-        const { name, number, city } = req.body
+        const { name, number, city, imageUrl, circuit } = req.body
 
         const congExists = await congregationRepository.findOneBy({ number })
 
@@ -16,7 +16,9 @@ class CongregationController {
         const newCongregation = {
             name,
             number,
-            city
+            city,
+            circuit,
+            imageUrl
         }
 
         await congregationRepository.save(newCongregation)
@@ -36,6 +38,29 @@ class CongregationController {
         await congregationRepository.remove(congregation)
 
         return res.status(200).end()
+    }
+
+    async list(req: Request, res: Response) {
+        const congExists = await congregationRepository.find({})
+
+        if (!congExists) {
+            throw new NotFoundError('Congregations not found')
+        }
+
+        return res.status(200).json(congExists)
+    }
+
+    async getCongregation(req: QueryCustomRequest<QueryGetCongregationTypes>, res: Response) {
+
+        const { number } = req.params
+
+        const congExists = await congregationRepository.findOneBy({number})
+
+        if (!congExists) {
+            throw new NotFoundError('Congregation not found')
+        }
+
+        return res.status(200).json(congExists)
     }
 }
 

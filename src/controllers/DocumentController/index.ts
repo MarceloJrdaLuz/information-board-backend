@@ -1,13 +1,13 @@
 import { Response } from "express";
-import { BadRequestError } from "../../helpers/api-errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
 import { categoryRepository } from "../../repositories/categoryRepository";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { documentRepository } from "../../repositories/documentRepository";
-import { BodyDocumentsCreateTypes, BodyDocumentsFilterTypes, CustomRequest } from "./type";
+import { BodyDocumentsCreateTypes, CustomRequest, ParamsCustomRequest, ParamsDocumentDeleteTypes, ParamsDocumentsFilterTypes } from "./type";
 
 class DocumentController {
     async create(req: CustomRequest<BodyDocumentsCreateTypes>, res: Response) {
-        const { fileName, size, key, url, category_id, congregation_id } = req.body
+        const { fileName, size, key, url, category_id, congregation_id, user_id } = req.body
 
         const category = await categoryRepository.findOneBy({ id: category_id })
 
@@ -44,29 +44,43 @@ class DocumentController {
         return res.status(201).json(document)
     }
 
-    async filter(req: CustomRequest<BodyDocumentsFilterTypes>, res: Response) {
-        const { congregation_id } = req.body
+    async filter(req: ParamsCustomRequest<ParamsDocumentsFilterTypes>, res: Response) {
+        const { congregation_id } = req.params
 
         const documents = await documentRepository.find({
-           where:{
-            congregation:{
-                id: congregation_id
+            where: {
+                congregation: {
+                    id: congregation_id
+                }
             }
-           }
         })
 
-        if(!documents){
+        if (!documents) {
             throw new BadRequestError('Document not found!')
         }
 
         const documentMap = documents.map(doc => {
-            const { id, fileName, size, key, url, category} = doc
+            const { id, fileName, size, key, url, category } = doc
             return {
                 id, fileName, size, key, url
             }
         })
 
         return res.status(200).json(documentMap)
+    }
+
+    async delete(req: ParamsCustomRequest<ParamsDocumentDeleteTypes>, res: Response){
+        const { document_id } = req.params
+
+        const document = await documentRepository.findOneBy({ id: document_id})
+
+        if(!document){
+            throw new NotFoundError('Document not found')
+        }
+
+        await documentRepository.remove(document)
+
+        return res.status(200).end()
     }
 }
 

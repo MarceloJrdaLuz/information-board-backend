@@ -1,5 +1,3 @@
-import { ExecFileOptionsWithStringEncoding } from "child_process"
-
 export class ApiError extends Error{
     public readonly statusCode: number
     constructor(message: string, statusCode: number){

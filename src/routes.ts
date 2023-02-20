@@ -6,30 +6,34 @@ import DocumentController from "./controllers/DocumentController";
 import CategoryController from "./controllers/CategoryController";
 import RoleController from "./controllers/RoleController";
 import PermissionController from "./controllers/PermissionController";
+import { is } from "./middlewares/permissions";
 
 const routes = Router()
 
 routes.post('/user', UserController.create)
-routes.put('/user/roles', UserController.updateRoles)
 routes.post('/login', UserController.login)
+routes.post('/recover-user-information', UserController.recoverUserInformation)
+routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.updateRoles) 
 
-routes.post('/congregation', CongregationController.create)
-routes.delete('/congregation/:id', CongregationController.delete)
+routes.post('/congregation', /*is(['ADMIN']),*/ CongregationController.create)
+routes.delete('/congregation/:id', /*is(['ADMIN']),*/ CongregationController.delete)
+routes.get('/congregations', /*is(['ADMIN']),*/ CongregationController.list)
+routes.get('/congregation/:number', /*is(['ADMIN']),*/ CongregationController.getCongregation)
 
-routes.post('/category', CategoryController.create)
+routes.post('/category', /*is(['ADMIN']),*/ CategoryController.create)
 
-routes.post('/new-document', DocumentController.create)
-routes.post('/documents-congregation', DocumentController.filter)
+routes.post('/new-document', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ DocumentController.create)
+routes.get('/documents-congregation/:congregation_id', DocumentController.filter)
 
-routes.post('/profile', ProfileController.create)
-routes.put('/profile', ProfileController.update)
-routes.patch('/profile', ProfileController.delete)
+routes.post('/profile', /*is(['ADMIN']),*/ ProfileController.create)
+routes.put('/profile', /*is(['ADMIN']),*/ ProfileController.update)
+routes.patch('/profile', /*is(['ADMIN']),*/ ProfileController.delete)
 
-routes.post('/role', RoleController.create)
+routes.post('/role', /*is(['ADMIN']),*/ RoleController.create)
 
-routes.post('/permission', PermissionController.create)
+routes.post('/permission', /*is(['ADMIN']),*/ PermissionController.create)
 
-routes.post('/notices')
+routes.post('/notices' /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/)
 routes.get('/notices/:congregationId')
 
 

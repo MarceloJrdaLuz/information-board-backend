@@ -14,8 +14,16 @@ export interface BodyCongregationCreateTypes {
     name: string
     number: string
     city: string
+    circuit: string
+    imageUrl: string
 }
 
 export type QueryCongregationDeleteTypes =  {
     id : string
 }
+
+export type QueryGetCongregationTypes =  {
+    number : string
+}
+
+

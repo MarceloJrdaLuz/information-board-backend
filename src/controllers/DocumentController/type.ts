@@ -1,7 +1,12 @@
 import { Request } from "express";
+import { ParamsDictionary } from "express-serve-static-core";
 
 export interface CustomRequest<T> extends Request {
     body: T
+}
+
+export interface ParamsCustomRequest<P extends ParamsDictionary> extends Request {
+    params: P
 }
 
 export interface BodyDocumentsCreateTypes {
@@ -11,9 +16,15 @@ export interface BodyDocumentsCreateTypes {
     url: string
     category_id: string
     congregation_id: string
+    user_id: string
 }
 
-export interface BodyDocumentsFilterTypes {
+export type ParamsDocumentsFilterTypes = {
     congregation_id: string
 }
+
+export type ParamsDocumentDeleteTypes = {
+    document_id: string
+}
+
 

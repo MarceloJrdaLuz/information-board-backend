@@ -17,5 +17,10 @@ export interface BodyUserLoginTypes {
 
 export interface BodyUserUpdateTypes {
     user_id: string
+    congregation_id?: string // para um admin de congregacao fazer um update da role de um usuario ele tem que passar o id
     roles: string[]
+}
+
+export interface BodyRecoverUserInformationTypes {
+    token: string
 }
