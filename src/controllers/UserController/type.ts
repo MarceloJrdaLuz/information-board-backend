@@ -20,6 +20,11 @@ export interface BodyUserUpdateTypes {
     congregation_id?: string // para um admin de congregacao fazer um update da role de um usuario ele tem que passar o id
     roles: string[]
 }
+export interface BodyResetPasswordTypes {
+    email: string
+    token: string // para um admin de congregacao fazer um update da role de um usuario ele tem que passar o id
+    newPassword: string
+}
 
 export interface BodyRecoverUserInformationTypes {
     token: string

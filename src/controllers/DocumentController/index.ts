@@ -1,16 +1,20 @@
 import { Response } from "express";
+import { config } from "../../config";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
 import { categoryRepository } from "../../repositories/categoryRepository";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { documentRepository } from "../../repositories/documentRepository";
+import { firebaseUpload } from "../../provider/firebaseStorage";
+import { NormalizeFiles } from "../../types/normalizeFile";
 import { BodyDocumentsCreateTypes, CustomRequest, ParamsCustomRequest, ParamsDocumentDeleteTypes, ParamsDocumentsFilterTypes } from "./type";
+import fs from 'fs-extra'
 
 class DocumentController {
     async create(req: CustomRequest<BodyDocumentsCreateTypes>, res: Response) {
-        const { fileName, size, key, url, category_id, congregation_id, user_id } = req.body
+        const { category_id, congregation_id } = req.body
+        const file = req.file
 
         const category = await categoryRepository.findOneBy({ id: category_id })
-
         const congregation = await congregationRepository.findOneBy({ id: congregation_id })
 
         if (!category) {
@@ -21,27 +25,48 @@ class DocumentController {
             throw new BadRequestError('Congregation not exists')
         }
 
-        const newDocument = await documentRepository.create({
-            fileName,
-            size,
-            key,
-            url,
-            category,
-            congregation
-        })
-
-        const document = {
-            fileName,
-            size,
-            key,
-            url,
-            category: newDocument.category.id,
-            congregation: newDocument.congregation.id
+        if (!file) {
+            throw new NotFoundError('Any file found')
         }
 
-        await documentRepository.save(newDocument)
+        if (config.storage_type === 'local') {
 
-        return res.status(201).json(document)
+        }
+
+        switch (config.storage_type) {
+            case 'local':
+                fs.move(`./tmp/uploads/${req.file?.filename}`, `./tmp/uploads/${congregation.number}/${req.file?.filename}`, function (err) {
+                    if (err) {
+                        console.log(err)
+                    }
+                })
+                res.status(201).json({ message: 'Moved' })
+                break;
+            case 'firebase':
+                await firebaseUpload(req, res, congregation.number, saveBD)
+                break;
+            default:
+                res.send('Storage local type is not defined at .env')
+                break;
+        }
+
+
+        async function saveBD(file: NormalizeFiles) {
+            const { fileName, size, key, url } = file
+            const newDocument = documentRepository.create({
+                //@ts-expect-error
+                fileName,
+                size,
+                key,
+                url,
+                congregation,
+                category
+            })
+
+            await documentRepository.save(newDocument)
+
+            res.status(201).json(newDocument)
+        }
     }
 
     async filter(req: ParamsCustomRequest<ParamsDocumentsFilterTypes>, res: Response) {
@@ -60,7 +85,7 @@ class DocumentController {
         }
 
         const documentMap = documents.map(doc => {
-            const { id, fileName, size, key, url, category } = doc
+            const { id, fileName, size, key, url, } = doc
             return {
                 id, fileName, size, key, url
             }
@@ -69,12 +94,12 @@ class DocumentController {
         return res.status(200).json(documentMap)
     }
 
-    async delete(req: ParamsCustomRequest<ParamsDocumentDeleteTypes>, res: Response){
+    async delete(req: ParamsCustomRequest<ParamsDocumentDeleteTypes>, res: Response) {
         const { document_id } = req.params
 
-        const document = await documentRepository.findOneBy({ id: document_id})
+        const document = await documentRepository.findOneBy({ id: document_id })
 
-        if(!document){
+        if (!document) {
             throw new NotFoundError('Document not found')
         }
 

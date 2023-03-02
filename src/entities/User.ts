@@ -14,6 +14,12 @@ export class User {
     @Column({type: 'text'})
     password: string
 
+    @Column({type: "text", nullable: true})
+    passwordResetToken: string
+    
+    @Column({type: "text", nullable: true})
+    passwordResetExpires: Date
+
     @CreateDateColumn()
     created_at: Date
 

@@ -1,11 +1,16 @@
 import { Response } from "express";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
 import { userRepository } from "../../repositories/userRepository";
-import { BodyRecoverUserInformationTypes, BodyUserCreateTypes, BodyUserLoginTypes, BodyUserUpdateTypes, CustomRequest } from "./type";
+import { BodyRecoverUserInformationTypes, BodyResetPasswordTypes, BodyUserCreateTypes, BodyUserLoginTypes, BodyUserUpdateTypes, CustomRequest } from "./type";
 import bcrypt from 'bcrypt'
 import jwt, { decode } from 'jsonwebtoken'
 import { In } from "typeorm";
 import { roleRepository } from "../../repositories/roleRepository";
+import { v4 } from "uuid";
+//@ts-expect-error
+import mailer from '../../modules/mailer'
+import { config } from "../../config";
+import moment from 'moment-timezone'
 
 class UserController {
     async create(req: CustomRequest<BodyUserCreateTypes>, res: Response) {
@@ -134,7 +139,7 @@ class UserController {
 
         const user = await userRepository.findOneBy({ id: userId })
 
-        if(!user){
+        if (!user) {
             throw new BadRequestError('User not found')
         }
 
@@ -142,6 +147,88 @@ class UserController {
 
 
         return res.status(200).json(userLogin)
+    }
+
+    async forgot_password(req: CustomRequest<{ email: string }>, res: Response) {
+        const { email } = req.body
+
+        const user = await userRepository.findOneBy({ email })
+
+        if (!user) {
+            throw new BadRequestError(`User wasn't found`)
+        }
+
+        const token = v4()
+
+        const now = moment.tz('America/Sao_Paulo')
+        console.log(now)
+
+        const expiredToken = now.add(1, 'hour')
+
+        await userRepository.save({
+            ...user,
+            passwordResetToken: token,
+            passwordResetExpires: expiredToken.toString()
+        })
+
+        const urlApi = config.app_url
+
+        mailer.sendMail({
+            to: email,
+            from: process.env.NODEMAILER_USER,
+            subject: 'Redefinição de Senha',
+            template: 'auth/forgot_password',
+            context: { token, email, urlApi }
+        }, (err: any) => {
+            if (err) {
+                console.log(err)
+                return res.status(400).send({ error: 'Cannot send forgot password email' })
+            }
+
+            return res.send()
+        })
+    }
+
+    async reset_password(req: CustomRequest<BodyResetPasswordTypes>, res: Response) {
+        const { email, newPassword, token } = req.body
+
+        const user = await userRepository.findOneBy({
+            email
+        })
+
+        if (!user) {
+            throw new BadRequestError('User not found')
+        }
+
+        if (token !== user.passwordResetToken) {
+            throw new BadRequestError('Token invalid')
+        }
+
+        const now = moment.tz('America/Sao_Paulo')
+
+        const date = new Date(user.passwordResetExpires)
+
+        const expiredToken = moment(date)
+
+        if (now > expiredToken) {
+            throw new BadRequestError('Token expired, generate a new one')
+        }
+
+        const hashPassword = await bcrypt.hash(newPassword, 10)
+
+        const updateUser = userRepository.create({
+            ...user,
+            //@ts-expect-error
+            password: hashPassword,
+            passwordResetToken: null,
+            passwordResetExpires: null
+        })
+
+        await userRepository.save(updateUser)
+
+        const { password: _,  ...userResponse } = updateUser
+
+        return res.status(200).json(userResponse)
     }
 }
 

@@ -8,19 +8,16 @@ export interface CustomRequest<T> extends Request {
 export interface ParamsCustomRequest<P extends ParamsDictionary> extends Request {
     params: P
 }
-
-export interface BodyDocumentsCreateTypes {
-    fileName: string
-    size: number
-    key: string
-    url: string
-    category_id: string
-    congregation_id: string
-    user_id: string
+export interface QueryCustomRequest<P extends ParamsDictionary> extends Request {
+    params: P
 }
 
 export type ParamsDocumentsFilterTypes = {
     congregation_id: string
+}
+export type BodyDocumentsCreateTypes = {
+    congregation_id: string,
+    category_id: string
 }
 
 export type ParamsDocumentDeleteTypes = {

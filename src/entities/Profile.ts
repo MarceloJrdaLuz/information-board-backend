@@ -14,6 +14,12 @@ export class Profile {
     @Column({ type: "text" })
     lastName: string
 
+    @Column({type: "text"})
+    avatar_url: string
+
+    @Column({type: "text"})
+    avatar_bucket_key: string
+
     @CreateDateColumn()
     created_at: Date
 
