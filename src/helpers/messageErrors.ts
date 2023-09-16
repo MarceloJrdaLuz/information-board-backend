@@ -4,7 +4,8 @@ export const messageErrors = {
         publisher: "Publisher was not found",
         report: "Report was not found",
         group: "Group was not found",
-        groupOverseers: "GroupOverseers was not found"
+        groupOverseers: "GroupOverseers was not found",
+        permission: "Permission was not found",
     }, 
     dataBase: {
         save: "Error saving to database"

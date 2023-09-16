@@ -4,7 +4,7 @@ import { congregationRepository } from "../../repositories/congregationRepositor
 import { profileRepository } from "../../repositories/profileRepository";
 import { userRepository } from "../../repositories/userRepository";
 import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage";
-import { BodyProfileCreateTypes, BodyUpdateProfilesTypes, ParamsProfileDeleteTypes } from "./type";
+import { BodyProfileCreateTypes, BodyUpdateProfilesTypes, ParamsProfileDeleteTypes } from "./types";
 import fs from 'fs-extra'
 import { config } from "../../config";
 import { NormalizeFiles } from "../../types/normalizeFile";

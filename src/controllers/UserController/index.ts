@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
 import { userRepository } from "../../repositories/userRepository";
-import { BodyAddDomainsTypes, BodyResetPasswordTypes, BodyUserCreateTypes, BodyUserLoginTypes, BodyUserUpdateTypes } from "./type";
+import { BodyAddDomainsTypes, BodyResetPasswordTypes, BodyUserCreateTypes, BodyUserLoginTypes, BodyUserUpdateTypes } from "./types";
 import bcrypt from 'bcrypt'
 import jwt, { decode } from 'jsonwebtoken'
 import { In, Not, Any } from "typeorm";

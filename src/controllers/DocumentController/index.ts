@@ -6,7 +6,7 @@ import { congregationRepository } from "../../repositories/congregationRepositor
 import { documentRepository } from "../../repositories/documentRepository";
 import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage";
 import { NormalizeFiles } from "../../types/normalizeFile";
-import { BodyDocumentsCreateTypes, ParamsDocumentDeleteTypes, ParamsDocumentsFilterTypes } from "./type";
+import { BodyDocumentsCreateTypes, ParamsDocumentDeleteTypes, ParamsDocumentsFilterTypes } from "./types";
 import fs from 'fs-extra'
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest";
 class DocumentController {

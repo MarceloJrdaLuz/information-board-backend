@@ -1,6 +1,6 @@
 import { Response } from "express-serve-static-core";
 import { CustomRequest } from "../../types/customRequest";
-import {  BodyCheckConsentRecordTypes, BodyConsentRecordCreateTypes } from "./type";
+import {  BodyCheckConsentRecordTypes, BodyConsentRecordCreateTypes } from "./types";
 import { consentRecordRepository } from "../../repositories/consentRecordRepository";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { v4 } from "uuid";

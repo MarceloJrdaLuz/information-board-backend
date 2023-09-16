@@ -2,7 +2,7 @@ import { Response } from "express";
 import { Request } from "express-serve-static-core";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { categoryRepository } from "../../repositories/categoryRepository";
-import { BodyCategoryCreateTypes } from "./type";
+import { BodyCategoryCreateTypes } from "./types";
 import { CustomRequest } from "../../types/customRequest";
 
 class CategoryController{

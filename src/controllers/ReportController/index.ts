@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest";
-import { BodyReportCreateTypes, ParamsGetReportsTypes } from "./type";
+import { BodyReportCreateTypes, ParamsGetReportsTypes } from "./types";
 import { publisherRepository } from "../../repositories/publisherRepository";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { reportRepository } from "../../repositories/reportRepository";

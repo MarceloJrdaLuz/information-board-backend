@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { config } from "../../config";
 import { ApiError, BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { congregationRepository } from "../../repositories/congregationRepository";
-import { BodyCongregationCreateTypes, BodyCongregationUpdateTypes, ParamsUpdateCongregationTypes, QueryCongregationDeleteTypes, QueryGetCongregationTypes } from "./type";
+import { BodyCongregationCreateTypes, BodyCongregationUpdateTypes, ParamsUpdateCongregationTypes, QueryCongregationDeleteTypes, QueryGetCongregationTypes } from "./types";
 import fs from 'fs-extra'
 import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage";
 import { NormalizeFiles } from "../../types/normalizeFile";

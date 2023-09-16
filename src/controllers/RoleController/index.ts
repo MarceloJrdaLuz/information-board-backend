@@ -3,7 +3,7 @@ import { In } from "typeorm";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { permissionRepository } from "../../repositories/permissionRepository";
 import { roleRepository } from "../../repositories/roleRepository";
-import { BodyRoleCreateTypes } from "./type";
+import { BodyRoleCreateTypes } from "./types";
 import { CustomRequest } from "../../types/customRequest";
 
 class RoleController {

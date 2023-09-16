@@ -2,7 +2,7 @@ import { Response } from "express";
 import { BadRequestError } from "../../helpers/api-errors";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { noticeRepository } from "../../repositories/noticeRepository";
-import { BodyNoticeCreateTypes, ParamsNoticeCreateTypes } from "./type";
+import { BodyNoticeCreateTypes, ParamsNoticeCreateTypes } from "./types";
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 
 class NoticeController {

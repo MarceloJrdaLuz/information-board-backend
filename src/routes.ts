@@ -54,7 +54,10 @@ routes.post('/role', /*is(['ADMIN']),*/ RoleController.create)
 routes.get('/roles', /*is(['ADMIN']),*/ RoleController.getRoles)
 
 routes.post('/permission', /*is(['ADMIN']),*/ PermissionController.create)
+routes.put('/permission/:permission_id', /*is(['ADMIN']),*/ PermissionController.update)
 routes.get('/permission', /*is(['ADMIN']),*/ PermissionController.getPermissions)
+routes.get('/permission/:permission_id', PermissionController.getPermission)
+
 
 routes.get('/notices/:congregation_id', NoticeController.get)
 routes.post('/notice/:congregation_id', NoticeController.create)

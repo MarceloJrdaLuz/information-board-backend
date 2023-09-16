@@ -1,6 +1,6 @@
 import { Response } from "express-serve-static-core";
 import { CustomRequest } from "../../types/customRequest";
-import { BodyGroupCreateTypes } from "./type";
+import { BodyGroupCreateTypes } from "./types";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { groupOverseersRepository } from "../../repositories/groupOverseersRepository";
