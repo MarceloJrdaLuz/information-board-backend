@@ -6,6 +6,7 @@ export const messageErrors = {
         group: "Group was not found",
         groupOverseers: "GroupOverseers was not found",
         permission: "Permission was not found",
+        role: "Role was not found",
     }, 
     dataBase: {
         save: "Error saving to database"

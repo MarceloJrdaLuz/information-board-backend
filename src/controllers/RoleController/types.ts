@@ -3,3 +3,7 @@ export interface BodyRoleCreateTypes {
     description: string
     permissions: string[]
 }
+
+export type ParamsUpdateRoleTypes = {
+   role_id: string
+}

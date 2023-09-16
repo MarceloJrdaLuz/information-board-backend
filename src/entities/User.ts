@@ -18,8 +18,8 @@ export class User {
     @Column({ type: "text" })
     code: string
 
-    @ManyToOne(() => Congregation, congregation => congregation.id)
-    @JoinColumn({name: 'congregation_id'})
+    @ManyToOne(() => Congregation, congregation => congregation.id, {eager:true})
+    @JoinColumn({name: 'congregation_id',})
     congregation: Congregation
 
     @Column({ type: "text", nullable: true })

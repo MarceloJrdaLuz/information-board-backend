@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { config } from "../../config";
-import { ApiError, BadRequestError, NotFoundError } from "../../helpers/api-errors";
+import { ApiError, BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { BodyCongregationCreateTypes, BodyCongregationUpdateTypes, ParamsUpdateCongregationTypes, QueryCongregationDeleteTypes, QueryGetCongregationTypes } from "./types";
 import fs from 'fs-extra'
@@ -11,6 +11,8 @@ import { CustomRequest, CustomRequestPT, ParamsCustomRequest, QueryCustomRequest
 import { groupRepository } from "../../repositories/groupRepository";
 import { Congregation } from "../../entities/Congregation";
 import { messageErrors } from "../../helpers/messageErrors";
+import { decoder } from "../../middlewares/permissions";
+import { userRepository } from "../../repositories/userRepository";
 
 
 class CongregationController {
@@ -84,13 +86,41 @@ class CongregationController {
     }
 
     async list(req: Request, res: Response) {
-        const congExists = await congregationRepository.find({})
+        const requestByUserId = await decoder(req)
 
-        if (!congExists) {
+        const congregationsResponse: Congregation[] = []
+
+        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION') {
+            const requestUser = await userRepository.findOne({
+                where: {
+                    id: requestByUserId.id
+                }
+            })
+
+            if (requestUser) {
+                console.log(requestUser)
+                const cong = await congregationRepository.findOne({
+                    where: {
+                        id: requestUser.congregation.id
+                    }
+                })
+
+                if(cong) congregationsResponse.push(cong)
+            }
+        }
+
+        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN'){
+            const congExists = await congregationRepository.find({})
+
+            if(congExists) congregationsResponse.push(...congExists)
+        }
+
+
+        if (!congregationsResponse) {
             throw new NotFoundError('Congregations not found')
         }
 
-        return res.status(200).json(congExists)
+        return res.status(200).json(congregationsResponse)
     }
 
     async update(req: CustomRequestPT<ParamsUpdateCongregationTypes, BodyCongregationUpdateTypes>, res: Response) {

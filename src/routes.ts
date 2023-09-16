@@ -52,6 +52,8 @@ routes.delete('/profile/:id', /*is(['ADMIN']),*/ ProfileController.delete)
 
 routes.post('/role', /*is(['ADMIN']),*/ RoleController.create)
 routes.get('/roles', /*is(['ADMIN']),*/ RoleController.getRoles)
+routes.get('/role/:role_id', /*is(['ADMIN']),*/ RoleController.getRole)
+routes.put('/role/:role_id', /*is(['ADMIN']),*/ RoleController.update)
 
 routes.post('/permission', /*is(['ADMIN']),*/ PermissionController.create)
 routes.put('/permission/:permission_id', /*is(['ADMIN']),*/ PermissionController.update)
