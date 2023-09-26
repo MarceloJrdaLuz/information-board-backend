@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Congregation } from "./Congregation";
 import { GroupOverseers } from "./GroupOverseers";
+import { Group } from "./Group";
 
 export enum Gender {
     Masculino = "Masculino",
@@ -8,7 +9,7 @@ export enum Gender {
 }
 
 export enum Hope {
-    Ungido = "Ungido", 
+    Ungido = "Ungido",
     OutrasOvelhas = "Outras ovelhas"
 }
 @Entity('publishers')
@@ -22,7 +23,7 @@ export class Publisher {
     @Column({ type: 'text', nullable: true })
     nickname: string
 
-    @Column({type: "enum", enum: Hope ,default: Hope.OutrasOvelhas })
+    @Column({ type: "enum", enum: Hope, default: Hope.OutrasOvelhas })
     hope: Hope
 
     @Column({
@@ -32,10 +33,10 @@ export class Publisher {
     })
     gender: Gender
 
-    @Column({type: 'text', nullable: true })
+    @Column({ type: 'text', nullable: true })
     phone: string
 
-    @Column({type: "timestamp", nullable: true})
+    @Column({ type: "timestamp", nullable: true })
     dateImmersed: Date
 
     @Column({ type: 'simple-array', nullable: true })
@@ -48,7 +49,11 @@ export class Publisher {
     @JoinColumn({ name: 'congregation_id' })
     congregation: Congregation
 
-    @ManyToOne(() => GroupOverseers, { nullable: true }) // Relacionamento Many-to-One opcional com GroupOverseers
+    @ManyToOne(() => Group, group => group.publishers, { onDelete: "SET NULL"})
+    @JoinColumn({ name: 'group_id' })
+    group: Group | null
+
+    @ManyToOne(() => GroupOverseers, { nullable: true, onDelete: "SET NULL" }) // Relacionamento Many-to-One opcional com GroupOverseers
     @JoinColumn({ name: 'group_overseers_id' })
     groupOverseers: GroupOverseers;
 }

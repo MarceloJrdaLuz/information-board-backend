@@ -1,6 +1,7 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 import { GroupOverseers } from "./GroupOverseers";
 import { Congregation } from "./Congregation";
+import { Publisher } from "./Publisher";
 
 
 @Entity('group')
@@ -10,7 +11,7 @@ export class Group {
 
     @Column({ type: 'text' })
     name: string
-    
+
     @Column({ type: 'text' })
     number: string
 
@@ -18,7 +19,10 @@ export class Group {
     @JoinColumn({ name: 'congregation_id' })
     congregation: Congregation;
 
-    @ManyToOne(() => GroupOverseers, {eager: true}) // Relacionamento Many-to-One com GroupOverseers
+    @OneToMany(() => Publisher, publisher => publisher.group)
+    publishers: Publisher[]
+
+    @ManyToOne(() => GroupOverseers, { eager: true }) // Relacionamento Many-to-One com GroupOverseers
     @JoinColumn({ name: 'group_overseers_id' })
     groupOverseers: GroupOverseers
 

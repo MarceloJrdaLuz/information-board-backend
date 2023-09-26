@@ -6,6 +6,8 @@ import { roleRepository } from "../../repositories/roleRepository";
 import { BodyRoleCreateTypes, ParamsUpdateRoleTypes } from "./types";
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 import { messageErrors } from "../../helpers/messageErrors";
+import { decoder } from "../../middlewares/permissions";
+import { Role } from "../../entities/Role";
 
 class RoleController {
     async create(req: CustomRequest<BodyRoleCreateTypes>, res: Response) {
@@ -47,7 +49,7 @@ class RoleController {
             if (permissionsExists) {
                 role.permissions = permissionsExists
             }
-        }else{
+        } else {
             role.permissions = []
         }
 
@@ -68,17 +70,31 @@ class RoleController {
 
         if (!role) throw new NotFoundError(messageErrors.notFound.role)
 
+
         return res.status(200).json(role)
     }
 
     async getRoles(req: Request, res: Response) {
+        const requestByUserId = await decoder(req)
+
+        const rolesResponse: Role[] = []
+
         const roles = await roleRepository.find({ relations: ['permissions'] })
 
         if (!roles) {
-            throw new NotFoundError('Roles not found')
+            throw new NotFoundError(messageErrors.notFound.role)
         }
 
-        return res.status(200).json(roles)
+        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name !== 'ADMIN') {
+
+            const removeAdmin = roles.filter(role => role.name !== 'ADMIN')
+
+            rolesResponse.push(...removeAdmin)
+        } else {
+            rolesResponse.push(...roles)
+        }
+
+        return res.status(200).json(rolesResponse)
     }
 }
 

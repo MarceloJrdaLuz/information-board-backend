@@ -27,7 +27,9 @@ class PublisherControler {
       }
     })
 
-    if (existingPublisherSomeFullName) {
+    console.log(existingPublisherSomeFullName)
+
+    if (existingPublisherSomeFullName.length > 0) {
       if (!nickname) {
         throw new BadRequestError('A nickname is required to differentiate the publisher')
       }
@@ -64,7 +66,8 @@ class PublisherControler {
     }
 
     if (privileges) {
-      const privilegesExists = privileges.every(privilege => Object.values(Privileges).includes(privilege as Privileges));
+      console.log(privileges)
+      const privilegesExists = privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges));
       if (!privilegesExists) {
         throw new BadRequestError('Some privilege not exists');
       }
@@ -124,7 +127,9 @@ class PublisherControler {
   async getPublishers(req: ParamsCustomRequest<ParamsGetPublishersTypes>, res: Response) {
     const { congregation_id } = req.params
 
+
     const congregation = await congregationRepository.findOneBy({ id: congregation_id })
+
 
     if (!congregation) throw new NotFoundError(messageErrors.notFound.congregation)
 
@@ -133,8 +138,8 @@ class PublisherControler {
         congregation: {
           id: congregation_id
         }
-      }
-    })
+      }, relations: ['group']
+    }).catch(err => console.log(err))
 
     return res.status(200).json(publishers)
   }
@@ -157,7 +162,7 @@ class PublisherControler {
 
     const publishersNames = publishers.map(publisher => ({
       fullName: publisher.fullName,
-      nickname: publisher.nickname, 
+      nickname: publisher.nickname,
       congregation_id: congregation.id
     }))
 

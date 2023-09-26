@@ -51,7 +51,7 @@ routes.put('/profile', /*is(['ADMIN']),*/ uploadFile.single('avatar'), ProfileCo
 routes.delete('/profile/:id', /*is(['ADMIN']),*/ ProfileController.delete)
 
 routes.post('/role', /*is(['ADMIN']),*/ RoleController.create)
-routes.get('/roles', /*is(['ADMIN']),*/ RoleController.getRoles)
+routes.get('/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), RoleController.getRoles)
 routes.get('/role/:role_id', /*is(['ADMIN']),*/ RoleController.getRole)
 routes.put('/role/:role_id', /*is(['ADMIN']),*/ RoleController.update)
 
@@ -67,7 +67,10 @@ routes.post('/notice/:congregation_id', NoticeController.create)
 routes.post('/report', /*checkExistingConsent,*/ ReportController.create)
 routes.get('/reports/:congregationId', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ ReportController.getReports)
 
+routes.post('/group/:group_id/add-publishers', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.addPublishersGroup)
+routes.delete('/group/:group_id/remove-publishers', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.removePublishersGroup)
 routes.post('/group', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.create)
+routes.get('/groups/:congregation_id', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.getGroups)
 
 routes.post('/consentRecord', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ ConsentRecordController.create)
 routes.post('/checkConsentRecords', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ ConsentRecordController.checkConsent)

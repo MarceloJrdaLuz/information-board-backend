@@ -15,6 +15,7 @@ import { Request } from "express-serve-static-core";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { CustomRequest } from "../../types/customRequest";
 import { decoder } from "../../middlewares/permissions";
+import { User } from "../../entities/User";
 
 class UserController {
     async create(req: CustomRequest<BodyUserCreateTypes>, res: Response) {
@@ -330,13 +331,43 @@ class UserController {
     }
 
     async getUsers(req: Request, res: Response) {
-        const users = await userRepository.find({ select: ["id", "email"] })
+        const requestByUserId = await decoder(req)
 
-        if (!users) {
+        const usersResponse: User[] = []
+
+        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION') {
+            const requestUser = await userRepository.findOne({
+                where: {
+                    id: requestByUserId.id
+                }
+            })
+
+            if (requestUser) {
+                const users = await userRepository.find({
+                    where: {
+                        congregation: {
+                            id: requestUser.congregation.id
+                        }
+                    }, 
+                    select: ["id", "email"]
+                })
+
+                if (users) usersResponse.push(...users)
+            }
+        }
+
+        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN'){
+            const users = await userRepository.find({ select: ["id", "email"] })
+
+            usersResponse.push(...users)
+
+        }
+
+        if (!usersResponse) {
             throw new NotFoundError('Users not found')
         }
 
-        const usersFilter = users.filter(user => user.roles.some(role => role.name !== "ADMIN"))
+        const usersFilter = usersResponse.filter(user => user.roles.some(role => role.name !== "ADMIN"))
 
         return res.status(200).json(usersFilter)
     }
