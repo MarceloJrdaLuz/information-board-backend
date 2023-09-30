@@ -2,8 +2,9 @@ import { Response } from "express";
 import { Request } from "express-serve-static-core";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { categoryRepository } from "../../repositories/categoryRepository";
-import { BodyCategoryCreateTypes } from "./types";
-import { CustomRequest } from "../../types/customRequest";
+import { BodyCategoryCreateTypes, ParamsUpdateCategoryTypes } from "./types";
+import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
+import { messageErrors } from "../../helpers/messageErrors";
 
 class CategoryController{
     async create(req: CustomRequest<BodyCategoryCreateTypes>, res: Response){
@@ -31,6 +32,33 @@ class CategoryController{
         return res.status(201).json(newCategory)
     }
 
+    async update(req: CustomRequestPT<ParamsUpdateCategoryTypes, BodyCategoryCreateTypes>, res: Response) {
+        const { category_id } = req.params
+        const { name, description } = req.body
+
+        const category = await categoryRepository.findOneBy({ id: category_id })
+
+        if (!category) throw new NotFoundError(messageErrors.notFound.category)
+
+        category.name = name !== undefined ? name : category.name
+        category.description = description !== undefined ? description : category.description
+
+        await categoryRepository.save(category)
+
+        return res.status(201).json(category)
+    }
+
+    async getPermission(req: ParamsCustomRequest<ParamsUpdateCategoryTypes>, res: Response) {
+        const { category_id } = req.params
+    
+        const category = await categoryRepository.findOneBy({ id: category_id })
+    
+        if (!category) throw new NotFoundError(messageErrors.notFound.category)
+    
+        return res.status(200).json(category)
+      }
+
+
     async getCategories(req: Request, res: Response){
         const categories = await categoryRepository.find({})
 
@@ -38,6 +66,8 @@ class CategoryController{
 
         return res.status(200).json(categories)
     }
+
+
 }   
 
 export default new CategoryController()

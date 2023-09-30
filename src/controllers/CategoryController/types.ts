@@ -3,3 +3,6 @@ export interface BodyCategoryCreateTypes {
    description: string
 }
 
+export type ParamsUpdateCategoryTypes = {
+   category_id: string
+}

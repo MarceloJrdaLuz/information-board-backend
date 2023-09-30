@@ -1,6 +1,6 @@
 import { Response } from "express-serve-static-core";
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
-import { BodyAddPublishersGroupTypes, BodyGroupCreateTypes, ParamsAddPublishersGroupTypes, ParamsDeleteGroupTypes, ParamsGetGroupsTypes } from "./types";
+import { BodyAddPublishersGroupTypes, BodyGroupCreateTypes, BodyUpdateGroupOverseerTypes, ParamsAddPublishersGroupTypes, ParamsDeleteGroupTypes, ParamsGetGroupsTypes } from "./types";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { groupOverseersRepository } from "../../repositories/groupOverseersRepository";
@@ -77,7 +77,7 @@ class GroupController {
 
     async getGroups(req: ParamsCustomRequest<ParamsGetGroupsTypes>, res: Response) {
         const { congregation_id } = req.params
-    
+
         const groups = await groupRepository.find({
             where: {
                 congregation: {
@@ -85,12 +85,12 @@ class GroupController {
                 }
             },
         })
-    
+
         if (!groups) throw new NotFoundError(messageErrors.notFound.group)
-    
+
         const groupWith = groups.map(group => {
             const { id, name, number, groupOverseers } = group;
-    
+
             if (!groupOverseers) {
                 // Handle the case where groupOverseers is null
                 return {
@@ -100,9 +100,9 @@ class GroupController {
                     groupOverseers: null,
                 };
             }
-    
+
             const { id: groupOverseersId, publisher } = groupOverseers;
-    
+
             if (!publisher) {
                 // Handle the case where publisher is null
                 return {
@@ -115,9 +115,9 @@ class GroupController {
                     },
                 };
             }
-    
+
             const { congregation: _, id: __, ...rest } = publisher;
-    
+
             return {
                 id,
                 name,
@@ -128,10 +128,10 @@ class GroupController {
                 },
             };
         });
-    
+
         res.status(200).json(groupWith);
     }
-    
+
 
     async addPublishersGroup(req: CustomRequestPT<ParamsAddPublishersGroupTypes, BodyAddPublishersGroupTypes>, res: Response) {
         const { group_id } = req.params
@@ -162,33 +162,46 @@ class GroupController {
         res.send()
     }
 
-    async updateGroupOverseer(req: CustomRequestPT<ParamsAddPublishersGroupTypes, BodyAddPublishersGroupTypes>, res: Response) {
+    async updateGroupOverseer(req: CustomRequestPT<ParamsAddPublishersGroupTypes, BodyUpdateGroupOverseerTypes>, res: Response) {
         const { group_id } = req.params
-        const { publishers_ids } = req.body
+        const { publisher_id } = req.body
 
         const group = await groupRepository.findOneBy({ id: group_id })
 
         if (!group) throw new NotFoundError(messageErrors.notFound.group)
 
-        const publisherPromises = publishers_ids.map(async (publisher_id) => {
-            const publisher = await publisherRepository.findOne({
-                where: {
+        const publisher = await publisherRepository.findOneBy({ id: publisher_id });
+
+        if (!publisher) throw new NotFoundError(messageErrors.notFound.publisher)
+
+        const groupOverseerExists = await groupOverseersRepository.findOne({
+            where: {
+                publisher: {
                     id: publisher_id
                 }
-            });
-
-            if (publisher) {
-                publisher.group = group
-                return publisherRepository.save(publisher);
-            } else {
-                return null; // Tratar caso o publisher não seja encontrado
             }
-        });
+        })
 
-        // Aguardar a resolução de todas as promessas
-        const updatedPublishers = await Promise.all(publisherPromises);
+        console.log(groupOverseerExists)
 
-        res.send()
+        if (groupOverseerExists) {
+            group.groupOverseers = groupOverseerExists
+            publisher.groupOverseers = groupOverseerExists
+            await groupRepository.save(group)
+            await publisherRepository.save(publisher)
+            return res.send()
+        } else {
+            const newGroupOverseer = groupOverseersRepository.create({
+                publisher
+            })
+            await groupOverseersRepository.save(newGroupOverseer).then(async (suc) => {
+                publisher.groupOverseers = suc
+                group.groupOverseers = suc
+                await groupRepository.save(group)
+                await publisherRepository.save(publisher)
+            })
+            return res.send()
+        }
     }
 
     async removePublishersGroup(req: CustomRequestPT<ParamsAddPublishersGroupTypes, BodyAddPublishersGroupTypes>, res: Response) {

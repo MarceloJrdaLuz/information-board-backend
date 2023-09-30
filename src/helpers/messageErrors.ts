@@ -1,6 +1,7 @@
 export const messageErrors = {
     notFound: {
         congregation: "Congregation was not found",
+        category: "Category was not found",
         publisher: "Publisher was not found",
         report: "Report was not found",
         group: "Group was not found",

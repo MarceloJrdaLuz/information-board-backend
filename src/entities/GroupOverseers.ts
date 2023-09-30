@@ -6,7 +6,7 @@ export class GroupOverseers {
     @PrimaryGeneratedColumn('uuid')
     id: string
 
-    @ManyToOne(() => Publisher, publisher => publisher.groupOverseers, {eager: true, onDelete: "SET NULL"}) // Relacionamento Many-to-One com Publisher
+    @ManyToOne(() => Publisher, publisher => publisher.groupOverseers, {eager: true, onDelete: "CASCADE"}) // Relacionamento Many-to-One com Publisher
     @JoinColumn({ name: 'publisher_id' })
     publisher: Publisher | null
 

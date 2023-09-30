@@ -40,7 +40,10 @@ routes.put('/congregation/:congregation_id', CongregationController.update)
 routes.put('/congregation/:congregation_id/photo',uploadFile.single('image'), CongregationController.uploadCongregationPhoto)
 
 routes.post('/category', /*is(['ADMIN']),*/ CategoryController.create)
-routes.get('/category', /*is(['ADMIN']),*/ CategoryController.getCategories)
+routes.put('/category/:category_id', /*is(['ADMIN']),*/ CategoryController.update)
+routes.get('/categories', /*is(['ADMIN']),*/ CategoryController.getCategories)
+routes.get('/category/:category_id', CategoryController.getPermission)
+
 
 routes.post('/new-document', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ uploadFile.single('file'),  DocumentController.create)
 routes.get('/documents-congregation/:congregation_id', DocumentController.filter)
@@ -75,6 +78,7 @@ routes.delete('/group/:group_id/remove-publishers', /*is(['ADMIN', 'ADMIN_CONGRE
 routes.delete('/group/:group_id', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.delete)
 routes.post('/group', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.create)
 routes.get('/groups/:congregation_id', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.getGroups)
+routes.put('/group/:group_id/change-groupOverseer', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.updateGroupOverseer)
 
 routes.post('/consentRecord', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ ConsentRecordController.create)
 routes.post('/checkConsentRecords', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ ConsentRecordController.checkConsent)
