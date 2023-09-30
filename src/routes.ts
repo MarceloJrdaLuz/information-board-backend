@@ -26,7 +26,7 @@ routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.up
 routes.get('/users', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ UserController.getUsers) 
 
 routes.post('/publisher', PublisherControllers.create)
-routes.delete('/publisher/:id', PublisherControllers.delete)
+routes.delete('/publisher/:publisher_id', PublisherControllers.delete)
 routes.put('/publisher/', PublisherControllers.update)
 routes.get('/publishers/congregationId/:congregation_id', PublisherControllers.getPublishers)
 routes.get('/publishers/congregationNumber/:congregationNumber', PublisherControllers.getPublishersWithCongregatioNumber)
@@ -57,18 +57,22 @@ routes.put('/role/:role_id', /*is(['ADMIN']),*/ RoleController.update)
 
 routes.post('/permission', /*is(['ADMIN']),*/ PermissionController.create)
 routes.put('/permission/:permission_id', /*is(['ADMIN']),*/ PermissionController.update)
+routes.delete('/permission/:permission_id', /*is(['ADMIN']),*/ PermissionController.delete)
 routes.get('/permission', /*is(['ADMIN']),*/ PermissionController.getPermissions)
 routes.get('/permission/:permission_id', PermissionController.getPermission)
 
 
-routes.get('/notices/:congregation_id', NoticeController.get)
+routes.get('/notices/:congregation_id', NoticeController.getNotices)
 routes.post('/notice/:congregation_id', NoticeController.create)
+routes.get('/notice/:notice_id', NoticeController.getNotice)
+routes.delete('/notice/:notice_id', NoticeController.delete)
 
 routes.post('/report', /*checkExistingConsent,*/ ReportController.create)
 routes.get('/reports/:congregationId', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ ReportController.getReports)
 
 routes.post('/group/:group_id/add-publishers', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.addPublishersGroup)
 routes.delete('/group/:group_id/remove-publishers', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.removePublishersGroup)
+routes.delete('/group/:group_id', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.delete)
 routes.post('/group', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.create)
 routes.get('/groups/:congregation_id', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController.getGroups)
 

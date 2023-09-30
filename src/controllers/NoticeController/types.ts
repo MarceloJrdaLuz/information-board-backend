@@ -10,3 +10,7 @@ export type ParamsNoticeCreateTypes = {
     congregation_id: string
 }
 
+export type ParamsNoticeUpdateTypes = {
+   notice_id: string
+}
+

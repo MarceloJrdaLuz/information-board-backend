@@ -63,6 +63,20 @@ class PermissionController {
 
         return res.status(200).json(permissions)
     }
+
+    async delete(req: ParamsCustomRequest<ParamsUpdatePermissionTypes>, res: Response) {
+        const { permission_id } = req.params
+
+        const permission = await permissionRepository.findOneBy({ id: permission_id })
+
+        if (!permission) {
+            throw new NotFoundError(messageErrors.notFound.permission)
+        }
+        
+        await permissionRepository.remove(permission)
+
+        return res.status(200).end()
+    }
 }
 
 export default new PermissionController()

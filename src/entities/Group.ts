@@ -22,9 +22,9 @@ export class Group {
     @OneToMany(() => Publisher, publisher => publisher.group)
     publishers: Publisher[]
 
-    @ManyToOne(() => GroupOverseers, { eager: true }) // Relacionamento Many-to-One com GroupOverseers
+    @ManyToOne(() => GroupOverseers, { eager: true, nullable: true, onDelete: "SET NULL" }) // Relacionamento Many-to-One com GroupOverseers
     @JoinColumn({ name: 'group_overseers_id' })
-    groupOverseers: GroupOverseers
+    groupOverseers: GroupOverseers | null
 
     @CreateDateColumn()
     created_at: Date

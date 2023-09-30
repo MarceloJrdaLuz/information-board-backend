@@ -6,6 +6,8 @@ import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherT
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 import { publisherRepository } from "../../repositories/publisherRepository";
 import { messageErrors } from "../../helpers/messageErrors";
+import { groupOverseersRepository } from "../../repositories/groupOverseersRepository";
+import { groupRepository } from "../../repositories/groupRepository";
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
@@ -115,7 +117,12 @@ class PublisherControler {
   async delete(req: ParamsCustomRequest<ParamsPublisherDeleteAndUpdateTypes>, res: Response) {
     const { publisher_id: id } = req.params
 
-    const publisher = await publisherRepository.findOneBy({ id })
+    const publisher = await publisherRepository.findOne({
+      where: {
+        id
+      },
+      relations: ['groupOverseers']
+    })
 
     if (!publisher) throw new BadRequestError('Publisher not exists')
 
@@ -129,7 +136,6 @@ class PublisherControler {
 
 
     const congregation = await congregationRepository.findOneBy({ id: congregation_id })
-
 
     if (!congregation) throw new NotFoundError(messageErrors.notFound.congregation)
 
