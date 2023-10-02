@@ -8,7 +8,6 @@ import proxyaddr from 'proxy-addr'
 import cookieParser from 'cookie-parser'
 import './functions/removeSchedulesExpired'
 
-
 AppDataSource.initialize().then(() => {
     const app = express()
     app.use(express.json())

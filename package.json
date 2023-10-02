@@ -35,7 +35,6 @@
     "typescript": "^4.9.4"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.279.0",
     "@google-cloud/storage": "^6.9.3",
     "@types/bcryptjs": "^2.4.4",
     "@types/nodemailer": "^6.4.7",
