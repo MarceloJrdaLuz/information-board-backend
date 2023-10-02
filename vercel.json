@@ -1,0 +1,19 @@
+{
+    "version": 2,
+    "builds": [
+      {
+        "src": "./dist/src/index.js",
+        "use": "@now/node"
+      }
+    ],
+    "rewrites": [
+      { "source": "/(.*)", "destination": "./dist/src/index.js" }
+  ],
+  "headers": [
+      {
+        "source": "/(.*)",
+        "headers": [
+          { "key": "Access-Control-Allow-Origin", "value": "*" }
+        ]
+      }]
+  }
