@@ -4,3 +4,4 @@ credentials.json
 firebasestoragecredentials.json
 storageFirebaseCredentials.json
 ca.pem
+/tmp/firebase.json
