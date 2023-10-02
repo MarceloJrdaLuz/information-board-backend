@@ -1,47 +1,12 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteFirebase = exports.firebaseUpload = exports.bucket = exports.storage = void 0;
 const storage_1 = require("@google-cloud/storage");
 const uuid_1 = require("uuid");
-const fs_1 = __importDefault(require("fs"));
 const config_1 = require("../config");
-const path_1 = __importDefault(require("path"));
-const filePath = path_1.default.join("tmp", "firebase.json");
-const credentials = {
-    "type": config_1.config.type,
-    "project_id": config_1.config.project_id,
-    "private_key_id": config_1.config.private_key_id,
-    "private_key": config_1.config.private_key,
-    "client_email": config_1.config.client_email,
-    "client_id": config_1.config.client_id,
-    "auth_uri": config_1.config.app_url,
-    "token_uri": config_1.config.token_uri,
-    "auth_provider_x509_cert_url": config_1.config.auth_provider_x509_cert_url,
-    "client_x509_cert_url": config_1.config.client_x509_cert_url,
-    "universe_domain": config_1.config.universe_domain
-};
-if (!fs_1.default.existsSync(filePath)) {
-    const credentials = {
-        "type": config_1.config.type,
-        "project_id": config_1.config.project_id,
-        "private_key_id": config_1.config.private_key_id,
-        "private_key": config_1.config.private_key,
-        "client_email": config_1.config.client_email,
-        "client_id": config_1.config.client_id,
-        "auth_uri": config_1.config.app_url,
-        "token_uri": config_1.config.token_uri,
-        "auth_provider_x509_cert_url": config_1.config.auth_provider_x509_cert_url,
-        "client_x509_cert_url": config_1.config.client_x509_cert_url,
-        "universe_domain": config_1.config.universe_domain
-    };
-    fs_1.default.writeFileSync(filePath, JSON.stringify(credentials));
-}
 exports.storage = new storage_1.Storage({
     projectId: 'information-board-36dd8',
-    keyFilename: '/tmp/firebase.json'
+    keyFilename: JSON.parse(config_1.config.google_storage_key)
 });
 exports.bucket = exports.storage.bucket('information-board-36dd8.appspot.com');
 async function firebaseUpload(req, res, pathSave, saveBD) {

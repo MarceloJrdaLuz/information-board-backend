@@ -28,7 +28,7 @@ export const config: {
     client_x509_cert_url: string
     universe_domain: string
     db_certifate: string
-
+    google_storage_key: string
 } = {
     app_url: process.env.APP_URL ?? "",
     storage_type: process.env.STORAGE_TYPE ?? "",
@@ -51,5 +51,6 @@ export const config: {
     auth_provider_x509_cert_url: process.env.auth_provider_x509_cert_url ?? "",
     client_x509_cert_url: process.env.client_x509_cert_url ?? "",
     universe_domain: process.env.universe_domain ?? "",
-    db_certifate: process.env.DB_CERTIFICATE ?? ""
+    db_certifate: process.env.DB_CERTIFICATE ?? "",
+    google_storage_key: process.env.GOOGLE_STORAGE_KEY ?? ""
 }
