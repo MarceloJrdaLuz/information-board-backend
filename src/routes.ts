@@ -24,6 +24,7 @@ routes.post('/reset_password', UserController.reset_password) //
 routes.post('/add-domain', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.addUserDomain) 
 routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.updateRoles) 
 routes.get('/users', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ UserController.getUsers) 
+routes.get('/teste', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ UserController.teste) 
 
 routes.post('/publisher', PublisherControllers.create)
 routes.delete('/publisher/:publisher_id', PublisherControllers.delete)

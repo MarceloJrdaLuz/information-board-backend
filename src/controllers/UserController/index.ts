@@ -371,6 +371,10 @@ class UserController {
 
         return res.status(200).json(usersFilter)
     }
+
+    async teste(req: Request, res: Response) {
+            return res.send({message: "Estou retornando um teste"})
+    }
 }
 
 export default new UserController()

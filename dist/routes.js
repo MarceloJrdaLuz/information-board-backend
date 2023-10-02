@@ -27,6 +27,7 @@ routes.post('/reset_password', UserController_1.default.reset_password); //
 routes.post('/add-domain', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.addUserDomain);
 routes.put('/user/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.updateRoles);
 routes.get('/users', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ UserController_1.default.getUsers);
+routes.get('/teste', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ UserController_1.default.teste);
 routes.post('/publisher', PublisherControllers_1.default.create);
 routes.delete('/publisher/:publisher_id', PublisherControllers_1.default.delete);
 routes.put('/publisher/', PublisherControllers_1.default.update);
