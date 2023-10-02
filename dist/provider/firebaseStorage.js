@@ -8,7 +8,7 @@ const storage_1 = require("@google-cloud/storage");
 const uuid_1 = require("uuid");
 const fs_1 = __importDefault(require("fs"));
 const config_1 = require("../config");
-const credentialsFilePath = 'storageFirebaseCredentials.json';
+const credentialsFilePath = './tmp/storageFirebaseCredentials.json';
 if (!fs_1.default.existsSync(credentialsFilePath)) {
     const credentials = {
         "type": config_1.config.type,
@@ -26,11 +26,11 @@ if (!fs_1.default.existsSync(credentialsFilePath)) {
     // Converter o objeto JSON em uma string
     const credentialsString = JSON.stringify(credentials);
     // Gravar a string JSON em um arquivo temporário
-    fs_1.default.writeFileSync('storageFirebaseCredentials.json', credentialsString);
+    fs_1.default.writeFileSync('./tmp/storageFirebaseCredentials.json', credentialsString);
 }
 exports.storage = new storage_1.Storage({
     projectId: 'information-board-36dd8',
-    keyFilename: './storageFirebaseCredentials.json'
+    keyFilename: './tmp/storageFirebaseCredentials.json'
 });
 exports.bucket = exports.storage.bucket('information-board-36dd8.appspot.com');
 async function firebaseUpload(req, res, pathSave, saveBD) {

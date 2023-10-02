@@ -5,7 +5,7 @@ import { NormalizeFiles } from '../types/normalizeFile'
 import fs from 'fs'
 import { config } from '../config'
 
-const credentialsFilePath = 'storageFirebaseCredentials.json'
+const credentialsFilePath = './tmp/storageFirebaseCredentials.json'
 
 
 if (!fs.existsSync(credentialsFilePath)) {
@@ -27,14 +27,14 @@ if (!fs.existsSync(credentialsFilePath)) {
     const credentialsString = JSON.stringify(credentials)
 
     // Gravar a string JSON em um arquivo temporário
-    fs.writeFileSync('storageFirebaseCredentials.json', credentialsString)
+    fs.writeFileSync('./tmp/storageFirebaseCredentials.json', credentialsString)
 }
 
 
 
 export const storage = new Storage({
     projectId: 'information-board-36dd8',
-    keyFilename: './storageFirebaseCredentials.json'
+    keyFilename: './tmp/storageFirebaseCredentials.json'
 })
 
 export const bucket = storage.bucket('information-board-36dd8.appspot.com')
