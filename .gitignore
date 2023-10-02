@@ -1,5 +1,6 @@
 /node_modules
 .env
+.dist
 credentials.json
 firebasestoragecredentials.json
 storageFirebaseCredentials.json
