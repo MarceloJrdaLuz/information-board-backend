@@ -16,6 +16,17 @@ export const config: {
     nodemailer_user: string,
     nodemailer_pass: string,
     nodemailer_port: string
+    type: string,
+    project_id: string,
+    private_key_id: string,
+    private_key: string,
+    client_email: string,
+    client_id: string,
+    auth_uri: string,
+    token_uri: string,
+    auth_provider_x509_cert_url: string,
+    client_x509_cert_url: string
+    universe_domain: string
 
 } = {
     app_url: process.env.APP_URL ?? "",
@@ -27,5 +38,16 @@ export const config: {
     nodemailer_host: process.env.NODEMAILER_HOST ?? "",
     nodemailer_port: process.env.NODEMAILER_PORT ?? "",
     nodemailer_user: process.env.NODEMAILER_USER ?? "",
-    nodemailer_pass: process.env.NODEMAILER_PASS ?? ""
+    nodemailer_pass: process.env.NODEMAILER_PASS ?? "",
+    type: process.env.type ?? "",
+    project_id: process.env.project_id ?? "",
+    private_key_id: process.env.private_key_id ?? "",
+    private_key: process.env.private_key ?? "",
+    client_email: process.env.client_email ?? "",
+    client_id: process.env.client_id ?? "",
+    auth_uri: process.env.auth_uri ?? "",
+    token_uri: process.env.token_uri ?? "",
+    auth_provider_x509_cert_url: process.env.auth_provider_x509_cert_url ?? "",
+    client_x509_cert_url: process.env.client_x509_cert_url ?? "",
+    universe_domain: process.env.universe_domain ?? "",
 }

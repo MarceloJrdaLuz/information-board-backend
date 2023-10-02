@@ -2,4 +2,5 @@
 .env
 credentials.json
 firebasestoragecredentials.json
+storageFirebaseCredentials.json
 ca.pem
