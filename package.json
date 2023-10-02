@@ -8,7 +8,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "migration:generate": "typeorm-ts-node-commonjs -d ./src/data-source.ts migration:generate ./src/migrations/default",
-    "migration:run": "typeorm-ts-node-commonjs -d ./src/data-source.ts migration:run", 
+    "migration:run": "typeorm-ts-node-commonjs -d ./src/data-source.ts migration:run",
     "vercel-build": "echo hello"
   },
   "keywords": [],
@@ -40,7 +40,7 @@
     "@types/nodemailer": "^6.4.7",
     "@types/nodemailer-express-handlebars": "^4.0.2",
     "aws-sdk": "^2.1323.0",
-    "bcrypt": "^5.1.0",
+    "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
