@@ -1,12 +1,12 @@
 import 'express-async-errors'
 import express from 'express'
-import { AppDataSource } from '../src/data-source'
-import routes from '../src/routes'
-import { errorMiddleware } from '../src/middlewares/error'
+import { AppDataSource } from './data-source'
+import routes from './routes'
+import { errorMiddleware } from './middlewares/error'
 import cors from 'cors'
 import proxyaddr from 'proxy-addr'
 import cookieParser from 'cookie-parser'
-import '../src/functions/removeSchedulesExpired'
+import './functions/removeSchedulesExpired'
 
 const app = express()
 
