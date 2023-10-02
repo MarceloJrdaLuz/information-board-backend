@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_errors_1 = require("../../helpers/api-errors");
 const userRepository_1 = require("../../repositories/userRepository");
-const bcrypt_1 = __importDefault(require("bcrypt"));
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const typeorm_1 = require("typeorm");
 const roleRepository_1 = require("../../repositories/roleRepository");
@@ -29,7 +29,7 @@ class UserController {
         do {
             // generateUserCode
         } while (await userRepository_1.userRepository.findOneBy({ code: generateUserCode }));
-        const hashPassword = await bcrypt_1.default.hash(password, 10);
+        const hashPassword = await bcryptjs_1.default.hash(password, 10);
         const newUser = userRepository_1.userRepository.create({
             email,
             password: hashPassword,
@@ -55,7 +55,7 @@ class UserController {
             throw new api_errors_1.BadRequestError('E-mail não cadastrado');
         }
         const foundUser = user[0];
-        const verifyPass = await bcrypt_1.default.compare(password, foundUser.password);
+        const verifyPass = await bcryptjs_1.default.compare(password, foundUser.password);
         if (!verifyPass) {
             throw new api_errors_1.BadRequestError('Senha inválida');
         }
@@ -180,7 +180,7 @@ class UserController {
         if (now > expiredToken) {
             throw new api_errors_1.BadRequestError('Token expired, generate a new one');
         }
-        const hashPassword = await bcrypt_1.default.hash(newPassword, 10);
+        const hashPassword = await bcryptjs_1.default.hash(newPassword, 10);
         const updateUser = userRepository_1.userRepository.create({
             ...user,
             //@ts-expect-error
