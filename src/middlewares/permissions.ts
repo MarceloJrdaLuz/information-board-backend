@@ -4,7 +4,6 @@ import { UnauthorizedError } from "../helpers/api-errors";
 import { userRepository } from "../repositories/userRepository";
 import jwt from "jsonwebtoken";
 import process from "process";
-import { profileRepository } from "../repositories/profileRepository";
 
 export async function decoder(request: Request) {
     const authHeader = request.headers.authorization
