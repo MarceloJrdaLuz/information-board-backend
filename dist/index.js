@@ -11,8 +11,8 @@ const error_1 = require("./middlewares/error");
 const cors_1 = __importDefault(require("cors"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 require("./functions/removeSchedulesExpired");
-const app = (0, express_1.default)();
 data_source_1.AppDataSource.initialize().then(() => {
+    const app = (0, express_1.default)();
     app.use(express_1.default.json());
     app.use((0, cors_1.default)());
     app.use(routes_1.default);
@@ -21,4 +21,3 @@ data_source_1.AppDataSource.initialize().then(() => {
     app.use(error_1.errorMiddleware);
     return app.listen(process.env.PORT);
 });
-exports.default = app;

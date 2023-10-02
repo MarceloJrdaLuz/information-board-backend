@@ -8,9 +8,9 @@ import proxyaddr from 'proxy-addr'
 import cookieParser from 'cookie-parser'
 import './functions/removeSchedulesExpired'
 
-const app = express()
 
 AppDataSource.initialize().then(() => {
+    const app = express()
     app.use(express.json())
     app.use(cors())
     app.use(routes)
@@ -22,5 +22,3 @@ AppDataSource.initialize().then(() => {
 
     return app.listen(process.env.PORT)
 })
-
-export default app
