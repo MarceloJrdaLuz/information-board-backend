@@ -27,6 +27,7 @@ export const config: {
     auth_provider_x509_cert_url: string,
     client_x509_cert_url: string
     universe_domain: string
+    db_certifate: string
 
 } = {
     app_url: process.env.APP_URL ?? "",
@@ -50,4 +51,5 @@ export const config: {
     auth_provider_x509_cert_url: process.env.auth_provider_x509_cert_url ?? "",
     client_x509_cert_url: process.env.client_x509_cert_url ?? "",
     universe_domain: process.env.universe_domain ?? "",
+    db_certifate: process.env.DB_CERTIFICATE ?? ""
 }
