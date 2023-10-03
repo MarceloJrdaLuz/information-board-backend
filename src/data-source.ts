@@ -1,11 +1,9 @@
 import 'dotenv/config'
 import 'reflect-metadata'
 import { DataSource } from "typeorm"
-import fs from 'fs';
-import { config } from './config';
 
 // Decodifique a variável de ambiente com o certificado .pem
-const sslCert = config.ssl_certificate ? Buffer.from(config.ssl_certificate, 'base64').toString() : undefined;
+const sslCert = process.env.SSL_CERTIFICATE ? Buffer.from(process.env.SSL_CERTIFICATE, 'base64').toString() : undefined;
 
 const port = process.env.DB_PORT as number | undefined
 
@@ -18,7 +16,7 @@ export const AppDataSource = new DataSource({
     database: process.env.DB_NAME,
     ssl: sslCert
     ? {
-        rejectUnauthorized: false,
+        rejectUnauthorized: true,
         ca: sslCert,
     }
     : undefined,
