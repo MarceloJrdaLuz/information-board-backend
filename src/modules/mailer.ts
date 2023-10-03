@@ -4,19 +4,12 @@ import hbs from 'nodemailer-express-handlebars'
 import { config } from '../config';
 
 const transport = nodemailer.createTransport({
-    //@ts-expect-error
-    host: config.nodemailer_host,
-    secure: false,
-    tls: {
-        ciphers: 'SSLv3',
-        rejectUnauthorized: false
-    },
-    port: config.nodemailer_port,
+    service: 'outlook',
     auth: {
         user: config.nodemailer_user,
         pass: config.nodemailer_pass
     }
-});
+})
 
 transport.use('compile', hbs({
     viewEngine: {
