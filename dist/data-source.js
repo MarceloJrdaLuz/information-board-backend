@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppDataSource = void 0;
 require("dotenv/config");
+const path_1 = require("path");
 require("reflect-metadata");
 const typeorm_1 = require("typeorm");
 // Decodifique a variável de ambiente com o certificado .pem
@@ -20,6 +21,8 @@ exports.AppDataSource = new typeorm_1.DataSource({
             ca: sslCert,
         }
         : undefined,
-    entities: [`${__dirname}/**/entities/*.{ts, js}`],
-    migrations: [`${__dirname}/**/migrations/*.{ts, js}`]
+    entities: [(0, path_1.join)(__dirname, '../dist/**/entities/*.{ts,js}')],
+    migrations: [(0, path_1.join)(__dirname, '../dist/**/migrations/*.{ts,js}')], // Ajuste o caminho das migrações para a pasta dist
+    // entities: [`${__dirname}/**/entities/*.{ts, js}`],
+    // migrations: [`${__dirname}/**/migrations/*.{ts, js}`]
 });

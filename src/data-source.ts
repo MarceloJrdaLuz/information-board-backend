@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { join } from 'path';
 import 'reflect-metadata'
 import { DataSource } from "typeorm"
 
@@ -20,6 +21,8 @@ export const AppDataSource = new DataSource({
         ca: sslCert,
     }
     : undefined,
-    entities: [`${__dirname}/**/entities/*.{ts, js}`],
-    migrations: [`${__dirname}/**/migrations/*.{ts, js}`]
+    entities: [join(__dirname, '../dist/**/entities/*.{ts,js}')], // Ajuste o caminho das entidades para a pasta dist
+    migrations: [join(__dirname, '../dist/**/migrations/*.{ts,js}')], // Ajuste o caminho das migrações para a pasta dist
+    // entities: [`${__dirname}/**/entities/*.{ts, js}`],
+    // migrations: [`${__dirname}/**/migrations/*.{ts, js}`]
 })
