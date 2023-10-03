@@ -25,10 +25,11 @@ export const config: {
     auth_uri: string,
     token_uri: string,
     auth_provider_x509_cert_url: string,
-    client_x509_cert_url: string
-    universe_domain: string
-    db_certifate: string
-    google_storage_key: string
+    client_x509_cert_url: string,
+    universe_domain: string,
+    db_certifate: string,
+    google_storage_key: string,
+    ssl_certificate: string
 } = {
     app_url: process.env.APP_URL ?? "",
     storage_type: process.env.STORAGE_TYPE ?? "",
@@ -52,5 +53,6 @@ export const config: {
     client_x509_cert_url: process.env.client_x509_cert_url ?? "",
     universe_domain: process.env.universe_domain ?? "",
     db_certifate: process.env.DB_CERTIFICATE ?? "",
-    google_storage_key: process.env.GOOGLE_STORAGE_KEY ?? ""
+    google_storage_key: process.env.GOOGLE_STORAGE_KEY ?? "",
+    ssl_certificate: process.env.SSEL_CERTIFICATE ?? ""
 }
