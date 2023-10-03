@@ -3,8 +3,6 @@ import { v4 } from 'uuid';
 import path from 'path';
 import multerS3 from 'multer-s3'
 import { config } from '.'
-import { s3Client } from '../provider/awsS3';
-
 
 // Faz o upload do arquivo para o bucket
 
@@ -21,20 +19,6 @@ function choiceStorage(storage: string) {
                     cb(null, `${v4()}-${file.originalname.trim()}`);
                 }
             })
-            break;
-
-        case 's3':
-            storageChoice =
-                multerS3({
-                    s3: s3Client,
-                    bucket: config.bucket_name,
-                    contentType: multerS3.AUTO_CONTENT_TYPE,
-                    acl: "public-read",
-                    key: (req, file, cb) => {
-                        const fileName = `${v4()}-${file.originalname.trim()}`
-                        cb(null, fileName);
-                    }
-                })
             break;
         case ('firebase'):
             storageChoice = multer.memoryStorage()

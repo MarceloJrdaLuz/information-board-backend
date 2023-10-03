@@ -7,9 +7,7 @@ exports.uploadFile = void 0;
 const multer_1 = __importDefault(require("multer"));
 const uuid_1 = require("uuid");
 const path_1 = __importDefault(require("path"));
-const multer_s3_1 = __importDefault(require("multer-s3"));
 const _1 = require(".");
-const awsS3_1 = require("../provider/awsS3");
 // Faz o upload do arquivo para o bucket
 const MAX_SIZE_FILE = 10 * 1024 * 1024;
 function choiceStorage(storage) {
@@ -22,19 +20,6 @@ function choiceStorage(storage) {
                     cb(null, `${(0, uuid_1.v4)()}-${file.originalname.trim()}`);
                 }
             });
-            break;
-        case 's3':
-            storageChoice =
-                (0, multer_s3_1.default)({
-                    s3: awsS3_1.s3Client,
-                    bucket: _1.config.bucket_name,
-                    contentType: multer_s3_1.default.AUTO_CONTENT_TYPE,
-                    acl: "public-read",
-                    key: (req, file, cb) => {
-                        const fileName = `${(0, uuid_1.v4)()}-${file.originalname.trim()}`;
-                        cb(null, fileName);
-                    }
-                });
             break;
         case ('firebase'):
             storageChoice = multer_1.default.memoryStorage();
