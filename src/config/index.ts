@@ -30,6 +30,7 @@ export const config: {
     db_certifate: string,
     google_storage_key: string,
     ssl_certificate: string
+    environment: string
 } = {
     app_url: process.env.APP_URL ?? "",
     storage_type: process.env.STORAGE_TYPE ?? "",
@@ -54,5 +55,6 @@ export const config: {
     universe_domain: process.env.universe_domain ?? "",
     db_certifate: process.env.DB_CERTIFICATE ?? "",
     google_storage_key: process.env.GOOGLE_STORAGE_KEY ?? "",
-    ssl_certificate: process.env.SSEL_CERTIFICATE ?? ""
+    ssl_certificate: process.env.SSEL_CERTIFICATE ?? "",
+    environment: process.env.ENVIRONMENT ?? ""
 }

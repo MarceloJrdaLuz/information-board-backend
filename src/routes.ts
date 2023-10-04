@@ -70,6 +70,7 @@ routes.get('/notices/:congregation_id', NoticeController.getNotices)
 routes.post('/notice/:congregation_id', NoticeController.create)
 routes.get('/notice/:notice_id', NoticeController.getNotice)
 routes.delete('/notice/:notice_id', NoticeController.delete)
+routes.put('/notice/:notice_id', NoticeController.update)
 
 routes.post('/report', /*checkExistingConsent,*/ ReportController.create)
 routes.get('/reports/:congregationId', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ ReportController.getReports)

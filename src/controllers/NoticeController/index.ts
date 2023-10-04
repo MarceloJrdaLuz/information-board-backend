@@ -2,8 +2,8 @@ import { Response } from "express";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { noticeRepository } from "../../repositories/noticeRepository";
-import { BodyNoticeCreateTypes, ParamsNoticeCreateTypes, ParamsNoticeUpdateTypes } from "./types";
-import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
+import { BodyNoticeCreateTypes, BodyNoticeUpdateTypes, ParamsNoticeCreateTypes, ParamsNoticeUpdateTypes } from "./types";
+import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 import { messageErrors } from "../../helpers/messageErrors";
 
 class NoticeController {
@@ -59,6 +59,25 @@ class NoticeController {
         return res.status(200).json(notice)
     }
 
+    async update(req: CustomRequestPT<ParamsNoticeUpdateTypes, BodyNoticeUpdateTypes>, res: Response) {
+        const { notice_id } = req.params
+        const { text, title, startDay, endDay, expired } = req.body
+
+        const notice = await noticeRepository.findOneBy({ id: notice_id })
+
+        if (!notice) throw new NotFoundError(messageErrors.notFound.notice)
+
+        notice.title = title !== undefined ? title : notice.title
+        notice.text = text !== undefined ? text : notice.text
+        notice.startDay = startDay !== undefined ? startDay : notice.startDay
+        notice.endDay = endDay !== undefined ? endDay : notice.endDay
+        notice.expired = expired !== undefined ? expired : notice.expired
+
+        await noticeRepository.save(notice)
+
+        return res.status(201).json(notice)
+    }
+
     async delete(req: ParamsCustomRequest<ParamsNoticeUpdateTypes>, res: Response) {
         const { notice_id } = req.params
 
@@ -67,7 +86,7 @@ class NoticeController {
         if (!notice) {
             throw new NotFoundError(messageErrors.notFound.notice)
         }
-        
+
         await noticeRepository.remove(notice)
 
         return res.status(200).end()
