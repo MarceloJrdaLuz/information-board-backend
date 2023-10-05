@@ -12,6 +12,9 @@ const transport = nodemailer_1.default.createTransport({
     auth: {
         user: config_1.config.nodemailer_user,
         pass: config_1.config.nodemailer_pass
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 transport.use('compile', (0, nodemailer_express_handlebars_1.default)({
