@@ -44,6 +44,20 @@ class NoticeController {
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.notice);
         return res.status(200).json(notice);
     }
+    async update(req, res) {
+        const { notice_id } = req.params;
+        const { text, title, startDay, endDay, expired } = req.body;
+        const notice = await noticeRepository_1.noticeRepository.findOneBy({ id: notice_id });
+        if (!notice)
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.notice);
+        notice.title = title !== undefined ? title : notice.title;
+        notice.text = text !== undefined ? text : notice.text;
+        notice.startDay = startDay !== undefined ? startDay : notice.startDay;
+        notice.endDay = endDay !== undefined ? endDay : notice.endDay;
+        notice.expired = expired !== undefined ? expired : notice.expired;
+        await noticeRepository_1.noticeRepository.save(notice);
+        return res.status(201).json(notice);
+    }
     async delete(req, res) {
         const { notice_id } = req.params;
         const notice = await noticeRepository_1.noticeRepository.findOneBy({ id: notice_id });

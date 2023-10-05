@@ -1,6 +1,8 @@
 /node_modules
 .env
 credentials.json
+google_storage_key_string.json
+google_storage_key.json
 firebasestoragecredentials.json
 storageFirebaseCredentials.json
 ca.pem

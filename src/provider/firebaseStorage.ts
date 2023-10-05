@@ -2,11 +2,22 @@ import { Storage } from '@google-cloud/storage'
 import { Request, Response } from 'express-serve-static-core'
 import { v4 } from 'uuid'
 import { NormalizeFiles } from '../types/normalizeFile'
-import { config } from '../config'
+import fs from 'fs'
+
+const credentialEnv = process.env.GOOGLE_STORAGE_KEY ? JSON.parse(process.env.GOOGLE_STORAGE_KEY) : undefined
+const filePath = 'google_storage_key.json' 
+
+if (!fs.existsSync(filePath) && credentialEnv) {
+    const jsonString = JSON.stringify(credentialEnv, null, 2)
+
+    fs.writeFileSync(filePath, jsonString)
+
+    console.log(`Arquivo '${filePath}' criado com sucesso!`)
+}
 
 export const storage = new Storage({
     projectId: 'information-board-36dd8',
-    keyFilename: JSON.parse(config.google_storage_key)
+    keyFilename: './google_storage_key.json'
 })
 
 export const bucket = storage.bucket('information-board-36dd8.appspot.com')

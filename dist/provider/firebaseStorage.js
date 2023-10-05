@@ -1,12 +1,22 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteFirebase = exports.firebaseUpload = exports.bucket = exports.storage = void 0;
 const storage_1 = require("@google-cloud/storage");
 const uuid_1 = require("uuid");
-const config_1 = require("../config");
+const fs_1 = __importDefault(require("fs"));
+const credentialEnv = process.env.GOOGLE_STORAGE_KEY ? JSON.parse(process.env.GOOGLE_STORAGE_KEY) : undefined;
+const filePath = 'google_storage_key.json';
+if (!fs_1.default.existsSync(filePath) && credentialEnv) {
+    const jsonString = JSON.stringify(credentialEnv, null, 2);
+    fs_1.default.writeFileSync(filePath, jsonString);
+    console.log(`Arquivo '${filePath}' criado com sucesso!`);
+}
 exports.storage = new storage_1.Storage({
     projectId: 'information-board-36dd8',
-    keyFilename: JSON.parse(config_1.config.google_storage_key)
+    keyFilename: './google_storage_key.json'
 });
 exports.bucket = exports.storage.bucket('information-board-36dd8.appspot.com');
 async function firebaseUpload(req, res, pathSave, saveBD) {

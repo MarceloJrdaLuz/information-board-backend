@@ -63,6 +63,7 @@ routes.get('/notices/:congregation_id', NoticeController_1.default.getNotices);
 routes.post('/notice/:congregation_id', NoticeController_1.default.create);
 routes.get('/notice/:notice_id', NoticeController_1.default.getNotice);
 routes.delete('/notice/:notice_id', NoticeController_1.default.delete);
+routes.put('/notice/:notice_id', NoticeController_1.default.update);
 routes.post('/report', /*checkExistingConsent,*/ ReportController_1.default.create);
 routes.get('/reports/:congregationId', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ ReportController_1.default.getReports);
 routes.post('/group/:group_id/add-publishers', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ GroupController_1.default.addPublishersGroup);

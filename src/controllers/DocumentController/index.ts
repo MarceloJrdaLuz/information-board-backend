@@ -94,7 +94,7 @@ class DocumentController {
                 url,
                 category: {
                     id: category.id,
-                    name: category.name, 
+                    name: category.name,
                     description: category.description
                 }
             }
@@ -113,7 +113,7 @@ class DocumentController {
         }
 
         await deleteFirebase(document.key)
-        
+
         await documentRepository.remove(document)
 
         return res.status(200).end()

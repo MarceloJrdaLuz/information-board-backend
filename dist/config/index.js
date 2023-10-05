@@ -22,7 +22,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.config = void 0;
 const dotenv = __importStar(require("dotenv"));
@@ -54,5 +54,6 @@ exports.config = {
     universe_domain: (_w = process.env.universe_domain) !== null && _w !== void 0 ? _w : "",
     db_certifate: (_x = process.env.DB_CERTIFICATE) !== null && _x !== void 0 ? _x : "",
     google_storage_key: (_y = process.env.GOOGLE_STORAGE_KEY) !== null && _y !== void 0 ? _y : "",
-    ssl_certificate: (_z = process.env.SSEL_CERTIFICATE) !== null && _z !== void 0 ? _z : ""
+    ssl_certificate: (_z = process.env.SSEL_CERTIFICATE) !== null && _z !== void 0 ? _z : "",
+    environment: (_0 = process.env.ENVIRONMENT) !== null && _0 !== void 0 ? _0 : ""
 };
