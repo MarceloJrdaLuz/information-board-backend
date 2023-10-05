@@ -8,7 +8,7 @@ import path from 'path'
 const credentialEnv = process.env.GOOGLE_STORAGE_KEY ? JSON.parse(process.env.GOOGLE_STORAGE_KEY) : undefined
 // const filePath = '/tmp/google_storage_key.json' 
 
-const projectRoot = __dirname + ".." + "/" + ".." + "/"; // Diretório raiz do seu projeto
+const projectRoot = path.join( __dirname, '../../') // Diretório raiz do seu projeto
 const tmpFolderPath = path.join(projectRoot, 'tmp'); // Caminho para a pasta '/tmp' dentro do diretório do projeto
 const filePath = path.join(tmpFolderPath, 'google_storage_key.json'); // Caminho completo para o arquivo
 
