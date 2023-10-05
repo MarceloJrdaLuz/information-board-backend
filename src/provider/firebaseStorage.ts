@@ -3,20 +3,9 @@ import { Request, Response } from 'express-serve-static-core'
 import { v4 } from 'uuid'
 import { NormalizeFiles } from '../types/normalizeFile'
 import fs from 'fs'
-import path from 'path'
 
 const credentialEnv = process.env.GOOGLE_STORAGE_KEY ? JSON.parse(process.env.GOOGLE_STORAGE_KEY) : undefined
-// const filePath = '/tmp/google_storage_key.json' 
-
-const projectRoot = path.join( __dirname, '../../') // Diretório raiz do seu projeto
-const tmpFolderPath = path.join(projectRoot, 'tmp'); // Caminho para a pasta '/tmp' dentro do diretório do projeto
-const filePath = path.join(tmpFolderPath, 'google_storage_key.json'); // Caminho completo para o arquivo
-
-// Verifica se a pasta '/tmp' existe dentro do diretório do projeto e a cria se não existir.
-if (!fs.existsSync(tmpFolderPath)) {
-    fs.mkdirSync(tmpFolderPath);
-}
-
+const filePath = `/tmp/google_storage_key.json`
 
 if (!fs.existsSync(filePath) && credentialEnv) {
     const jsonString = JSON.stringify(credentialEnv, null, 2)
