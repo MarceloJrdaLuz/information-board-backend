@@ -7,8 +7,16 @@ exports.deleteFirebase = exports.firebaseUpload = exports.bucket = exports.stora
 const storage_1 = require("@google-cloud/storage");
 const uuid_1 = require("uuid");
 const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const credentialEnv = process.env.GOOGLE_STORAGE_KEY ? JSON.parse(process.env.GOOGLE_STORAGE_KEY) : undefined;
-const filePath = 'google_storage_key.json';
+// const filePath = '/tmp/google_storage_key.json' 
+const projectRoot = __dirname + ".." + "/" + ".." + "/"; // Diretório raiz do seu projeto
+const tmpFolderPath = path_1.default.join(projectRoot, 'tmp'); // Caminho para a pasta '/tmp' dentro do diretório do projeto
+const filePath = path_1.default.join(tmpFolderPath, 'google_storage_key.json'); // Caminho completo para o arquivo
+// Verifica se a pasta '/tmp' existe dentro do diretório do projeto e a cria se não existir.
+if (!fs_1.default.existsSync(tmpFolderPath)) {
+    fs_1.default.mkdirSync(tmpFolderPath);
+}
 if (!fs_1.default.existsSync(filePath) && credentialEnv) {
     const jsonString = JSON.stringify(credentialEnv, null, 2);
     fs_1.default.writeFileSync(filePath, jsonString);
@@ -16,7 +24,7 @@ if (!fs_1.default.existsSync(filePath) && credentialEnv) {
 }
 exports.storage = new storage_1.Storage({
     projectId: 'information-board-36dd8',
-    keyFilename: './google_storage_key.json'
+    keyFilename: filePath
 });
 exports.bucket = exports.storage.bucket('information-board-36dd8.appspot.com');
 async function firebaseUpload(req, res, pathSave, saveBD) {
