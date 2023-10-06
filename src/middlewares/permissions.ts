@@ -54,7 +54,9 @@ export function is(role: string[]) {
         const rolesExists = userRoles?.some(r => role.includes(r))
 
         if (rolesExists) {
-            if(userRoles?.includes("ADMIN_CONGREGATION")){
+            if(userRoles?.includes("ADMIN")){
+                return next()                
+            } else {
                 const userCongregation = await userRepository.find({
                     where: {
                         congregation: {
@@ -68,7 +70,6 @@ export function is(role: string[]) {
                 }
                 return next()
             }
-            return next()
         }
         throw new UnauthorizedError('Unauthorized')
     }

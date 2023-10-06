@@ -268,8 +268,5 @@ class UserController {
         const usersFilter = usersResponse.filter(user => user.roles.some(role => role.name !== "ADMIN"));
         return res.status(200).json(usersFilter);
     }
-    async teste(req, res) {
-        return res.send({ message: "Estou retornando um teste" });
-    }
 }
 exports.default = new UserController();

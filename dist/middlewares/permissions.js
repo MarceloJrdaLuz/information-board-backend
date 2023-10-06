@@ -45,7 +45,10 @@ function is(role) {
         const userRoles = (_a = user === null || user === void 0 ? void 0 : user.roles) === null || _a === void 0 ? void 0 : _a.map(role => role.name);
         const rolesExists = userRoles === null || userRoles === void 0 ? void 0 : userRoles.some(r => role.includes(r));
         if (rolesExists) {
-            if (userRoles === null || userRoles === void 0 ? void 0 : userRoles.includes("ADMIN_CONGREGATION")) {
+            if (userRoles === null || userRoles === void 0 ? void 0 : userRoles.includes("ADMIN")) {
+                return next();
+            }
+            else {
                 const userCongregation = await userRepository_1.userRepository.find({
                     where: {
                         congregation: {
@@ -58,7 +61,6 @@ function is(role) {
                 }
                 return next();
             }
-            return next();
         }
         throw new api_errors_1.UnauthorizedError('Unauthorized');
     };

@@ -7,8 +7,12 @@ import cors from 'cors'
 import proxyaddr from 'proxy-addr'
 import cookieParser from 'cookie-parser'
 import './functions/removeSchedulesExpired'
+import { config } from './config'
 
 AppDataSource.initialize().then(() => {
+    const corsOptions = {
+        origin: config.app_url
+    }
     const app = express()
     app.use(express.json())
     app.use(cors())

@@ -11,7 +11,11 @@ const error_1 = require("./middlewares/error");
 const cors_1 = __importDefault(require("cors"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 require("./functions/removeSchedulesExpired");
+const config_1 = require("./config");
 data_source_1.AppDataSource.initialize().then(() => {
+    const corsOptions = {
+        origin: config_1.config.app_url
+    };
     const app = (0, express_1.default)();
     app.use(express_1.default.json());
     app.use((0, cors_1.default)());

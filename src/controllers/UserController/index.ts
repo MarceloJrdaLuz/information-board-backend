@@ -348,7 +348,7 @@ class UserController {
                         congregation: {
                             id: requestUser.congregation.id
                         }
-                    }, 
+                    },
                     select: ["id", "email"]
                 })
 
@@ -356,7 +356,7 @@ class UserController {
             }
         }
 
-        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN'){
+        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN') {
             const users = await userRepository.find({ select: ["id", "email"] })
 
             usersResponse.push(...users)
@@ -370,10 +370,6 @@ class UserController {
         const usersFilter = usersResponse.filter(user => user.roles.some(role => role.name !== "ADMIN"))
 
         return res.status(200).json(usersFilter)
-    }
-
-    async teste(req: Request, res: Response) {
-            return res.send({message: "Estou retornando um teste"})
     }
 }
 
