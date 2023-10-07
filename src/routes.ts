@@ -36,12 +36,12 @@ routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), Congrega
 routes.delete('/congregation/:id', is(['ADMIN']), CongregationController.delete)
 routes.get('/congregations', is(['ADMIN']), CongregationController.list)
 routes.get('/congregation/:number', /*is(['ADMIN']),*/ CongregationController.getCongregation)
-routes.put('/congregation/:congregation_id',  is(['ADMIN', 'ADMIN_CONGREGATION']),  CongregationController.update)
+routes.put('/congregation/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.update)
 routes.put('/congregation/:congregation_id/photo', is(['ADMIN', 'ADMIN_CONGREGATION']), uploadFile.single('image'), CongregationController.uploadCongregationPhoto)
 
 routes.post('/category', is(['ADMIN']), CategoryController.create)
 routes.put('/category/:category_id', is(['ADMIN']), CategoryController.update)
-routes.get('/categories', is(['ADMIN']), CategoryController.getCategories)
+routes.get('/categories', CategoryController.getCategories)
 routes.get('/category/:category_id', CategoryController.getPermission)
 
 
