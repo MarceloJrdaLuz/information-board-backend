@@ -21,7 +21,6 @@ class PublisherControler {
                 }
             }
         });
-        console.log(existingPublisherSomeFullName);
         if (existingPublisherSomeFullName.length > 0) {
             if (!nickname) {
                 throw new api_errors_1.BadRequestError('A nickname is required to differentiate the publisher');
@@ -52,7 +51,6 @@ class PublisherControler {
             throw new api_errors_1.NotFoundError('Publisher not exists');
         }
         if (privileges) {
-            console.log(privileges);
             const privilegesExists = privileges === null || privileges === void 0 ? void 0 : privileges.every(privilege => Object.values(privileges_1.Privileges).includes(privilege));
             if (!privilegesExists) {
                 throw new api_errors_1.BadRequestError('Some privilege not exists');

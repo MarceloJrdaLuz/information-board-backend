@@ -29,8 +29,6 @@ class PublisherControler {
       }
     })
 
-    console.log(existingPublisherSomeFullName)
-
     if (existingPublisherSomeFullName.length > 0) {
       if (!nickname) {
         throw new BadRequestError('A nickname is required to differentiate the publisher')
@@ -68,7 +66,6 @@ class PublisherControler {
     }
 
     if (privileges) {
-      console.log(privileges)
       const privilegesExists = privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges));
       if (!privilegesExists) {
         throw new BadRequestError('Some privilege not exists');

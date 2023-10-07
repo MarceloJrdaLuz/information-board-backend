@@ -49,8 +49,6 @@ class ConsentRecordController {
             },
         })
 
-        console.log(existingConsent)
-
         if (!existingConsent) throw new NotFoundError('Consent record was not found')
 
         res.send()

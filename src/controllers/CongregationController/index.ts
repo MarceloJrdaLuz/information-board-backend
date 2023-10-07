@@ -98,7 +98,6 @@ class CongregationController {
             })
 
             if (requestUser) {
-                console.log(requestUser)
                 const cong = await congregationRepository.findOne({
                     where: {
                         id: requestUser.congregation.id

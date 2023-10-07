@@ -40,7 +40,6 @@ class ConsentRecordController {
                 deviceId
             },
         });
-        console.log(existingConsent);
         if (!existingConsent)
             throw new api_errors_1.NotFoundError('Consent record was not found');
         res.send();

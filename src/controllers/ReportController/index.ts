@@ -99,7 +99,7 @@ class ReportController {
       year: report.year,
       publications: report.publications,
       videos: report.videos,
-      hour: report.hours,
+      hours: report.hours,
       revisits: report.revisits,
       studies: report.studies,
       observations: report.observations,
