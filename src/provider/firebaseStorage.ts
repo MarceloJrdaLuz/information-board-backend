@@ -3,6 +3,7 @@ import { Request, Response } from 'express-serve-static-core'
 import { v4 } from 'uuid'
 import { NormalizeFiles } from '../types/normalizeFile'
 import fs from 'fs'
+import { config } from '../config'
 
 const credentialEnv = process.env.GOOGLE_STORAGE_KEY ? JSON.parse(process.env.GOOGLE_STORAGE_KEY) : undefined
 const filePath = `/tmp/google_storage_key.json`
@@ -21,6 +22,27 @@ export const storage = new Storage({
 })
 
 export const bucket = storage.bucket('information-board-36dd8.appspot.com')
+
+async function configureBucketCors() {
+
+    const method = ['GET', 'POST', 'PUT', 'DELETE']
+    const origin = [config.app_url]
+    const responseHeader = ['*']
+
+    await bucket.setCorsConfiguration([
+        {
+            method,
+            origin,
+            responseHeader
+        },
+    ])
+
+    console.log(`Bucket ${bucket} was updated with a CORS config
+        to allow ${method} requests from ${origin} sharing
+        ${responseHeader} responses across origins`)
+}
+
+configureBucketCors().catch(console.error)
 
 export async function firebaseUpload(req: Request, res: Response, pathSave: string, saveBD: (file: NormalizeFiles) => void) {
     const { size, originalname: fileName, buffer, mimetype, } = req.file as Express.Multer.File

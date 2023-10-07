@@ -7,6 +7,7 @@ exports.deleteFirebase = exports.firebaseUpload = exports.bucket = exports.stora
 const storage_1 = require("@google-cloud/storage");
 const uuid_1 = require("uuid");
 const fs_1 = __importDefault(require("fs"));
+const config_1 = require("../config");
 const credentialEnv = process.env.GOOGLE_STORAGE_KEY ? JSON.parse(process.env.GOOGLE_STORAGE_KEY) : undefined;
 const filePath = `/tmp/google_storage_key.json`;
 if (!fs_1.default.existsSync(filePath) && credentialEnv) {
@@ -19,6 +20,22 @@ exports.storage = new storage_1.Storage({
     keyFilename: filePath
 });
 exports.bucket = exports.storage.bucket('information-board-36dd8.appspot.com');
+async function configureBucketCors() {
+    const method = ['GET', 'POST', 'PUT', 'DELETE'];
+    const origin = [config_1.config.app_url];
+    const responseHeader = ['*'];
+    await exports.bucket.setCorsConfiguration([
+        {
+            method,
+            origin,
+            responseHeader
+        },
+    ]);
+    console.log(`Bucket ${exports.bucket} was updated with a CORS config
+        to allow ${method} requests from ${origin} sharing
+        ${responseHeader} responses across origins`);
+}
+configureBucketCors().catch(console.error);
 async function firebaseUpload(req, res, pathSave, saveBD) {
     const { size, originalname: fileName, buffer, mimetype, } = req.file;
     // Define o nome do arquivo no Firebase Storage
