@@ -46,7 +46,7 @@ routes.get('/category/:category_id', CategoryController.getPermission)
 
 
 routes.post('/new-document', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), uploadFile.single('file'), DocumentController.create)
-routes.get('/documents-congregation/:congregation_id', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER', 'DOCUMENTS_VIEWER']), DocumentController.filter)
+routes.get('/documents-congregation/:congregation_id', DocumentController.filter)
 routes.delete('/document/:document_id', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), DocumentController.delete)
 
 routes.post('/profile', /*is(['ADMIN']),*/ uploadFile.single('avatar'), ProfileController.create)

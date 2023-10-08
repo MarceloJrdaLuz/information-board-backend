@@ -44,7 +44,7 @@ routes.put('/category/:category_id', (0, permissions_1.is)(['ADMIN']), CategoryC
 routes.get('/categories', CategoryController_1.default.getCategories);
 routes.get('/category/:category_id', CategoryController_1.default.getPermission);
 routes.post('/new-document', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), multer_1.uploadFile.single('file'), DocumentController_1.default.create);
-routes.get('/documents-congregation/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER', 'DOCUMENTS_VIEWER']), DocumentController_1.default.filter);
+routes.get('/documents-congregation/:congregation_id', DocumentController_1.default.filter);
 routes.delete('/document/:document_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), DocumentController_1.default.delete);
 routes.post('/profile', /*is(['ADMIN']),*/ multer_1.uploadFile.single('avatar'), ProfileController_1.default.create);
 routes.put('/profile', /*is(['ADMIN']),*/ multer_1.uploadFile.single('avatar'), ProfileController_1.default.update);
