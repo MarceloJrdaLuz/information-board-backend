@@ -7,7 +7,7 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const messageErrors_1 = require("../../helpers/messageErrors");
 class PublisherControler {
     async create(req, res) {
-        const { fullName, nickname, privileges, congregation_id, gender, hope } = req.body;
+        const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed } = req.body;
         const privilegesExists = privileges === null || privileges === void 0 ? void 0 : privileges.every(privilege => Object.values(privileges_1.Privileges).includes(privilege));
         const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
         if (!congregation)
@@ -36,6 +36,7 @@ class PublisherControler {
             nickname,
             gender,
             hope,
+            dateImmersed,
             privileges,
             congregation
         });
@@ -45,7 +46,7 @@ class PublisherControler {
         return res.status(201).json(newPublisher);
     }
     async update(req, res) {
-        const { id, fullName, nickname, privileges, gender, hope } = req.body;
+        const { id, fullName, nickname, privileges, gender, hope, dateImmersed } = req.body;
         const publisher = await publisherRepository_1.publisherRepository.findOne({ where: { id } });
         if (!publisher) {
             throw new api_errors_1.NotFoundError('Publisher not exists');
@@ -83,6 +84,7 @@ class PublisherControler {
         publisher.gender = gender !== undefined ? gender : publisher.gender;
         publisher.hope = hope !== undefined ? hope : publisher.hope;
         publisher.privileges = privileges !== undefined ? privileges : publisher.privileges;
+        publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed;
         await publisherRepository_1.publisherRepository.save(publisher);
         return res.status(201).json(publisher);
     }
@@ -111,6 +113,7 @@ class PublisherControler {
                 }
             }, relations: ['group']
         }).catch(err => console.log(err));
+        console.log(publishers);
         return res.status(200).json(publishers);
     }
     async getPublishersWithCongregatioNumber(req, res) {

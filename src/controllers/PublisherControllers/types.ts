@@ -20,6 +20,7 @@ export interface BodyPublisherCreateTypes {
     fullName: string
     nickname?: string
     hope: Hope
+    dateImmersed?: Date
     gender: Gender
     privileges?: Privileges[]
     congregation_id: string
@@ -28,6 +29,7 @@ export interface BodyPublisherUpdateTypes {
     id: string
     fullName?: string
     nickname?: string
+    dateImmersed?: Date
     privileges?: Privileges[]
     hope: Hope
     gender: Gender

@@ -11,7 +11,7 @@ import { groupRepository } from "../../repositories/groupRepository";
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
-    const { fullName, nickname, privileges, congregation_id, gender, hope } = req.body
+    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed } = req.body
 
     const privilegesExists = privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
 
@@ -45,6 +45,7 @@ class PublisherControler {
       nickname,
       gender,
       hope,
+      dateImmersed,
       privileges,
       congregation
     })
@@ -57,7 +58,7 @@ class PublisherControler {
   }
 
   async update(req: CustomRequest<BodyPublisherUpdateTypes>, res: Response) {
-    const { id, fullName, nickname, privileges, gender, hope } = req.body;
+    const { id, fullName, nickname, privileges, gender, hope, dateImmersed } = req.body;
 
     const publisher = await publisherRepository.findOne({ where: { id } });
 
@@ -105,6 +106,7 @@ class PublisherControler {
     publisher.gender = gender !== undefined ? gender : publisher.gender;
     publisher.hope = hope !== undefined ? hope : publisher.hope;
     publisher.privileges = privileges !== undefined ? privileges : publisher.privileges;
+    publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed;
 
     await publisherRepository.save(publisher);
 
@@ -143,6 +145,8 @@ class PublisherControler {
         }
       }, relations: ['group']
     }).catch(err => console.log(err))
+
+    console.log(publishers)
 
     return res.status(200).json(publishers)
   }
