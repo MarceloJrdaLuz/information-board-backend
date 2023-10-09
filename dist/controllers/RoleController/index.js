@@ -70,5 +70,14 @@ class RoleController {
         }
         return res.status(200).json(rolesResponse);
     }
+    async delete(req, res) {
+        const { role_id } = req.params;
+        const role = await roleRepository_1.roleRepository.findOneBy({ id: role_id });
+        if (!role) {
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.role);
+        }
+        await roleRepository_1.roleRepository.remove(role);
+        return res.status(200).end();
+    }
 }
 exports.default = new RoleController();

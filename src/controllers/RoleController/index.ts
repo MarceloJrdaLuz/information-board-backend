@@ -96,6 +96,20 @@ class RoleController {
 
         return res.status(200).json(rolesResponse)
     }
+
+    async delete(req: ParamsCustomRequest<ParamsUpdateRoleTypes>, res: Response) {
+        const { role_id } = req.params
+
+        const role = await roleRepository.findOneBy({ id: role_id })
+
+        if (!role) {
+            throw new NotFoundError(messageErrors.notFound.role)
+        }
+        
+        await roleRepository.remove(role)
+
+        return res.status(200).end()
+    }
 }
 
 export default new RoleController()

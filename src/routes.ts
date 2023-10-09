@@ -34,7 +34,7 @@ routes.put('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MAN
 
 routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), CongregationController.create) //
 routes.delete('/congregation/:id', is(['ADMIN']), CongregationController.delete)
-routes.get('/congregations', is(['ADMIN']), CongregationController.list)
+routes.get('/congregations', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.list)
 routes.get('/congregation/:number', /*is(['ADMIN']),*/ CongregationController.getCongregation)
 routes.put('/congregation/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.update)
 routes.put('/congregation/:congregation_id/photo', is(['ADMIN', 'ADMIN_CONGREGATION']), uploadFile.single('image'), CongregationController.uploadCongregationPhoto)
@@ -56,6 +56,7 @@ routes.delete('/profile/:id', /*is(['ADMIN']),*/ ProfileController.delete)
 routes.post('/role', is(['ADMIN']), RoleController.create)
 routes.get('/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), RoleController.getRoles)
 routes.get('/role/:role_id', is(['ADMIN']), RoleController.getRole)
+routes.delete('/role/:role_id', is(['ADMIN']), RoleController.delete)
 routes.put('/role/:role_id', is(['ADMIN']), RoleController.update)
 
 routes.post('/permission', is(['ADMIN']), PermissionController.create)

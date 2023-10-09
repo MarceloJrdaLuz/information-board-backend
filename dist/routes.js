@@ -35,7 +35,7 @@ routes.delete('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGA
 routes.put('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.update);
 routes.post('/congregation', (0, permissions_1.is)(['ADMIN']), multer_1.uploadFile.single('image'), CongregationController_1.default.create); //
 routes.delete('/congregation/:id', (0, permissions_1.is)(['ADMIN']), CongregationController_1.default.delete);
-routes.get('/congregations', (0, permissions_1.is)(['ADMIN']), CongregationController_1.default.list);
+routes.get('/congregations', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.list);
 routes.get('/congregation/:number', /*is(['ADMIN']),*/ CongregationController_1.default.getCongregation);
 routes.put('/congregation/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.update);
 routes.put('/congregation/:congregation_id/photo', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), multer_1.uploadFile.single('image'), CongregationController_1.default.uploadCongregationPhoto);
@@ -52,6 +52,7 @@ routes.delete('/profile/:id', /*is(['ADMIN']),*/ ProfileController_1.default.del
 routes.post('/role', (0, permissions_1.is)(['ADMIN']), RoleController_1.default.create);
 routes.get('/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), RoleController_1.default.getRoles);
 routes.get('/role/:role_id', (0, permissions_1.is)(['ADMIN']), RoleController_1.default.getRole);
+routes.delete('/role/:role_id', (0, permissions_1.is)(['ADMIN']), RoleController_1.default.delete);
 routes.put('/role/:role_id', (0, permissions_1.is)(['ADMIN']), RoleController_1.default.update);
 routes.post('/permission', (0, permissions_1.is)(['ADMIN']), PermissionController_1.default.create);
 routes.put('/permission/:permission_id', (0, permissions_1.is)(['ADMIN']), PermissionController_1.default.update);
