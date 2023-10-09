@@ -1,0 +1,23 @@
+<mjml>
+  <mj-body background-color="#83c5be">
+    <mj-section background-color="white">
+      <mj-column background-color="white">
+        
+         <mj-column background-color="#178582" width="100%">
+        	 <mj-image  align="left" width="100px" src="https://quadrodeanuncios.vercel.app/images/miniatura.png"></mj-image>
+        </mj-column>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">Olá,</mj-text>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">Seu cadastro foi efetuado com sucesso. Mas por enquanto você não tem nenhuma permissão. Contate o administrador do domínio da sua congregação informando o código abaixo, que é o seu código de usuário, e ele vai te adcionar ao domínio da congregação, e dar as permissões necessárias.</mj-text>
+
+        <mj-button font-family="Helvetica" background-color="#178582" align="left" color="white">
+          {{code}}
+        </mj-button>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">Caso você precise mais tarde desse código por algum motivo, ele fica no rodapé do Painel.</mj-text>
+
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
