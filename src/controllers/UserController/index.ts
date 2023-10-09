@@ -53,7 +53,22 @@ class UserController {
             expiresIn: '8h'
         })
 
-        return res.status(201).json({ user, token })
+        const code = generateUserCode
+
+        mailer.sendMail({
+            to: email,
+            from: process.env.NODEMAILER_USER,
+            subject: 'Cadastro efetuado com sucesso!',
+            template: 'register/register_success',
+            context: { code }
+        }, (err: any) => {
+            if (err) {
+                console.log(err)
+                return res.status(400).send({ error: 'Cannot send forgot email' })
+            }
+            return res.status(201).json({ user, token })
+        })
+
     }
 
     async login(req: CustomRequest<BodyUserLoginTypes>, res: Response) {
@@ -214,7 +229,7 @@ class UserController {
             to: email,
             from: process.env.NODEMAILER_USER,
             subject: 'Redefinição de Senha',
-            template: 'auth/forgot_password',
+            template: 'auth/forgot-password',
             context: { token, email, urlApi }
         }, (err: any) => {
             if (err) {
