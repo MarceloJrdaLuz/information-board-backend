@@ -5,11 +5,10 @@ require("dotenv/config");
 const path_1 = require("path");
 require("reflect-metadata");
 const typeorm_1 = require("typeorm");
-const config_1 = require("./config");
 // Decodifique a variável de ambiente com o certificado .pem
 const sslCert = process.env.SSL_CERTIFICATE ? Buffer.from(process.env.SSL_CERTIFICATE, 'base64').toString() : undefined;
 const port = process.env.DB_PORT;
-const environment = config_1.config.environment;
+const environment = process.env.ENVIRONMENT;
 exports.AppDataSource = new typeorm_1.DataSource({
     type: "postgres",
     host: process.env.DB_HOST,

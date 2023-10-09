@@ -39,6 +39,9 @@ export class Publisher {
     @Column({ type: "timestamp", nullable: true })
     dateImmersed: Date
 
+    @Column({ type: "timestamp", nullable: true })
+    birthDate: Date
+
     @Column({ type: 'simple-array', nullable: true })
     privileges: string[]
 

@@ -9,7 +9,7 @@ const sslCert = process.env.SSL_CERTIFICATE ? Buffer.from(process.env.SSL_CERTIF
 
 const port = process.env.DB_PORT as number | undefined
 
-const environment = config.environment
+const environment = process.env.ENVIRONMENT
 
 export const AppDataSource = new DataSource({
     type: "postgres",

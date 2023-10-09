@@ -1,17 +1,17 @@
-import { Response } from "express-serve-static-core";
-import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
-import { congregationRepository } from "../../repositories/congregationRepository";
-import { Privileges } from "../../types/privileges";
-import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes } from "./types";
-import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
-import { publisherRepository } from "../../repositories/publisherRepository";
-import { messageErrors } from "../../helpers/messageErrors";
-import { groupOverseersRepository } from "../../repositories/groupOverseersRepository";
-import { groupRepository } from "../../repositories/groupRepository";
+import { Response } from "express-serve-static-core"
+import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
+import { congregationRepository } from "../../repositories/congregationRepository"
+import { Privileges } from "../../types/privileges"
+import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes } from "./types"
+import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
+import { publisherRepository } from "../../repositories/publisherRepository"
+import { messageErrors } from "../../helpers/messageErrors"
+import { groupOverseersRepository } from "../../repositories/groupOverseersRepository"
+import { groupRepository } from "../../repositories/groupRepository"
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
-    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed } = req.body
+    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate } = req.body
 
     const privilegesExists = privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
 
@@ -46,6 +46,7 @@ class PublisherControler {
       gender,
       hope,
       dateImmersed,
+      birthDate,
       privileges,
       congregation
     })
@@ -58,18 +59,18 @@ class PublisherControler {
   }
 
   async update(req: CustomRequest<BodyPublisherUpdateTypes>, res: Response) {
-    const { id, fullName, nickname, privileges, gender, hope, dateImmersed } = req.body;
+    const { id, fullName, nickname, privileges, gender, hope, dateImmersed, birthDate } = req.body
 
-    const publisher = await publisherRepository.findOne({ where: { id } });
+    const publisher = await publisherRepository.findOne({ where: { id } })
 
     if (!publisher) {
-      throw new NotFoundError('Publisher not exists');
+      throw new NotFoundError('Publisher not exists')
     }
 
     if (privileges) {
-      const privilegesExists = privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges));
+      const privilegesExists = privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
       if (!privilegesExists) {
-        throw new BadRequestError('Some privilege not exists');
+        throw new BadRequestError('Some privilege not exists')
       }
     }
 
@@ -78,9 +79,10 @@ class PublisherControler {
       (gender === undefined || gender === publisher.gender) &&
       (hope === undefined || hope === publisher.hope) &&
       (nickname === undefined || nickname === publisher.nickname) &&
+      (birthDate === undefined || birthDate === publisher.birthDate) &&
       privileges === undefined
     ) {
-      throw new BadRequestError('Any change detected');
+      throw new BadRequestError('Any change detected')
     }
 
     if (fullName !== publisher.fullName) {
@@ -101,16 +103,17 @@ class PublisherControler {
     }
 
     // Atualizar as propriedades do publisher
-    publisher.fullName = fullName !== undefined ? fullName : publisher.fullName;
-    publisher.nickname = nickname !== undefined ? nickname : publisher.nickname;
-    publisher.gender = gender !== undefined ? gender : publisher.gender;
-    publisher.hope = hope !== undefined ? hope : publisher.hope;
-    publisher.privileges = privileges !== undefined ? privileges : publisher.privileges;
-    publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed;
+    publisher.fullName = fullName !== undefined ? fullName : publisher.fullName
+    publisher.nickname = nickname !== undefined ? nickname : publisher.nickname
+    publisher.gender = gender !== undefined ? gender : publisher.gender
+    publisher.hope = hope !== undefined ? hope : publisher.hope
+    publisher.privileges = privileges !== undefined ? privileges : publisher.privileges
+    publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate
+    publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed
 
-    await publisherRepository.save(publisher);
+    await publisherRepository.save(publisher)
 
-    return res.status(201).json(publisher);
+    return res.status(201).json(publisher)
   }
 
   async delete(req: ParamsCustomRequest<ParamsPublisherDeleteAndUpdateTypes>, res: Response) {
@@ -145,8 +148,6 @@ class PublisherControler {
         }
       }, relations: ['group']
     }).catch(err => console.log(err))
-
-    console.log(publishers)
 
     return res.status(200).json(publishers)
   }
