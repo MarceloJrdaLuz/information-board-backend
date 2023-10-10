@@ -351,7 +351,10 @@ class UserController {
 
         const usersResponse: User[] = []
 
-        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION') {
+        const isAdmin = requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN'
+        const isAdminCongregation = requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION'
+
+        if (isAdminCongregation) {
             const requestUser = await userRepository.findOne({
                 where: {
                     id: requestByUserId.id
@@ -372,7 +375,7 @@ class UserController {
             }
         }
 
-        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN') {
+        if (isAdmin) {
             const users = await userRepository.find({ select: ["id", "email"] })
 
             usersResponse.push(...users)
@@ -383,9 +386,26 @@ class UserController {
             throw new NotFoundError('Users not found')
         }
 
-        const usersFilter = usersResponse.filter(user => user.roles.some(role => role.name !== "ADMIN"))
+        const usersFilter: User[] = []
 
-        return res.status(200).json(usersFilter)
+        if (isAdminCongregation) {
+            const filter = usersResponse.filter(user => {
+                (user.roles.some(role => role.name !== "ADMIN") &&
+                    user.id !== requestByUserId.id
+                )
+            })
+            usersFilter.push(...filter)
+        }
+
+        if (isAdmin) {
+            const filter = usersResponse.filter(user =>
+                user.id !== requestByUserId.id
+            )
+            usersFilter.push(...filter)
+        }
+
+        res.send(usersFilter)
+
     }
 }
 

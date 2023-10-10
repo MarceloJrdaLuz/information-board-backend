@@ -253,7 +253,9 @@ class UserController {
     async getUsers(req, res) {
         const requestByUserId = await (0, permissions_1.decoder)(req);
         const usersResponse = [];
-        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION') {
+        const isAdmin = requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN';
+        const isAdminCongregation = requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION';
+        if (isAdminCongregation) {
             const requestUser = await userRepository_1.userRepository.findOne({
                 where: {
                     id: requestByUserId.id
@@ -272,15 +274,26 @@ class UserController {
                     usersResponse.push(...users);
             }
         }
-        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN') {
+        if (isAdmin) {
             const users = await userRepository_1.userRepository.find({ select: ["id", "email"] });
             usersResponse.push(...users);
         }
         if (!usersResponse) {
             throw new api_errors_1.NotFoundError('Users not found');
         }
-        const usersFilter = usersResponse.filter(user => user.roles.some(role => role.name !== "ADMIN"));
-        return res.status(200).json(usersFilter);
+        const usersFilter = [];
+        if (isAdminCongregation) {
+            const filter = usersResponse.filter(user => {
+                (user.roles.some(role => role.name !== "ADMIN") &&
+                    user.id !== requestByUserId.id);
+            });
+            usersFilter.push(...filter);
+        }
+        if (isAdmin) {
+            const filter = usersResponse.filter(user => user.id !== requestByUserId.id);
+            usersFilter.push(...filter);
+        }
+        res.send(usersFilter);
     }
 }
 exports.default = new UserController();
