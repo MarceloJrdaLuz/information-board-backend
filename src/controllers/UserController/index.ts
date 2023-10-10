@@ -1,21 +1,21 @@
-import { Response } from "express";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
-import { userRepository } from "../../repositories/userRepository";
-import { BodyAddDomainsTypes, BodyResetPasswordTypes, BodyUserCreateTypes, BodyUserLoginTypes, BodyUserUpdateTypes } from "./types";
+import { Response } from "express"
+import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors"
+import { userRepository } from "../../repositories/userRepository"
+import { BodyAddDomainsTypes, BodyResetPasswordTypes, BodyUserCreateTypes, BodyUserLoginTypes, BodyUserUpdateTypes } from "./types"
 import bcrypt from 'bcryptjs'
 import jwt, { decode } from 'jsonwebtoken'
-import { In, Not, Any } from "typeorm";
-import { roleRepository } from "../../repositories/roleRepository";
-import { v4 } from "uuid";
+import { In, Not, Any } from "typeorm"
+import { roleRepository } from "../../repositories/roleRepository"
+import { v4 } from "uuid"
 //@ts-expect-error
 import mailer from '../../modules/mailer'
-import { config } from "../../config";
+import { config } from "../../config"
 import moment from 'moment-timezone'
-import { Request } from "express-serve-static-core";
-import { congregationRepository } from "../../repositories/congregationRepository";
-import { CustomRequest } from "../../types/customRequest";
-import { decoder } from "../../middlewares/permissions";
-import { User } from "../../entities/User";
+import { Request } from "express-serve-static-core"
+import { congregationRepository } from "../../repositories/congregationRepository"
+import { CustomRequest } from "../../types/customRequest"
+import { decoder } from "../../middlewares/permissions"
+import { User } from "../../entities/User"
 
 class UserController {
     async create(req: CustomRequest<BodyUserCreateTypes>, res: Response) {
@@ -389,11 +389,12 @@ class UserController {
         const usersFilter: User[] = []
 
         if (isAdminCongregation) {
-            const filter = usersResponse.filter(user =>
-            (user.roles.some(role => role.name !== "ADMIN") &&
-                user.id !== requestByUserId.id
-            )
-            )
+            const filter = usersResponse.filter(user => {
+                return (
+                    user.id !== requestByUserId.id &&
+                    (!user.roles || !user.roles.some(role => role.name === "ADMIN"))
+                )
+            })
             usersFilter.push(...filter)
         }
 

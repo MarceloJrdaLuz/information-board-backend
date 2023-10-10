@@ -283,8 +283,10 @@ class UserController {
         }
         const usersFilter = [];
         if (isAdminCongregation) {
-            const filter = usersResponse.filter(user => (user.roles.some(role => role.name !== "ADMIN") &&
-                user.id !== requestByUserId.id));
+            const filter = usersResponse.filter(user => {
+                return (user.id !== requestByUserId.id &&
+                    (!user.roles || !user.roles.some(role => role.name === "ADMIN")));
+            });
             usersFilter.push(...filter);
         }
         if (isAdmin) {
