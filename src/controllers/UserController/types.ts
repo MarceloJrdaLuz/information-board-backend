@@ -1,6 +1,7 @@
 export interface BodyUserCreateTypes {
     email: string
     password: string
+    fullName: string
 }
 
 export interface BodyUserLoginTypes {

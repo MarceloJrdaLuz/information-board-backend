@@ -15,6 +15,9 @@ export class User {
     @Column({ type: 'text' })
     password: string
 
+    @Column({ type: 'text', nullable: true })
+    fullName: string
+
     @Column({ type: "text" })
     code: string
 

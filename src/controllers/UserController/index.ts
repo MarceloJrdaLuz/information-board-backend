@@ -19,7 +19,7 @@ import { User } from "../../entities/User";
 
 class UserController {
     async create(req: CustomRequest<BodyUserCreateTypes>, res: Response) {
-        const { email, password } = req.body
+        const { email, password, fullName } = req.body
 
         const userExists = await userRepository.findOneBy({ email })
 
@@ -40,6 +40,7 @@ class UserController {
         const newUser = userRepository.create({
             email,
             password: hashPassword,
+            fullName,
             code: generateUserCode,
             roles: role
         })
