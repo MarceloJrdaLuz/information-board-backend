@@ -9,13 +9,14 @@
 
         <mj-text font-size="15px" color="gray" font-family="helvetica">Olá,</mj-text>
 
-        <mj-text font-size="15px" color="gray" font-family="helvetica">Seu cadastro foi efetuado com sucesso. Mas por enquanto você não tem nenhuma permissão. Contate o administrador do domínio da sua congregação informando o código abaixo, que é o seu código de usuário, e ele vai te adcionar ao domínio da congregação, e dar as permissões necessárias.</mj-text>
+        <mj-text font-size="15px" color="gray" font-family="helvetica">Recentemente alguém solicitou uma mudança de senha na sua conta. Se foi você que solicitou, você pode redefinir sua senha aqui:</mj-text>
 
-        <mj-button font-family="Helvetica" background-color="#178582" align="left" color="white">
-          {{code}}
+        <mj-button href="{{urlApi}}/nova-senha/{{token}}/{{email}}" font-family="Helvetica" background-color="#178582" align="left" color="white">
+        Redefinir senha!
         </mj-button>
 
-        <mj-text font-size="15px" color="gray" font-family="helvetica">Caso você precise mais tarde desse código por algum motivo, ele fica no rodapé do Painel.</mj-text>
+        <mj-text font-size="15px" color="gray" font-family="helvetica">
+       O token para redefinir sua senha expira em 1 hora, caso você não fizer a solicitação nesse tempo, você deverá fazer uma nova solicitação.</mj-text>
 
       </mj-column>
     </mj-section>

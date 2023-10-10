@@ -19,7 +19,7 @@ const permissions_1 = require("../../middlewares/permissions");
 class UserController {
     async create(req, res) {
         var _a;
-        const { email, password } = req.body;
+        const { email, password, fullName } = req.body;
         const userExists = await userRepository_1.userRepository.findOneBy({ email });
         const role = await roleRepository_1.roleRepository.findBy({ name: "USER" });
         if (userExists) {
@@ -33,6 +33,7 @@ class UserController {
         const newUser = userRepository_1.userRepository.create({
             email,
             password: hashPassword,
+            fullName,
             code: generateUserCode,
             roles: role
         });
