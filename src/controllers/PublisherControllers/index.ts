@@ -89,11 +89,13 @@ class PublisherControler {
       const existingPublisherSomeFullName = await publisherRepository.find({
         where: {
           fullName,
-          congregation: { id: publisher.congregation.id }
+          congregation: {
+            id: publisher.congregation.id
+          }
         }
       })
 
-      if (!nickname) {
+      if (existingPublisherSomeFullName.length > 0 && !nickname) {
         throw new BadRequestError('This fullname already exists in the congregation, a nickname is required to differentiate the publisher')
       }
 
