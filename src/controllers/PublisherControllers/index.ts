@@ -173,7 +173,8 @@ class PublisherControler {
     const publishersNames = publishers.map(publisher => ({
       fullName: publisher.fullName,
       nickname: publisher.nickname,
-      congregation_id: congregation.id
+      congregation_id: congregation.id,
+      congregation_number: congregation.number
     }))
 
     return res.status(200).json(publishersNames)

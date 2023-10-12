@@ -25,7 +25,8 @@ class ConsentRecordController {
                 publisher: {
                     fullName: suc.fullName,
                     nickname: suc.nickname,
-                    congregation_id: suc.congregation_id
+                    congregation_id: suc.congregation_id,
+                    congregation_number: publisher.congregation_number
                 },
                 deviceId: suc.deviceId,
                 consentDate: suc.consentDate
