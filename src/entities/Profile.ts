@@ -9,15 +9,9 @@ export class Profile {
     id: string
 
     @Column({ type: "text" })
-    name: string
-
-    @Column({ type: "text" })
-    lastName: string
-
-    @Column({type: "text"})
     avatar_url: string
 
-    @Column({type: "text"})
+    @Column({ type: "text" })
     avatar_bucket_key: string
 
     @CreateDateColumn()
@@ -26,7 +20,7 @@ export class Profile {
     @UpdateDateColumn()
     updated_at: Date
 
-    @OneToOne(() => User, {eager: true, nullable: false, onDelete: "CASCADE"})
-    @JoinColumn({name: 'user_id'})
+    @OneToOne(() => User, { eager: true, nullable: false, onDelete: "CASCADE" })
+    @JoinColumn({ name: 'user_id' })
     user: User
 }

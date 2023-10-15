@@ -21,14 +21,6 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({ type: "text" }),
     __metadata("design:type", String)
-], Profile.prototype, "name", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: "text" }),
-    __metadata("design:type", String)
-], Profile.prototype, "lastName", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: "text" }),
-    __metadata("design:type", String)
 ], Profile.prototype, "avatar_url", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "text" }),

@@ -1,18 +1,17 @@
-import { Response } from "express";
-import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
-import { congregationRepository } from "../../repositories/congregationRepository";
-import { profileRepository } from "../../repositories/profileRepository";
-import { userRepository } from "../../repositories/userRepository";
-import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage";
-import { BodyProfileCreateTypes, BodyUpdateProfilesTypes, ParamsProfileDeleteTypes } from "./types";
+import { Response } from "express"
+import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
+import { profileRepository } from "../../repositories/profileRepository"
+import { userRepository } from "../../repositories/userRepository"
+import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage"
+import { BodyProfileCreateTypes, BodyUpdateProfilesTypes, ParamsProfileDeleteTypes } from "./types"
 import fs from 'fs-extra'
-import { config } from "../../config";
-import { NormalizeFiles } from "../../types/normalizeFile";
-import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest";
+import { config } from "../../config"
+import { NormalizeFiles } from "../../types/normalizeFile"
+import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 
 class ProfileController {
     async create(req: CustomRequest<BodyProfileCreateTypes>, res: Response) {
-        const { name, lastName, user_id, avatar_url } = req.body
+        const {  user_id } = req.body
 
         const file = req.file as Express.Multer.File
 
@@ -32,20 +31,18 @@ class ProfileController {
                     })
                     console.log('moved')
                     saveBD(null)
-                    break;
+                    break
                 case 'firebase':
                     await firebaseUpload(req, res, `users-avatar`, saveBD)
-                    break;
+                    break
                 default:
                     res.send('Storage local type is not defined at .env')
-                    break;
+                    break
             }
         } else saveBD(null)
 
         async function saveBD(file: NormalizeFiles | null) {
             const newProfile = profileRepository.create({
-                name,
-                lastName,
                 avatar_url: file?.url ?? "",
                 avatar_bucket_key: file?.key ?? "",
                 user: user ?? undefined
@@ -66,10 +63,8 @@ class ProfileController {
         }
     }
 
-
-
     async update(req: CustomRequest<BodyUpdateProfilesTypes>, res: Response) {
-        const { id, name, lastName, avatar_url } = req.body
+        const { id, avatar_url } = req.body
 
         const file = req.file as Express.Multer.File
 
@@ -79,7 +74,7 @@ class ProfileController {
             throw new NotFoundError("Profile not exists")
         }
 
-        if (!avatar_url && !name && !lastName && !file) {
+        if (!avatar_url && !file) {
             throw new BadRequestError('Any change detected')
         }
 
@@ -93,13 +88,13 @@ class ProfileController {
                     })
                     console.log('Moved')
                     saveBD(null)
-                    break;
+                    break
                 case 'firebase':
                     await firebaseUpload(req, res, `users-avatar`, saveBD)
-                    break;
+                    break
                 default:
                     res.send('Storage local type is not defined at .env')
-                    break;
+                    break
             }
         } else saveBD(null) 
 
@@ -109,8 +104,6 @@ class ProfileController {
                 if (profile?.avatar_bucket_key) await deleteFirebase(profile?.avatar_bucket_key)
             }
             const updateProfile = {
-                name: name ?? profile?.name,
-                lastName: lastName ?? profile?.lastName,
                 avatar_url: file?.url ?? profile?.avatar_url,
                 avatar_bucket_key: file?.key ?? profile?.avatar_bucket_key,
             }
@@ -139,7 +132,6 @@ class ProfileController {
 
         return res.status(204).end()
     }
-
 }
 
 export default new ProfileController()

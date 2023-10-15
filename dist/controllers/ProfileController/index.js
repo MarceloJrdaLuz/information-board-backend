@@ -12,7 +12,7 @@ const config_1 = require("../../config");
 class ProfileController {
     async create(req, res) {
         var _a, _b;
-        const { name, lastName, user_id, avatar_url } = req.body;
+        const { user_id } = req.body;
         const file = req.file;
         const user = await userRepository_1.userRepository.findOneBy({ id: user_id });
         if (!user) {
@@ -42,8 +42,6 @@ class ProfileController {
         async function saveBD(file) {
             var _a, _b;
             const newProfile = profileRepository_1.profileRepository.create({
-                name,
-                lastName,
                 avatar_url: (_a = file === null || file === void 0 ? void 0 : file.url) !== null && _a !== void 0 ? _a : "",
                 avatar_bucket_key: (_b = file === null || file === void 0 ? void 0 : file.key) !== null && _b !== void 0 ? _b : "",
                 user: user !== null && user !== void 0 ? user : undefined
@@ -64,13 +62,13 @@ class ProfileController {
     }
     async update(req, res) {
         var _a, _b;
-        const { id, name, lastName, avatar_url } = req.body;
+        const { id, avatar_url } = req.body;
         const file = req.file;
         const profile = await profileRepository_1.profileRepository.findOneBy({ id });
         if (!profile) {
             throw new api_errors_1.NotFoundError("Profile not exists");
         }
-        if (!avatar_url && !name && !lastName && !file) {
+        if (!avatar_url && !file) {
             throw new api_errors_1.BadRequestError('Any change detected');
         }
         if (file) {
@@ -101,8 +99,6 @@ class ProfileController {
                     await (0, firebaseStorage_1.deleteFirebase)(profile === null || profile === void 0 ? void 0 : profile.avatar_bucket_key);
             }
             const updateProfile = {
-                name: name !== null && name !== void 0 ? name : profile === null || profile === void 0 ? void 0 : profile.name,
-                lastName: lastName !== null && lastName !== void 0 ? lastName : profile === null || profile === void 0 ? void 0 : profile.lastName,
                 avatar_url: (_a = file === null || file === void 0 ? void 0 : file.url) !== null && _a !== void 0 ? _a : profile === null || profile === void 0 ? void 0 : profile.avatar_url,
                 avatar_bucket_key: (_b = file === null || file === void 0 ? void 0 : file.key) !== null && _b !== void 0 ? _b : profile === null || profile === void 0 ? void 0 : profile.avatar_bucket_key,
             };
