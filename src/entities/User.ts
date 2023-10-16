@@ -37,6 +37,10 @@ export class User {
     @UpdateDateColumn()
     updated_at: Date
 
+    @OneToOne(() => Profile)
+    @JoinColumn({ name: 'profile_id' })
+    profile: Profile
+
     @ManyToMany(() => Role, { eager: true })
     @JoinTable({
         name: 'user_roles',

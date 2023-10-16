@@ -136,15 +136,14 @@ class UserController {
             }
             userId = (_a = decoded === null || decoded === void 0 ? void 0 : decoded.sub) === null || _a === void 0 ? void 0 : _a.toString();
         });
-        const user = await userRepository_1.userRepository.find({
+        const user = await userRepository_1.userRepository.findOne({
             where: { id: userId },
-            relations: ['congregation']
+            relations: ['congregation', 'profile']
         });
-        if (!user || user.length === 0) {
+        if (!user) {
             throw new api_errors_1.BadRequestError('E-mail não cadastrado');
         }
-        const foundUser = user[0];
-        const { password: _, ...userLogin } = foundUser;
+        const { password: _, ...userLogin } = user;
         return res.status(200).json(userLogin);
     }
     async forgot_password(req, res) {

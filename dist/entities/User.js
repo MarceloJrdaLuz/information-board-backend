@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
 const typeorm_1 = require("typeorm");
 const Congregation_1 = require("./Congregation");
+const Profile_1 = require("./Profile");
 const Role_1 = require("./Role");
 let User = class User {
 };
@@ -56,6 +57,11 @@ __decorate([
     (0, typeorm_1.UpdateDateColumn)(),
     __metadata("design:type", Date)
 ], User.prototype, "updated_at", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => Profile_1.Profile),
+    (0, typeorm_1.JoinColumn)({ name: 'profile_id' }),
+    __metadata("design:type", Profile_1.Profile)
+], User.prototype, "profile", void 0);
 __decorate([
     (0, typeorm_1.ManyToMany)(() => Role_1.Role, { eager: true }),
     (0, typeorm_1.JoinTable)({

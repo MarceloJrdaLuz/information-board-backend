@@ -184,20 +184,16 @@ class UserController {
             userId = decoded?.sub?.toString()
         })
 
-        const user = await userRepository.find({
+        const user = await userRepository.findOne({
             where: { id: userId },
-            relations: ['congregation']
+            relations: ['congregation', 'profile']
         })
 
-
-        if (!user || user.length === 0) {
+        if (!user) {
             throw new BadRequestError('E-mail não cadastrado')
         }
 
-        const foundUser = user[0]
-
-        const { password: _, ...userLogin } = foundUser
-
+        const { password: _, ...userLogin } = user
 
         return res.status(200).json(userLogin)
     }
