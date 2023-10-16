@@ -12,7 +12,7 @@ const config_1 = require("../../config");
 class ProfileController {
     async create(req, res) {
         var _a, _b;
-        const { user_id } = req.body;
+        const { user_id } = req.params;
         const file = req.file;
         const user = await userRepository_1.userRepository.findOneBy({ id: user_id });
         if (!user) {

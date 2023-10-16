@@ -3,15 +3,15 @@ import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { profileRepository } from "../../repositories/profileRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage"
-import { BodyProfileCreateTypes, BodyUpdateProfilesTypes, ParamsProfileDeleteTypes } from "./types"
+import {  BodyUpdateProfilesTypes, ParamsProfileCreateTypes, ParamsProfileDeleteTypes } from "./types"
 import fs from 'fs-extra'
 import { config } from "../../config"
 import { NormalizeFiles } from "../../types/normalizeFile"
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 
 class ProfileController {
-    async create(req: CustomRequest<BodyProfileCreateTypes>, res: Response) {
-        const {  user_id } = req.body
+    async create(req: ParamsCustomRequest<ParamsProfileCreateTypes>, res: Response) {
+        const {  user_id } = req.params
 
         const file = req.file as Express.Multer.File
 

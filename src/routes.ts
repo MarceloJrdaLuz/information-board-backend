@@ -49,7 +49,7 @@ routes.post('/new-document', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), up
 routes.get('/documents-congregation/:congregation_id', DocumentController.filter)
 routes.delete('/document/:document_id', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), DocumentController.delete)
 
-routes.post('/profile', /*is(['ADMIN']),*/ uploadFile.single('avatar'), ProfileController.create)
+routes.post('/profile/:user_id', /*is(['ADMIN']),*/ uploadFile.single('avatar'), ProfileController.create)
 routes.put('/profile', /*is(['ADMIN']),*/ uploadFile.single('avatar'), ProfileController.update)
 routes.delete('/profile/:id', /*is(['ADMIN']),*/ ProfileController.delete)
 
