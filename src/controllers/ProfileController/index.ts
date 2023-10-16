@@ -3,7 +3,7 @@ import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { profileRepository } from "../../repositories/profileRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage"
-import {  BodyUpdateProfilesTypes, ParamsProfileCreateTypes, ParamsProfileDeleteTypes } from "./types"
+import { BodyUpdateProfilesTypes, ParamsProfileCreateTypes, ParamsProfileDeleteTypes } from "./types"
 import fs from 'fs-extra'
 import { config } from "../../config"
 import { NormalizeFiles } from "../../types/normalizeFile"
@@ -11,7 +11,7 @@ import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 
 class ProfileController {
     async create(req: ParamsCustomRequest<ParamsProfileCreateTypes>, res: Response) {
-        const {  user_id } = req.params
+        const { user_id } = req.params
 
         const file = req.file as Express.Multer.File
 
@@ -42,24 +42,29 @@ class ProfileController {
         } else saveBD(null)
 
         async function saveBD(file: NormalizeFiles | null) {
-            const newProfile = profileRepository.create({
-                avatar_url: file?.url ?? "",
-                avatar_bucket_key: file?.key ?? "",
-                user: user ?? undefined
-            })
+            if (user) {
+                const newProfile = profileRepository.create({
+                    avatar_url: file?.url ?? "",
+                    avatar_bucket_key: file?.key ?? "",
+                    user: user
+                })
 
-            await profileRepository.save(newProfile).then(() => {
-                return res.status(201).json(newProfile)
-            }).catch(err => {
-                const errorMessage = err.driverError.detail as string
-                if (errorMessage.includes('already exists')) {
-                    return res.status(400).json({
-                        message: 'Profile already exists, if you want to do update use rote put(/profile)'
-                    })
-                }
-                console.log(err)
-                return res.status(500).send({ message: 'Internal server error, checks the logs' })
-            })
+                await profileRepository.save(newProfile).then(async () => {
+                    user.profile = newProfile
+                    await userRepository.save(user)
+                    return res.status(201).json(newProfile)
+                }).catch(err => {
+                    const errorMessage = err.driverError.detail as string
+                    if (errorMessage.includes('already exists')) {
+                        return res.status(400).json({
+                            message: 'Profile already exists, if you want to do update use rote put(/profile)'
+                        })
+                    }
+                    console.log(err)
+                    return res.status(500).send({ message: 'Internal server error, checks the logs' })
+                })
+            }
+
         }
     }
 
@@ -96,7 +101,7 @@ class ProfileController {
                     res.send('Storage local type is not defined at .env')
                     break
             }
-        } else saveBD(null) 
+        } else saveBD(null)
 
 
         async function saveBD(file: NormalizeFiles | null) {

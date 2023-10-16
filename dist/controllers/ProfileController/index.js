@@ -41,23 +41,27 @@ class ProfileController {
             saveBD(null);
         async function saveBD(file) {
             var _a, _b;
-            const newProfile = profileRepository_1.profileRepository.create({
-                avatar_url: (_a = file === null || file === void 0 ? void 0 : file.url) !== null && _a !== void 0 ? _a : "",
-                avatar_bucket_key: (_b = file === null || file === void 0 ? void 0 : file.key) !== null && _b !== void 0 ? _b : "",
-                user: user !== null && user !== void 0 ? user : undefined
-            });
-            await profileRepository_1.profileRepository.save(newProfile).then(() => {
-                return res.status(201).json(newProfile);
-            }).catch(err => {
-                const errorMessage = err.driverError.detail;
-                if (errorMessage.includes('already exists')) {
-                    return res.status(400).json({
-                        message: 'Profile already exists, if you want to do update use rote put(/profile)'
-                    });
-                }
-                console.log(err);
-                return res.status(500).send({ message: 'Internal server error, checks the logs' });
-            });
+            if (user) {
+                const newProfile = profileRepository_1.profileRepository.create({
+                    avatar_url: (_a = file === null || file === void 0 ? void 0 : file.url) !== null && _a !== void 0 ? _a : "",
+                    avatar_bucket_key: (_b = file === null || file === void 0 ? void 0 : file.key) !== null && _b !== void 0 ? _b : "",
+                    user: user
+                });
+                await profileRepository_1.profileRepository.save(newProfile).then(async () => {
+                    user.profile = newProfile;
+                    await userRepository_1.userRepository.save(user);
+                    return res.status(201).json(newProfile);
+                }).catch(err => {
+                    const errorMessage = err.driverError.detail;
+                    if (errorMessage.includes('already exists')) {
+                        return res.status(400).json({
+                            message: 'Profile already exists, if you want to do update use rote put(/profile)'
+                        });
+                    }
+                    console.log(err);
+                    return res.status(500).send({ message: 'Internal server error, checks the logs' });
+                });
+            }
         }
     }
     async update(req, res) {
