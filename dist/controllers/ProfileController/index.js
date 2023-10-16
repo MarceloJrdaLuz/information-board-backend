@@ -66,14 +66,14 @@ class ProfileController {
     }
     async update(req, res) {
         var _a, _b;
-        const { id, avatar_url } = req.body;
+        const { profile_id: id } = req.params;
         const file = req.file;
         const profile = await profileRepository_1.profileRepository.findOneBy({ id });
         if (!profile) {
             throw new api_errors_1.NotFoundError("Profile not exists");
         }
-        if (!avatar_url && !file) {
-            throw new api_errors_1.BadRequestError('Any change detected');
+        if (!file) {
+            throw new api_errors_1.BadRequestError('Any photo detected');
         }
         if (file) {
             switch (config_1.config.storage_type) {

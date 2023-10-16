@@ -77,9 +77,8 @@ class UserController {
 
         const user = await userRepository.find({
             where: { email },
-            relations: ['congregation']
+            relations: ['congregation', 'profile']
         })
-
 
         if (!user || user.length === 0) {
             throw new BadRequestError('E-mail não cadastrado')

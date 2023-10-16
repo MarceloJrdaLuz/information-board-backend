@@ -63,7 +63,7 @@ class UserController {
         const { email, password } = req.body;
         const user = await userRepository_1.userRepository.find({
             where: { email },
-            relations: ['congregation']
+            relations: ['congregation', 'profile']
         });
         if (!user || user.length === 0) {
             throw new api_errors_1.BadRequestError('E-mail não cadastrado');

@@ -3,11 +3,11 @@ import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { profileRepository } from "../../repositories/profileRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage"
-import { BodyUpdateProfilesTypes, ParamsProfileCreateTypes, ParamsProfileDeleteTypes } from "./types"
+import { ParamsProfileCreateTypes, ParamsProfileDeleteTypes, ParamsProfileUpdateTypes } from "./types"
 import fs from 'fs-extra'
 import { config } from "../../config"
 import { NormalizeFiles } from "../../types/normalizeFile"
-import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
+import { ParamsCustomRequest } from "../../types/customRequest"
 
 class ProfileController {
     async create(req: ParamsCustomRequest<ParamsProfileCreateTypes>, res: Response) {
@@ -68,8 +68,8 @@ class ProfileController {
         }
     }
 
-    async update(req: CustomRequest<BodyUpdateProfilesTypes>, res: Response) {
-        const { id, avatar_url } = req.body
+    async update(req: ParamsCustomRequest<ParamsProfileUpdateTypes>, res: Response) {
+        const { profile_id: id } = req.params
 
         const file = req.file as Express.Multer.File
 
@@ -79,8 +79,8 @@ class ProfileController {
             throw new NotFoundError("Profile not exists")
         }
 
-        if (!avatar_url && !file) {
-            throw new BadRequestError('Any change detected')
+        if (!file) {
+            throw new BadRequestError('Any photo detected')
         }
 
         if (file) {
@@ -102,7 +102,6 @@ class ProfileController {
                     break
             }
         } else saveBD(null)
-
 
         async function saveBD(file: NormalizeFiles | null) {
             if (file) {
