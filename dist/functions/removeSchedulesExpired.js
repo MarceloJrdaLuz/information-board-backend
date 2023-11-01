@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_cron_1 = require("node-cron");
 const noticeRepository_1 = require("../repositories/noticeRepository");
 const typeorm_1 = require("typeorm");
-(0, node_cron_1.schedule)('0 0 * * *', async () => {
+(0, node_cron_1.schedule)('55 17 * * *', async () => {
     const now = new Date();
     const expiredRecover = await noticeRepository_1.noticeRepository.find({
         where: {
