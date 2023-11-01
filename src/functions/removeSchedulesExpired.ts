@@ -2,7 +2,7 @@ import { schedule } from 'node-cron'
 import { noticeRepository } from '../repositories/noticeRepository'
 import { LessThan } from 'typeorm'
 
-schedule('43 16 * * *', async () => {
+schedule('0 0 * * *', async () => {
     const now = new Date()
     const expiredRecover = await noticeRepository.find({
         where: {
