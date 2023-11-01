@@ -22,17 +22,8 @@ export class Report {
     @JoinColumn({ name: 'publisher_id' })
     publisher: Publisher
 
-    @Column({ type: "int", nullable: true })
-    publications: number
-
-    @Column({ type: "int", nullable: true })
-    videos: number
-
     @Column({ type: "int" || 'string' })
     hours: number
-
-    @Column({ type: "int", nullable: true })
-    revisits: number
 
     @Column({ type: "int", nullable: true })
     studies: number

@@ -7,7 +7,12 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const messageErrors_1 = require("../../helpers/messageErrors");
 class PublisherControler {
     async create(req, res) {
-        const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate } = req.body;
+        const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths } = req.body;
+        if (privileges) {
+            if (privileges.includes(privileges_1.Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
+                throw new api_errors_1.BadRequestError('You must provide the "pioneerMonths" field when assigning the "PIONEIRO_AUXILIAR" privilege');
+            }
+        }
         const privilegesExists = privileges === null || privileges === void 0 ? void 0 : privileges.every(privilege => Object.values(privileges_1.Privileges).includes(privilege));
         const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
         if (!congregation)
@@ -39,6 +44,7 @@ class PublisherControler {
             dateImmersed,
             birthDate,
             privileges,
+            pioneerMonths,
             congregation
         });
         await publisherRepository_1.publisherRepository.save(newPublisher).catch(err => {
@@ -47,12 +53,15 @@ class PublisherControler {
         return res.status(201).json(newPublisher);
     }
     async update(req, res) {
-        const { id, fullName, nickname, privileges, gender, hope, dateImmersed, birthDate } = req.body;
+        const { id, fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation } = req.body;
         const publisher = await publisherRepository_1.publisherRepository.findOne({ where: { id } });
         if (!publisher) {
             throw new api_errors_1.NotFoundError('Publisher not exists');
         }
         if (privileges) {
+            if (privileges.includes(privileges_1.Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
+                throw new api_errors_1.BadRequestError('You must provide the "pioneerMonths" field when assigning the "PIONEIRO AUXILIAR" privilege');
+            }
             const privilegesExists = privileges === null || privileges === void 0 ? void 0 : privileges.every(privilege => Object.values(privileges_1.Privileges).includes(privilege));
             if (!privilegesExists) {
                 throw new api_errors_1.BadRequestError('Some privilege not exists');
@@ -63,6 +72,8 @@ class PublisherControler {
             (hope === undefined || hope === publisher.hope) &&
             (nickname === undefined || nickname === publisher.nickname) &&
             (birthDate === undefined || birthDate === publisher.birthDate) &&
+            (pioneerMonths === undefined || pioneerMonths === publisher.pioneerMonths) &&
+            (situation === undefined || situation === publisher.situation) &&
             privileges === undefined) {
             throw new api_errors_1.BadRequestError('Any change detected');
         }
@@ -88,8 +99,10 @@ class PublisherControler {
         publisher.gender = gender !== undefined ? gender : publisher.gender;
         publisher.hope = hope !== undefined ? hope : publisher.hope;
         publisher.privileges = privileges !== undefined ? privileges : publisher.privileges;
+        publisher.pioneerMonths = pioneerMonths !== undefined ? pioneerMonths : publisher.pioneerMonths;
         publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate;
         publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed;
+        publisher.situation = situation !== undefined ? situation : publisher.situation;
         await publisherRepository_1.publisherRepository.save(publisher);
         return res.status(201).json(publisher);
     }

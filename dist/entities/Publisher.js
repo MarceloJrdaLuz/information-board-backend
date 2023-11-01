@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Publisher = exports.Hope = exports.Gender = void 0;
+exports.Publisher = exports.Situation = exports.Hope = exports.Gender = void 0;
 const typeorm_1 = require("typeorm");
 const Congregation_1 = require("./Congregation");
 const GroupOverseers_1 = require("./GroupOverseers");
@@ -24,6 +24,13 @@ var Hope;
     Hope["Ungido"] = "Ungido";
     Hope["OutrasOvelhas"] = "Outras ovelhas";
 })(Hope = exports.Hope || (exports.Hope = {}));
+var Situation;
+(function (Situation) {
+    Situation["Inativo"] = "Inativo";
+    Situation["Ativo"] = "Ativo";
+    Situation["Removido"] = "Removido";
+    Situation["Desassociado"] = "Desassociado";
+})(Situation = exports.Situation || (exports.Situation = {}));
 let Publisher = class Publisher {
 };
 __decorate([
@@ -42,6 +49,14 @@ __decorate([
     (0, typeorm_1.Column)({ type: "enum", enum: Hope, default: Hope.OutrasOvelhas }),
     __metadata("design:type", String)
 ], Publisher.prototype, "hope", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: Situation,
+        default: Situation.Ativo,
+    }),
+    __metadata("design:type", String)
+], Publisher.prototype, "situation", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
@@ -66,6 +81,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'simple-array', nullable: true }),
     __metadata("design:type", Array)
 ], Publisher.prototype, "privileges", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "simple-array", nullable: true }),
+    __metadata("design:type", Array)
+], Publisher.prototype, "pioneerMonths", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Congregation_1.Congregation, congregation => congregation.id, {
         onDelete: "CASCADE",

@@ -12,8 +12,8 @@ import { Report } from "../../entities/Report"
 
 class ReportController {
   async create(req: CustomRequest<BodyReportCreateTypes>, res: Response) {
-    const { month, year, publisher, publications, videos, hours, revisits, studies, observations } = req.body
-    
+    const { month, year, publisher, hours, studies, observations } = req.body
+
     if (!Object.values(Months).some(enumMonth => enumMonth === month)) {
       return res.status(400).json({ message: 'Invalid month value' })
     }
@@ -41,10 +41,7 @@ class ReportController {
     })
 
     if (existingReport) {
-      existingReport.publications = publications
-      existingReport.videos = videos
       existingReport.hours = hours
-      existingReport.revisits = revisits
       existingReport.studies = studies
       existingReport.observations = observations
 
@@ -58,10 +55,7 @@ class ReportController {
         month: month as Months,
         year,
         publisher: publisherExists,
-        publications,
-        videos,
         hours,
-        revisits,
         studies,
         observations
       })
@@ -97,19 +91,14 @@ class ReportController {
     const response = reports.map(report => ({
       month: report.month,
       year: report.year,
-      publications: report.publications,
-      videos: report.videos,
       hours: report.hours,
-      revisits: report.revisits,
       studies: report.studies,
       observations: report.observations,
       publisher: {
         ...report.publisher
       }
     }))
-
     res.json(response)
-
   }
 
 }

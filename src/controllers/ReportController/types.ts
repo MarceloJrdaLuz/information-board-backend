@@ -6,10 +6,7 @@ export interface BodyReportCreateTypes {
         nickName: string, 
         congregation_id: string
     }
-    publications: number
-    videos: number
     hours: number
-    revisits: number
     studies: number
     observations: string
 }

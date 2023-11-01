@@ -11,7 +11,13 @@ import { groupRepository } from "../../repositories/groupRepository"
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
-    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate } = req.body
+    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths } = req.body
+
+    if (privileges) {
+      if (privileges.includes(Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
+        throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "PIONEIRO_AUXILIAR" privilege');
+      }
+    }
 
     const privilegesExists = privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
 
@@ -48,6 +54,7 @@ class PublisherControler {
       dateImmersed,
       birthDate,
       privileges,
+      pioneerMonths,
       congregation
     })
 
@@ -59,7 +66,7 @@ class PublisherControler {
   }
 
   async update(req: CustomRequest<BodyPublisherUpdateTypes>, res: Response) {
-    const { id, fullName, nickname, privileges, gender, hope, dateImmersed, birthDate } = req.body
+    const { id, fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation } = req.body
 
     const publisher = await publisherRepository.findOne({ where: { id } })
 
@@ -68,6 +75,11 @@ class PublisherControler {
     }
 
     if (privileges) {
+
+      if (privileges.includes(Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
+        throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "PIONEIRO AUXILIAR" privilege');
+      }
+
       const privilegesExists = privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
       if (!privilegesExists) {
         throw new BadRequestError('Some privilege not exists')
@@ -80,6 +92,8 @@ class PublisherControler {
       (hope === undefined || hope === publisher.hope) &&
       (nickname === undefined || nickname === publisher.nickname) &&
       (birthDate === undefined || birthDate === publisher.birthDate) &&
+      (pioneerMonths === undefined || pioneerMonths === publisher.pioneerMonths) &&
+      (situation === undefined || situation === publisher.situation) &&
       privileges === undefined
     ) {
       throw new BadRequestError('Any change detected')
@@ -110,8 +124,10 @@ class PublisherControler {
     publisher.gender = gender !== undefined ? gender : publisher.gender
     publisher.hope = hope !== undefined ? hope : publisher.hope
     publisher.privileges = privileges !== undefined ? privileges : publisher.privileges
+    publisher.pioneerMonths = pioneerMonths !== undefined ? pioneerMonths : publisher.pioneerMonths
     publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate
     publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed
+    publisher.situation = situation !== undefined ? situation : publisher.situation
 
     await publisherRepository.save(publisher)
 

@@ -39,21 +39,9 @@ __decorate([
     __metadata("design:type", Publisher_1.Publisher)
 ], Report.prototype, "publisher", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "int", nullable: true }),
-    __metadata("design:type", Number)
-], Report.prototype, "publications", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: "int", nullable: true }),
-    __metadata("design:type", Number)
-], Report.prototype, "videos", void 0);
-__decorate([
     (0, typeorm_1.Column)({ type: "int" || 'string' }),
     __metadata("design:type", Number)
 ], Report.prototype, "hours", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: "int", nullable: true }),
-    __metadata("design:type", Number)
-], Report.prototype, "revisits", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "int", nullable: true }),
     __metadata("design:type", Number)

@@ -1,4 +1,4 @@
-import { Gender, Hope } from "../../entities/Publisher";
+import { Gender, Hope, Situation } from "../../entities/Publisher";
 import { Privileges } from "../../types/privileges";
 
 export type ParamsPublisherDeleteAndUpdateTypes = {
@@ -24,6 +24,7 @@ export interface BodyPublisherCreateTypes {
     birthDate?: Date
     gender: Gender
     privileges?: Privileges[]
+    pioneerMonths: string[]
     congregation_id: string
 }
 export interface BodyPublisherUpdateTypes {
@@ -33,7 +34,9 @@ export interface BodyPublisherUpdateTypes {
     dateImmersed?: Date
     birthDate?: Date
     privileges?: Privileges[]
+    pioneerMonths: string[]
     hope: Hope
     gender: Gender
+    situation?: Situation
 }
 

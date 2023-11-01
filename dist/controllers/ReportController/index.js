@@ -7,7 +7,7 @@ const enumWeekDays_1 = require("../../types/enumWeekDays");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 class ReportController {
     async create(req, res) {
-        const { month, year, publisher, publications, videos, hours, revisits, studies, observations } = req.body;
+        const { month, year, publisher, hours, studies, observations } = req.body;
         if (!Object.values(enumWeekDays_1.Months).some(enumMonth => enumMonth === month)) {
             return res.status(400).json({ message: 'Invalid month value' });
         }
@@ -32,10 +32,7 @@ class ReportController {
             }
         });
         if (existingReport) {
-            existingReport.publications = publications;
-            existingReport.videos = videos;
             existingReport.hours = hours;
-            existingReport.revisits = revisits;
             existingReport.studies = studies;
             existingReport.observations = observations;
             await reportRepository_1.reportRepository.save(existingReport).then(updatedReport => {
@@ -49,10 +46,7 @@ class ReportController {
                 month: month,
                 year,
                 publisher: publisherExists,
-                publications,
-                videos,
                 hours,
-                revisits,
                 studies,
                 observations
             });
@@ -83,10 +77,7 @@ class ReportController {
         const response = reports.map(report => ({
             month: report.month,
             year: report.year,
-            publications: report.publications,
-            videos: report.videos,
             hours: report.hours,
-            revisits: report.revisits,
             studies: report.studies,
             observations: report.observations,
             publisher: {
