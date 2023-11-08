@@ -50,6 +50,14 @@ __decorate([
     (0, typeorm_1.Column)({ type: "text", nullable: true }),
     __metadata("design:type", String)
 ], Report.prototype, "observations", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)(),
+    __metadata("design:type", Date)
+], Report.prototype, "created_at", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)(),
+    __metadata("design:type", Date)
+], Report.prototype, "updated_at", void 0);
 Report = __decorate([
     (0, typeorm_1.Entity)('reports')
 ], Report);

@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Congregation } from "./Congregation";
 import { GroupOverseers } from "./GroupOverseers";
 import { Group } from "./Group";
@@ -56,6 +56,9 @@ export class Publisher {
     @Column({ type: "timestamp", nullable: true })
     birthDate: Date
 
+    @Column({ type: "timestamp", nullable: true })
+    startPioneer: Date
+
     @Column({ type: 'simple-array', nullable: true })
     privileges: string[]
 
@@ -76,4 +79,10 @@ export class Publisher {
     @ManyToOne(() => GroupOverseers, { nullable: true, onDelete: "SET NULL" }) // Relacionamento Many-to-One opcional com GroupOverseers
     @JoinColumn({ name: 'group_overseers_id' })
     groupOverseers: GroupOverseers;
+
+    @CreateDateColumn()
+    created_at: Date
+
+    @UpdateDateColumn()
+    updated_at: Date
 }

@@ -1,21 +1,24 @@
-import { Response } from "express-serve-static-core"
+import { Request, Response } from "express-serve-static-core"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { Privileges } from "../../types/privileges"
 import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes } from "./types"
-import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
+import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { messageErrors } from "../../helpers/messageErrors"
-import { groupOverseersRepository } from "../../repositories/groupOverseersRepository"
-import { groupRepository } from "../../repositories/groupRepository"
+import moment from "moment-timezone"
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
-    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths } = req.body
+    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer } = req.body
 
     if (privileges) {
       if (privileges.includes(Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
-        throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "PIONEIRO_AUXILIAR" privilege');
+        throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "Pioneiro Auxiliar" privilege')
+      }
+
+      if(privileges.includes(Privileges.PIONEIROREGULAR) && !startPioneer){
+        throw new BadRequestError('You must provide the "startPioneer" field when assigning the "Pioneiro Regular" ou "Pioneiro auxiliar indeterminado" privilege')
       }
     }
 
@@ -55,7 +58,8 @@ class PublisherControler {
       birthDate,
       privileges,
       pioneerMonths,
-      congregation
+      congregation, 
+      startPioneer
     })
 
     await publisherRepository.save(newPublisher).catch(err => {
@@ -66,7 +70,7 @@ class PublisherControler {
   }
 
   async update(req: CustomRequest<BodyPublisherUpdateTypes>, res: Response) {
-    const { id, fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation } = req.body
+    const { id, fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, startPioneer } = req.body
 
     const publisher = await publisherRepository.findOne({ where: { id } })
 
@@ -75,9 +79,12 @@ class PublisherControler {
     }
 
     if (privileges) {
-
       if (privileges.includes(Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
-        throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "PIONEIRO AUXILIAR" privilege');
+        throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "PIONEIRO AUXILIAR" privilege')
+      }
+
+      if(privileges.includes(Privileges.PIONEIROREGULAR) && !startPioneer){
+        throw new BadRequestError('You must provide the "startRegularPioneer" field when assigning the "Pioneiro Regular" privilege')
       }
 
       const privilegesExists = privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
@@ -94,6 +101,7 @@ class PublisherControler {
       (birthDate === undefined || birthDate === publisher.birthDate) &&
       (pioneerMonths === undefined || pioneerMonths === publisher.pioneerMonths) &&
       (situation === undefined || situation === publisher.situation) &&
+      (startPioneer === undefined || startPioneer === publisher.startPioneer) &&
       privileges === undefined
     ) {
       throw new BadRequestError('Any change detected')
@@ -128,6 +136,7 @@ class PublisherControler {
     publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate
     publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed
     publisher.situation = situation !== undefined ? situation : publisher.situation
+    publisher.startPioneer = startPioneer !== undefined ? startPioneer : publisher.startPioneer
 
     await publisherRepository.save(publisher)
 
@@ -153,7 +162,6 @@ class PublisherControler {
 
   async getPublishers(req: ParamsCustomRequest<ParamsGetPublishersTypes>, res: Response) {
     const { congregation_id } = req.params
-
 
     const congregation = await congregationRepository.findOneBy({ id: congregation_id })
 

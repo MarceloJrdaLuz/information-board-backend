@@ -78,6 +78,10 @@ __decorate([
     __metadata("design:type", Date)
 ], Publisher.prototype, "birthDate", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
+    __metadata("design:type", Date)
+], Publisher.prototype, "startPioneer", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'simple-array', nullable: true }),
     __metadata("design:type", Array)
 ], Publisher.prototype, "privileges", void 0);
@@ -104,6 +108,14 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'group_overseers_id' }),
     __metadata("design:type", GroupOverseers_1.GroupOverseers)
 ], Publisher.prototype, "groupOverseers", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)(),
+    __metadata("design:type", Date)
+], Publisher.prototype, "created_at", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)(),
+    __metadata("design:type", Date)
+], Publisher.prototype, "updated_at", void 0);
 Publisher = __decorate([
     (0, typeorm_1.Entity)('publishers')
 ], Publisher);

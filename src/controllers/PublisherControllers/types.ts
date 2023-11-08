@@ -22,6 +22,7 @@ export interface BodyPublisherCreateTypes {
     hope: Hope
     dateImmersed?: Date
     birthDate?: Date
+    startPioneer?: Date
     gender: Gender
     privileges?: Privileges[]
     pioneerMonths: string[]
@@ -32,6 +33,7 @@ export interface BodyPublisherUpdateTypes {
     fullName?: string
     nickname?: string
     dateImmersed?: Date
+    startPioneer?: Date
     birthDate?: Date
     privileges?: Privileges[]
     pioneerMonths: string[]
