@@ -64,6 +64,7 @@ routes.post('/notice/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATI
 routes.get('/notice/:notice_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']), NoticeController_1.default.getNotice);
 routes.delete('/notice/:notice_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']), NoticeController_1.default.delete);
 routes.put('/notice/:notice_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']), NoticeController_1.default.update);
+routes.put('/report', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), ReportController_1.default.updatePrivilege);
 routes.post('/report', ReportController_1.default.create);
 routes.get('/reports/:congregationId', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'REPORTS_VIEWER']), ReportController_1.default.getReports);
 routes.post('/group/:group_id/add-publishers', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController_1.default.addPublishersGroup);
@@ -74,4 +75,5 @@ routes.get('/groups/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATIO
 routes.put('/group/:group_id/change-groupOverseer', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController_1.default.updateGroupOverseer);
 routes.post('/consentRecord', ConsentRecordController_1.default.create);
 routes.post('/checkConsentRecords', ConsentRecordController_1.default.checkConsent);
+routes.get('/publishersAdd', PublisherControllers_1.default.updatePublishers);
 exports.default = routes;

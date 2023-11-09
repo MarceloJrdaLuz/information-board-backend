@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
-import { BodyReportCreateTypes, ParamsGetReportsTypes } from "./types"
+import { BodyReportCreateTypes, BodyUpdatePrivilegeTypes, ParamsGetReportsTypes } from "./types"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { reportRepository } from "../../repositories/reportRepository"
@@ -9,6 +9,7 @@ import { Publisher } from "../../entities/Publisher"
 import { FindOperator, Not } from "typeorm"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { Report } from "../../entities/Report"
+import { Privileges } from "../../types/privileges"
 
 class ReportController {
   async create(req: CustomRequest<BodyReportCreateTypes>, res: Response) {
@@ -89,6 +90,7 @@ class ReportController {
     if (reports.length === 0) throw new NotFoundError('Any report in this congregation was found')
 
     const response = reports.map(report => ({
+      id: report.id,
       month: report.month,
       year: report.year,
       hours: report.hours,
@@ -96,11 +98,33 @@ class ReportController {
       observations: report.observations,
       publisher: {
         ...report.publisher
-      }
+      }, 
+      privileges: report.privileges
     }))
     res.json(response)
   }
+ 
+  async updatePrivilege(req: CustomRequest<BodyUpdatePrivilegeTypes>, res: Response) {
+    const { reports } = req.body
 
+    for (const report of reports) {
+      // Encontre o relatório no banco de dados com base no report_id
+      const existingReport = await reportRepository.findOneBy({ id: report.report_id });
+
+
+      if (existingReport) {
+        const privilegesExists = report.privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
+
+        if (!privilegesExists) throw new BadRequestError('Some privilege not exists')
+        // Atualize o privilégio do relatório com os novos valores
+        existingReport.privileges = report.privileges;
+
+        // Salve a atualização no banco de dados
+        await reportRepository.save(existingReport)
+      }
+    }
+
+    res.send()
+  }
 }
-
 export default new ReportController()

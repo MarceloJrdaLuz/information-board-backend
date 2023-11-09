@@ -213,6 +213,21 @@ class PublisherControler {
 
     return res.status(200).json(publisher)
   }
+
+  async updatePublishers(req: Request, res: Response) {
+    const publishers = await publisherRepository.find({})
+
+    for (const publisher of publishers){
+      if(!publisher.privileges){
+        publisher.privileges = [Privileges.PUBLICADOR]
+
+        await publisherRepository.save(publisher)
+
+      }
+    }
+
+    res.send()
+  }
 }
 
 export default new PublisherControler()

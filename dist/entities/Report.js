@@ -24,6 +24,10 @@ __decorate([
     __metadata("design:type", String)
 ], Report.prototype, "month", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'simple-array', nullable: true }),
+    __metadata("design:type", Array)
+], Report.prototype, "privileges", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: "text" }),
     __metadata("design:type", String)
 ], Report.prototype, "year", void 0);

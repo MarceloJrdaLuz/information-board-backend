@@ -1,5 +1,6 @@
 
 export enum Privileges{
+    PUBLICADOR = "Publicador",
     ANCIAO = "Ancião",
     SM = 'Servo Ministerial',
     PIONEIROAUXILIAR = 'Pioneiro Auxiliar',

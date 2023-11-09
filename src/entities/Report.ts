@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Publisher } from "./Publisher";
 import { Months } from "../types/enumWeekDays";
+import { Privileges } from "../types/privileges";
 
 @Entity('reports')
 export class Report {
@@ -9,6 +10,9 @@ export class Report {
 
     @Column({ type: "enum", enum: Months })
     month: Months
+
+    @Column({ type: 'simple-array', nullable: true })
+    privileges: string[]
 
     @Column({ type: "text" })
     year: string

@@ -5,6 +5,7 @@ const api_errors_1 = require("../../helpers/api-errors");
 const reportRepository_1 = require("../../repositories/reportRepository");
 const enumWeekDays_1 = require("../../types/enumWeekDays");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
+const privileges_1 = require("../../types/privileges");
 class ReportController {
     async create(req, res) {
         const { month, year, publisher, hours, studies, observations } = req.body;
@@ -75,6 +76,7 @@ class ReportController {
         if (reports.length === 0)
             throw new api_errors_1.NotFoundError('Any report in this congregation was found');
         const response = reports.map(report => ({
+            id: report.id,
             month: report.month,
             year: report.year,
             hours: report.hours,
@@ -82,9 +84,28 @@ class ReportController {
             observations: report.observations,
             publisher: {
                 ...report.publisher
-            }
+            },
+            privileges: report.privileges
         }));
         res.json(response);
+    }
+    async updatePrivilege(req, res) {
+        var _a;
+        const { reports } = req.body;
+        for (const report of reports) {
+            // Encontre o relatório no banco de dados com base no report_id
+            const existingReport = await reportRepository_1.reportRepository.findOneBy({ id: report.report_id });
+            if (existingReport) {
+                const privilegesExists = (_a = report.privileges) === null || _a === void 0 ? void 0 : _a.every(privilege => Object.values(privileges_1.Privileges).includes(privilege));
+                if (!privilegesExists)
+                    throw new api_errors_1.BadRequestError('Some privilege not exists');
+                // Atualize o privilégio do relatório com os novos valores
+                existingReport.privileges = report.privileges;
+                // Salve a atualização no banco de dados
+                await reportRepository_1.reportRepository.save(existingReport);
+            }
+        }
+        res.send();
     }
 }
 exports.default = new ReportController();

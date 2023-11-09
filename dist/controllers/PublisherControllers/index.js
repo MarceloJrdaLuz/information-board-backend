@@ -170,5 +170,15 @@ class PublisherControler {
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.publisher);
         return res.status(200).json(publisher);
     }
+    async updatePublishers(req, res) {
+        const publishers = await publisherRepository_1.publisherRepository.find({});
+        for (const publisher of publishers) {
+            if (!publisher.privileges) {
+                publisher.privileges = [privileges_1.Privileges.PUBLICADOR];
+                await publisherRepository_1.publisherRepository.save(publisher);
+            }
+        }
+        res.send();
+    }
 }
 exports.default = new PublisherControler();
