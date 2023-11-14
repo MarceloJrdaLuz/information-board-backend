@@ -13,7 +13,6 @@ class NoticeController {
 
         const congregation = await congregationRepository.findOneBy({ id: congregation_id })
 
-
         if (!congregation) {
             throw new BadRequestError('Congregation not found')
         }

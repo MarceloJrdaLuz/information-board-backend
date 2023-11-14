@@ -18,6 +18,8 @@ const ReportController_1 = __importDefault(require("./controllers/ReportControll
 const GroupController_1 = __importDefault(require("./controllers/GroupController"));
 const ConsentRecordController_1 = __importDefault(require("./controllers/ConsentRecordController"));
 const NoticeController_1 = __importDefault(require("./controllers/NoticeController"));
+const TotalsReportsController_1 = __importDefault(require("./controllers/TotalsReportsController"));
+const MeetingAssistanceController_1 = __importDefault(require("./controllers/MeetingAssistanceController"));
 const routes = (0, express_1.Router)();
 routes.post('/user', UserController_1.default.create); //
 routes.post('/login', UserController_1.default.login); //
@@ -65,6 +67,8 @@ routes.get('/notice/:notice_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'N
 routes.delete('/notice/:notice_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']), NoticeController_1.default.delete);
 routes.put('/notice/:notice_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']), NoticeController_1.default.update);
 routes.put('/report', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), ReportController_1.default.updatePrivilege);
+routes.post('/report/totals/:congregation_id', TotalsReportsController_1.default.create);
+routes.get('/report/totals/:congregation_id', TotalsReportsController_1.default.get);
 routes.post('/report', ReportController_1.default.create);
 routes.get('/reports/:congregationId', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'REPORTS_VIEWER']), ReportController_1.default.getReports);
 routes.post('/group/:group_id/add-publishers', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController_1.default.addPublishersGroup);
@@ -75,5 +79,6 @@ routes.get('/groups/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATIO
 routes.put('/group/:group_id/change-groupOverseer', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController_1.default.updateGroupOverseer);
 routes.post('/consentRecord', ConsentRecordController_1.default.create);
 routes.post('/checkConsentRecords', ConsentRecordController_1.default.checkConsent);
-routes.get('/publishersAdd', PublisherControllers_1.default.updatePublishers);
+routes.post('/assistance/:congregation_id', MeetingAssistanceController_1.default.create);
+routes.get('/assistance/:congregation_id', MeetingAssistanceController_1.default.getAssistance);
 exports.default = routes;

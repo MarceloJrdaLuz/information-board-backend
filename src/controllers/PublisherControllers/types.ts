@@ -27,6 +27,7 @@ export interface BodyPublisherCreateTypes {
     privileges?: Privileges[]
     pioneerMonths: string[]
     congregation_id: string
+    situation: Situation
 }
 export interface BodyPublisherUpdateTypes {
     id: string

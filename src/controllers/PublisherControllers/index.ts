@@ -1,4 +1,4 @@
-import { Request, Response } from "express-serve-static-core"
+import {  Response } from "express-serve-static-core"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { Privileges } from "../../types/privileges"
@@ -6,11 +6,10 @@ import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherT
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { messageErrors } from "../../helpers/messageErrors"
-import moment from "moment-timezone"
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
-    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer } = req.body
+    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation } = req.body
 
     if (privileges) {
       if (privileges.includes(Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
@@ -59,7 +58,8 @@ class PublisherControler {
       privileges,
       pioneerMonths,
       congregation, 
-      startPioneer
+      startPioneer, 
+      situation
     })
 
     await publisherRepository.save(newPublisher).catch(err => {
@@ -212,21 +212,6 @@ class PublisherControler {
     if (!publisher) throw new NotFoundError(messageErrors.notFound.publisher)
 
     return res.status(200).json(publisher)
-  }
-
-  async updatePublishers(req: Request, res: Response) {
-    const publishers = await publisherRepository.find({})
-
-    for (const publisher of publishers){
-      if(!publisher.privileges){
-        publisher.privileges = [Privileges.PUBLICADOR]
-
-        await publisherRepository.save(publisher)
-
-      }
-    }
-
-    res.send()
   }
 }
 

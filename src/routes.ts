@@ -13,6 +13,8 @@ import ReportController from "./controllers/ReportController";
 import GroupController from "./controllers/GroupController";
 import ConsentRecordController from "./controllers/ConsentRecordController";
 import NoticeController from "./controllers/NoticeController";
+import TotalsReportsController from "./controllers/TotalsReportsController";
+import MeetingAssistanceController from "./controllers/MeetingAssistanceController";
 
 const routes = Router()
 
@@ -73,6 +75,8 @@ routes.delete('/notice/:notice_id', is(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']
 routes.put('/notice/:notice_id', is(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']), NoticeController.update)
 
 routes.put('/report', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), ReportController.updatePrivilege)
+routes.post('/report/totals/:congregation_id', TotalsReportsController.create)
+routes.get('/report/totals/:congregation_id', TotalsReportsController.get)
 routes.post('/report', ReportController.create)
 routes.get('/reports/:congregationId', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'REPORTS_VIEWER']), ReportController.getReports)
 
@@ -86,7 +90,8 @@ routes.put('/group/:group_id/change-groupOverseer', is(['ADMIN_CONGREGATION', 'G
 routes.post('/consentRecord', ConsentRecordController.create)
 routes.post('/checkConsentRecords', ConsentRecordController.checkConsent)
 
-routes.get('/publishersAdd', PublisherControllers.updatePublishers)
+routes.post('/assistance/:congregation_id', MeetingAssistanceController.create)
+routes.get('/assistance/:congregation_id', MeetingAssistanceController.getAssistance)
 
 
 export default routes

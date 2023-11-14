@@ -7,7 +7,7 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const messageErrors_1 = require("../../helpers/messageErrors");
 class PublisherControler {
     async create(req, res) {
-        const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer } = req.body;
+        const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation } = req.body;
         if (privileges) {
             if (privileges.includes(privileges_1.Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
                 throw new api_errors_1.BadRequestError('You must provide the "pioneerMonths" field when assigning the "Pioneiro Auxiliar" privilege');
@@ -49,7 +49,8 @@ class PublisherControler {
             privileges,
             pioneerMonths,
             congregation,
-            startPioneer
+            startPioneer,
+            situation
         });
         await publisherRepository_1.publisherRepository.save(newPublisher).catch(err => {
             throw new api_errors_1.BadRequestError(err);
@@ -169,16 +170,6 @@ class PublisherControler {
         if (!publisher)
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.publisher);
         return res.status(200).json(publisher);
-    }
-    async updatePublishers(req, res) {
-        const publishers = await publisherRepository_1.publisherRepository.find({});
-        for (const publisher of publishers) {
-            if (!publisher.privileges) {
-                publisher.privileges = [privileges_1.Privileges.PUBLICADOR];
-                await publisherRepository_1.publisherRepository.save(publisher);
-            }
-        }
-        res.send();
     }
 }
 exports.default = new PublisherControler();
