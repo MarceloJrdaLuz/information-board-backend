@@ -67,6 +67,7 @@ routes.get('/notice/:notice_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'N
 routes.delete('/notice/:notice_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']), NoticeController_1.default.delete);
 routes.put('/notice/:notice_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']), NoticeController_1.default.update);
 routes.put('/report', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), ReportController_1.default.updatePrivilege);
+routes.post('/reportManually', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), ReportController_1.default.createReportManually);
 routes.post('/report/totals/:congregation_id', TotalsReportsController_1.default.create);
 routes.get('/report/totals/:congregation_id', TotalsReportsController_1.default.get);
 routes.post('/report', ReportController_1.default.create);

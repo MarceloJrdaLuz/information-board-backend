@@ -75,6 +75,7 @@ routes.delete('/notice/:notice_id', is(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']
 routes.put('/notice/:notice_id', is(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']), NoticeController.update)
 
 routes.put('/report', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), ReportController.updatePrivilege)
+routes.post('/reportManually', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), ReportController.createReportManually)
 routes.post('/report/totals/:congregation_id', TotalsReportsController.create)
 routes.get('/report/totals/:congregation_id', TotalsReportsController.get)
 routes.post('/report', ReportController.create)

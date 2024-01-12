@@ -89,6 +89,37 @@ class ReportController {
         }));
         res.json(response);
     }
+    async getReportsByMonth(req, res) {
+        const { congregationId } = req.params;
+        const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregationId });
+        if (!congregation)
+            throw new api_errors_1.NotFoundError('Congregation was not found');
+        const reports = await reportRepository_1.reportRepository.find({
+            where: {
+                publisher: {
+                    congregation: {
+                        id: congregationId,
+                    },
+                },
+            },
+            relations: ["publisher"],
+        });
+        if (reports.length === 0)
+            throw new api_errors_1.NotFoundError('Any report in this congregation was found');
+        const response = reports.map(report => ({
+            id: report.id,
+            month: report.month,
+            year: report.year,
+            hours: report.hours,
+            studies: report.studies,
+            observations: report.observations,
+            publisher: {
+                ...report.publisher
+            },
+            privileges: report.privileges
+        }));
+        res.json(response);
+    }
     async updatePrivilege(req, res) {
         var _a;
         const { reports } = req.body;
@@ -106,6 +137,66 @@ class ReportController {
             }
         }
         res.send();
+    }
+    async createReportManually(req, res) {
+        var _a, _b;
+        const { month, year, publisher, hours, studies, observations } = req.body;
+        if (!Object.values(enumWeekDays_1.Months).some(enumMonth => enumMonth === month)) {
+            return res.status(400).json({ message: 'Invalid month value' });
+        }
+        const publisherExists = await publisherRepository_1.publisherRepository.findOne({
+            where: {
+                fullName: publisher.fullName,
+                nickname: publisher.nickName,
+                congregation: {
+                    id: publisher.congregation_id
+                },
+            }
+        });
+        if (!publisherExists)
+            throw new api_errors_1.NotFoundError('Publisher was not found');
+        let existingReport = await reportRepository_1.reportRepository.findOne({
+            where: {
+                month: month,
+                year,
+                publisher: {
+                    id: publisherExists.id // Assuming 'id' is the primary key property of the 'Publisher' entity
+                }
+            }
+        });
+        if (existingReport) {
+            const privilegesExists = (_a = publisher.privileges) === null || _a === void 0 ? void 0 : _a.every(privilege => Object.values(privileges_1.Privileges).includes(privilege));
+            if (!privilegesExists)
+                throw new api_errors_1.BadRequestError('Some privilege not exists');
+            existingReport.hours = hours;
+            existingReport.studies = studies;
+            existingReport.observations = observations;
+            existingReport.privileges = publisher.privileges;
+            await reportRepository_1.reportRepository.save(existingReport).then(updatedReport => {
+                return res.status(200).json(updatedReport);
+            }).catch(err => {
+                console.log(err);
+            });
+        }
+        else {
+            const privilegesExists = (_b = publisher.privileges) === null || _b === void 0 ? void 0 : _b.every(privilege => Object.values(privileges_1.Privileges).includes(privilege));
+            if (!privilegesExists)
+                throw new api_errors_1.BadRequestError('Some privilege not exists');
+            const newReport = reportRepository_1.reportRepository.create({
+                month: month,
+                year,
+                publisher: publisherExists,
+                privileges: publisher.privileges,
+                hours,
+                studies,
+                observations
+            });
+            await reportRepository_1.reportRepository.save(newReport).then(createdReport => {
+                return res.status(201).json(createdReport);
+            }).catch(err => {
+                console.log(err);
+            });
+        }
     }
 }
 exports.default = new ReportController();

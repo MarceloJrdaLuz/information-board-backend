@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
-import { BodyReportCreateTypes, BodyUpdatePrivilegeTypes, ParamsGetReportsTypes } from "./types"
+import { BodyReportCreateManuallyTypes, BodyReportCreateTypes, BodyUpdatePrivilegeTypes, ParamsGetReportsTypes } from "./types"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { reportRepository } from "../../repositories/reportRepository"
@@ -98,12 +98,47 @@ class ReportController {
       observations: report.observations,
       publisher: {
         ...report.publisher
-      }, 
+      },
       privileges: report.privileges
     }))
     res.json(response)
   }
- 
+
+  async getReportsByMonth(req: ParamsCustomRequest<ParamsGetReportsTypes>, res: Response) {
+    const { congregationId } = req.params
+
+    const congregation = await congregationRepository.findOneBy({ id: congregationId })
+
+    if (!congregation) throw new NotFoundError('Congregation was not found')
+
+    const reports = await reportRepository.find({
+      where: {
+        publisher: {
+          congregation: {
+            id: congregationId,
+          },
+        },
+      },
+      relations: ["publisher"],
+    })
+
+    if (reports.length === 0) throw new NotFoundError('Any report in this congregation was found')
+
+    const response = reports.map(report => ({
+      id: report.id,
+      month: report.month,
+      year: report.year,
+      hours: report.hours,
+      studies: report.studies,
+      observations: report.observations,
+      publisher: {
+        ...report.publisher
+      },
+      privileges: report.privileges
+    }))
+    res.json(response)
+  }
+
   async updatePrivilege(req: CustomRequest<BodyUpdatePrivilegeTypes>, res: Response) {
     const { reports } = req.body
 
@@ -125,6 +160,75 @@ class ReportController {
     }
 
     res.send()
+  }
+
+  async createReportManually(req: CustomRequest<BodyReportCreateManuallyTypes>, res: Response) {
+    const { month, year, publisher, hours, studies, observations } = req.body
+
+    if (!Object.values(Months).some(enumMonth => enumMonth === month)) {
+      return res.status(400).json({ message: 'Invalid month value' })
+    }
+
+    const publisherExists = await publisherRepository.findOne({
+      where: {
+        fullName: publisher.fullName,
+        nickname: publisher.nickName,
+        congregation: {
+          id: publisher.congregation_id
+        },
+      }
+    })
+
+    if (!publisherExists) throw new NotFoundError('Publisher was not found')
+
+
+    let existingReport = await reportRepository.findOne({
+      where: {
+        month: month as Months,
+        year,
+        publisher: {
+          id: publisherExists.id // Assuming 'id' is the primary key property of the 'Publisher' entity
+        }
+      }
+    })
+
+
+    if (existingReport) {
+      const privilegesExists = publisher.privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
+
+      if (!privilegesExists) throw new BadRequestError('Some privilege not exists')
+
+      existingReport.hours = hours
+      existingReport.studies = studies
+      existingReport.observations = observations
+      existingReport.privileges = publisher.privileges
+
+      await reportRepository.save(existingReport).then(updatedReport => {
+        return res.status(200).json(updatedReport)
+      }).catch(err => {
+        console.log(err)
+      })
+    } else {
+      const privilegesExists = publisher.privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
+
+      if (!privilegesExists) throw new BadRequestError('Some privilege not exists')
+
+      const newReport = reportRepository.create({
+        month: month as Months,
+        year,
+        publisher: publisherExists,
+        privileges: publisher.privileges,
+        hours,
+        studies,
+        observations
+      })
+
+      await reportRepository.save(newReport).then(createdReport => {
+        return res.status(201).json(createdReport)
+      }).catch(err => {
+        console.log(err)
+      })
+    }
   }
 }
 export default new ReportController()
