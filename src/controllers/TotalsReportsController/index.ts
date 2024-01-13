@@ -18,29 +18,58 @@ class TotalsReportsController {
       throw new NotFoundError(messageErrors.notFound.congregation)
     }
 
+    let responseSend
+
     for (const total of totals) {
       if (!Object.values(Months).some(enumMonth => enumMonth === total.month)) {
         return res.status(400).json({ message: 'Invalid month value' })
       }
 
-      const newTotalReports = totalsReportsRepository.create({
-        congregation,
-        month: total.month as Months,
-        year: total.year,
-        publishersActives: total.publishersActives,
-        privileges: total.privileges,
-        quantity: total.quantity,
-        hours: total.hours ?? 0,
-        studies: total.studies ?? 0,
+      const totalsAlreadyExists = await totalsReportsRepository.findOne({
+        where: {
+          congregation: {
+            id: congregation_id
+          },
+          month: total.month as Months,
+          year: total.year,
+          privileges: total.privileges
+        }
       })
 
-      await totalsReportsRepository.save(newTotalReports).then(updatedReport => {
-        return res.status(200).json(updatedReport)
-      }).catch(err => {
-        console.log(err)
-      })
+      if (totalsAlreadyExists) {
+        totalsAlreadyExists.publishersActives = total.publishersActives
+        totalsAlreadyExists.privileges = total.privileges
+        totalsAlreadyExists.quantity = total.quantity
+        totalsAlreadyExists.hours = total.hours ?? 0
+        totalsAlreadyExists.studies = total.studies ?? 0
+
+        await totalsReportsRepository.save(totalsAlreadyExists).then(updatedReport => {
+          responseSend = updatedReport
+          return 
+        }).catch(err => {
+          console.log(err)
+        })
+      } else {
+        const newTotalReports = totalsReportsRepository.create({
+          congregation,
+          month: total.month as Months,
+          year: total.year,
+          publishersActives: total.publishersActives,
+          privileges: total.privileges,
+          quantity: total.quantity,
+          hours: total.hours ?? 0,
+          studies: total.studies ?? 0,
+        })
+
+        await totalsReportsRepository.save(newTotalReports).then(updatedReport => {
+          responseSend = updatedReport
+          return
+        }).catch(err => {
+          console.log(err)
+        })
+      }
     }
-    res.send()
+    res.send(responseSend)
   }
 
   async get(req: ParamsCustomRequest<ParamsTotalsReportsCreateTypes>, res: Response) {
