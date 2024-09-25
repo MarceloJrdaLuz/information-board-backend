@@ -28,10 +28,15 @@ export interface IUpdateReport {
     report_id: string
     privileges: string[]
 }
+
 export interface BodyUpdatePrivilegeTypes {
     reports: IUpdateReport[]
 }
 
 export type ParamsGetReportsTypes = {
     congregationId: string
+}
+
+export type ParamsDeleteReportypes = {
+    report_id: string
 }

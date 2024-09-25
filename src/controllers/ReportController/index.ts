@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
-import { BodyReportCreateManuallyTypes, BodyReportCreateTypes, BodyUpdatePrivilegeTypes, ParamsGetReportsTypes } from "./types"
+import { BodyReportCreateManuallyTypes, BodyReportCreateTypes, BodyUpdatePrivilegeTypes, ParamsDeleteReportypes, ParamsGetReportsTypes } from "./types"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { reportRepository } from "../../repositories/reportRepository"
@@ -160,6 +160,22 @@ class ReportController {
     }
 
     res.send()
+  }
+
+  async deleteReport(req: ParamsCustomRequest<ParamsDeleteReportypes>, res: Response){
+    const {report_id: id} = req.params
+
+    const report = await reportRepository.findOne({
+      where: {
+        id
+      },
+    })
+
+    if (!report) throw new BadRequestError('Report not exists')
+
+    await reportRepository.remove(report)
+
+    return res.status(200).end()
   }
 
   async createReportManually(req: CustomRequest<BodyReportCreateManuallyTypes>, res: Response) {

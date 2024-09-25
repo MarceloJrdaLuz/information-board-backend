@@ -138,6 +138,18 @@ class ReportController {
         }
         res.send();
     }
+    async deleteReport(req, res) {
+        const { report_id: id } = req.params;
+        const report = await reportRepository_1.reportRepository.findOne({
+            where: {
+                id
+            },
+        });
+        if (!report)
+            throw new api_errors_1.BadRequestError('Report not exists');
+        await reportRepository_1.reportRepository.remove(report);
+        return res.status(200).end();
+    }
     async createReportManually(req, res) {
         var _a, _b;
         const { month, year, publisher, hours, studies, observations } = req.body;
