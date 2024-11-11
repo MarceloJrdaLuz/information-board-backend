@@ -3,7 +3,7 @@ import { noticeRepository } from "../../repositories/noticeRepository";
 import { LessThanOrEqual } from "typeorm";
 
 class CronJobController {
-    async deleteNotices(req: Request, res: Response) {
+    async deleteExpiredNotices(req: Request, res: Response) {
         console.log('Task finished')
 
         const notices = await noticeRepository.find({where: {

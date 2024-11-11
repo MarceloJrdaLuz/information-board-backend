@@ -96,6 +96,6 @@ routes.post('/checkConsentRecords', ConsentRecordController.checkConsent)
 routes.post('/assistance/:congregation_id', MeetingAssistanceController.create)
 routes.get('/assistance/:congregation_id', MeetingAssistanceController.getAssistance)
 
-routes.get('/deleteNoticesExpired', verifyCronSecret, CronJobController.deleteNotices)
+routes.get('/deleteExpiredNotices', verifyCronSecret, CronJobController.deleteExpiredNotices)
 
 export default routes

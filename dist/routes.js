@@ -84,5 +84,5 @@ routes.post('/consentRecord', ConsentRecordController_1.default.create);
 routes.post('/checkConsentRecords', ConsentRecordController_1.default.checkConsent);
 routes.post('/assistance/:congregation_id', MeetingAssistanceController_1.default.create);
 routes.get('/assistance/:congregation_id', MeetingAssistanceController_1.default.getAssistance);
-routes.get('/deleteNoticesExpired', permissions_1.verifyCronSecret, CronJobController_1.default.deleteNotices);
+routes.get('/deleteExpiredNotices', permissions_1.verifyCronSecret, CronJobController_1.default.deleteExpiredNotices);
 exports.default = routes;
