@@ -11,7 +11,10 @@ class CronJobController {
             }
         })
 
+        console.log(expiredNotices)
+
         if (expiredNotices.length === 0) {
+            console.log("No expired notices found")
             throw new NotFoundError("No expired notices found")
         }
 
