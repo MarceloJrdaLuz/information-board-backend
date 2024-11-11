@@ -2,12 +2,15 @@ import { Response, Request } from "express"
 import { noticeRepository } from "../../repositories/noticeRepository"
 import { LessThanOrEqual, LessThan } from "typeorm"
 import { NotFoundError } from "../../helpers/api-errors"
+import moment from "moment-timezone"
 
 class CronJobController {
     async deleteExpiredNotices(req: Request, res: Response) {
+        const startOfToday = moment().startOf('day').toDate()
+
         const expiredNotices = await noticeRepository.find({
             where: {
-                expired: LessThan(new Date())
+                expired: LessThan(startOfToday)
             }
         })
 
