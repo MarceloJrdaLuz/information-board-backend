@@ -15,9 +15,7 @@ class CronJobController {
                 expired: (0, typeorm_1.LessThan)(startOfToday)
             }
         });
-        console.log(expiredNotices);
         if (expiredNotices.length === 0) {
-            console.log("No expired notices found");
             throw new api_errors_1.NotFoundError("No expired notices found");
         }
         try {

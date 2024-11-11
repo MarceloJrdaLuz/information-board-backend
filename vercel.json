@@ -15,7 +15,7 @@
   "crons": [
     {
       "path": "/deleteExpiredNotices",
-      "schedule": "55 11 * * *"
+      "schedule": "15 13 * * *"
     }
   ]
 }
