@@ -3,12 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.is = exports.decoder = void 0;
+exports.is = exports.verifyCronSecret = exports.decoder = void 0;
 const jsonwebtoken_1 = require("jsonwebtoken");
 const api_errors_1 = require("../helpers/api-errors");
 const userRepository_1 = require("../repositories/userRepository");
 const jsonwebtoken_2 = __importDefault(require("jsonwebtoken"));
 const process_1 = __importDefault(require("process"));
+const config_1 = require("../config");
 async function decoder(request) {
     var _a, _b;
     const authHeader = request.headers.authorization;
@@ -37,6 +38,14 @@ async function decoder(request) {
     };
 }
 exports.decoder = decoder;
+function verifyCronSecret(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${config_1.config.cron_secret}`) {
+        throw new api_errors_1.UnauthorizedError('Cron secret invalid');
+    }
+    return next();
+}
+exports.verifyCronSecret = verifyCronSecret;
 function is(role) {
     const roleAuthorized = async (req, res, next) => {
         var _a;

@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "dist/index.js", 
+      "src": "dist/index.js",
       "use": "@vercel/node"
     }
   ],
@@ -10,6 +10,12 @@
     {
       "source": "/(.*)",
       "destination": "dist/index.js"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/deleteNotices",
+      "schedule": "40 11 * * *"
     }
   ]
 }

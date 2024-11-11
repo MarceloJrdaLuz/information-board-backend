@@ -6,7 +6,7 @@ import DocumentController from "./controllers/DocumentController";
 import CategoryController from "./controllers/CategoryController";
 import RoleController from "./controllers/RoleController";
 import PermissionController from "./controllers/PermissionController";
-import { is } from "./middlewares/permissions";
+import { is, verifyCronSecret } from "./middlewares/permissions";
 import { uploadFile } from "./config/multer";
 import PublisherControllers from "./controllers/PublisherControllers";
 import ReportController from "./controllers/ReportController";
@@ -15,6 +15,7 @@ import ConsentRecordController from "./controllers/ConsentRecordController";
 import NoticeController from "./controllers/NoticeController";
 import TotalsReportsController from "./controllers/TotalsReportsController";
 import MeetingAssistanceController from "./controllers/MeetingAssistanceController";
+import CronJobController from "./controllers/CronJobController";
 
 const routes = Router()
 
@@ -95,5 +96,6 @@ routes.post('/checkConsentRecords', ConsentRecordController.checkConsent)
 routes.post('/assistance/:congregation_id', MeetingAssistanceController.create)
 routes.get('/assistance/:congregation_id', MeetingAssistanceController.getAssistance)
 
+routes.get('/deleteNoticesExpired', verifyCronSecret, CronJobController.deleteNotices)
 
 export default routes

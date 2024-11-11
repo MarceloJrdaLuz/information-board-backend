@@ -14,7 +14,8 @@ export const config: {
     nodemailer_port: string
     db_certifate: string,
     google_storage_key: string,
-    environment: string
+    environment: string, 
+    cron_secret: string
 } = {
     app_url: process.env.APP_URL ?? "",
     storage_type: process.env.STORAGE_TYPE ?? "",
@@ -24,5 +25,6 @@ export const config: {
     nodemailer_pass: process.env.NODEMAILER_PASS ?? "",
     db_certifate: process.env.DB_CERTIFICATE ?? "",
     google_storage_key: process.env.GOOGLE_STORAGE_KEY ?? "",
-    environment: process.env.ENVIRONMENT ?? ""
+    environment: process.env.ENVIRONMENT ?? "", 
+    cron_secret: process.env.CRON_SECRET ?? ""
 }

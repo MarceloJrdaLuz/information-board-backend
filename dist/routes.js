@@ -20,6 +20,7 @@ const ConsentRecordController_1 = __importDefault(require("./controllers/Consent
 const NoticeController_1 = __importDefault(require("./controllers/NoticeController"));
 const TotalsReportsController_1 = __importDefault(require("./controllers/TotalsReportsController"));
 const MeetingAssistanceController_1 = __importDefault(require("./controllers/MeetingAssistanceController"));
+const CronJobController_1 = __importDefault(require("./controllers/CronJobController"));
 const routes = (0, express_1.Router)();
 routes.post('/user', UserController_1.default.create); //
 routes.post('/login', UserController_1.default.login); //
@@ -83,4 +84,5 @@ routes.post('/consentRecord', ConsentRecordController_1.default.create);
 routes.post('/checkConsentRecords', ConsentRecordController_1.default.checkConsent);
 routes.post('/assistance/:congregation_id', MeetingAssistanceController_1.default.create);
 routes.get('/assistance/:congregation_id', MeetingAssistanceController_1.default.getAssistance);
+routes.get('/deleteNoticesExpired', permissions_1.verifyCronSecret, CronJobController_1.default.deleteNotices);
 exports.default = routes;

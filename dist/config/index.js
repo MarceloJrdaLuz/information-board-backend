@@ -22,7 +22,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.config = void 0;
 const dotenv = __importStar(require("dotenv"));
@@ -39,5 +39,6 @@ exports.config = {
     nodemailer_pass: (_f = process.env.NODEMAILER_PASS) !== null && _f !== void 0 ? _f : "",
     db_certifate: (_g = process.env.DB_CERTIFICATE) !== null && _g !== void 0 ? _g : "",
     google_storage_key: (_h = process.env.GOOGLE_STORAGE_KEY) !== null && _h !== void 0 ? _h : "",
-    environment: (_j = process.env.ENVIRONMENT) !== null && _j !== void 0 ? _j : ""
+    environment: (_j = process.env.ENVIRONMENT) !== null && _j !== void 0 ? _j : "",
+    cron_secret: (_k = process.env.CRON_SECRET) !== null && _k !== void 0 ? _k : ""
 };
