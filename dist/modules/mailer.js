@@ -8,10 +8,10 @@ const nodemailer_1 = __importDefault(require("nodemailer"));
 const nodemailer_express_handlebars_1 = __importDefault(require("nodemailer-express-handlebars"));
 const config_1 = require("../config");
 const transport = nodemailer_1.default.createTransport({
-    service: 'outlook',
+    service: 'gmail',
     auth: {
         user: config_1.config.nodemailer_user,
-        pass: config_1.config.nodemailer_pass
+        pass: process.env.PASS
     },
     tls: {
         rejectUnauthorized: false

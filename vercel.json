@@ -15,7 +15,15 @@
   "crons": [
     {
       "path": "/deleteExpiredNotices",
-      "schedule": "15 13 * * *"
+      "schedule": "0 0 * * 1"
+    }, 
+    {
+      "path": "/reportsCleanUp", 
+      "schedule": "0 0 1 1 *"
+    },
+    {
+      "path": "/backup", 
+      "schedule": "0 0 * * 2"
     }
   ]
 }

@@ -1,0 +1,17 @@
+<mjml>
+  <mj-body background-color="#83c5be">
+    <mj-section background-color="white">
+      <mj-column background-color="white">
+        
+        <mj-column background-color="#178582" width="100%">
+        	  <mj-image  align="left" width="100px" src="https://quadrodeanuncios.vercel.app/images/miniatura.png"></mj-image>
+        </mj-column>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">Olá,</mj-text>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">Segue em anexo o backup do sistema!</mj-text>
+
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

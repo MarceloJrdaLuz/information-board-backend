@@ -4,10 +4,10 @@ import hbs from 'nodemailer-express-handlebars'
 import { config } from '../config';
 
 const transport = nodemailer.createTransport({
-    service: 'outlook',
+    service: 'gmail',
     auth: {
         user: config.nodemailer_user,
-        pass: config.nodemailer_pass
+        pass: process.env.PASS
     },
     tls: {
         rejectUnauthorized: false

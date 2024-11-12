@@ -10,7 +10,6 @@ const routes_1 = __importDefault(require("./routes"));
 const error_1 = require("./middlewares/error");
 const cors_1 = __importDefault(require("cors"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
-require("./functions/removeSchedulesExpired");
 const config_1 = require("./config");
 data_source_1.AppDataSource.initialize().then(() => {
     const corsOptions = {
