@@ -14,8 +14,8 @@
   ],
   "crons": [
     {
-      "path": "/deleteExpiredNotices",
-      "schedule": "0 0 * * 1"
+      "path": "/backup",
+      "schedule": "0 0 * * 3"
     }, 
     {
       "path": "/reportsCleanUp", 

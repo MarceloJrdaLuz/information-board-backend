@@ -10,9 +10,6 @@ import { meetingAssistanceRepository } from "../../repositories/meetingAssistanc
 import mailer from '../../modules/mailer'
 import { exec } from "child_process"
 import { config } from "../../config"
-import { PassThrough } from "stream"
-import fs from 'fs'
-import path from "path"
 
 
 class CronJobController {
@@ -67,7 +64,53 @@ class CronJobController {
     }
 
     async backup(req: Request, res: Response) {
-        res.send()
+
+        const dateNow = moment().format("DD/MM/YYYY")
+
+        const dumpCommand = `pg_dump -U ${config.db_user} -h ${config.db_host} -p ${config.db_port} -d ${config.db_name}`
+
+        const child = exec(
+            dumpCommand,
+            {
+                maxBuffer: 1024 * 1024 * 10,
+                env: { ...process.env, PGPASSWORD: config.db_pass },
+            },
+            (error, stdout, stderr) => {
+                if (error) {
+                    console.error('Error executing pg_dump command:', error)
+                    return res.status(500).send({message: 'Error executing database dump'})
+                }
+
+                if (stderr) {
+                    console.error('pg_dump stderr:', stderr)
+                }
+
+                // Send the email with the backup after capturing stdout
+                const mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    to: config.email_backup, // Can send to your own email for testing
+                    subject: 'Database Backup',
+                    text: 'Attached is the database backup.',
+                    template: "backup/index",
+                    attachments: [
+                        {
+                            filename: `${dateNow} backup.sql`,
+                            content: stdout, // Attach the captured stdout directly as content
+                        },
+                    ],
+                }
+
+                mailer.sendMail(mailOptions, (err: any, info: any) => {
+                    if (err) {
+                        console.error('Error sending email:', err)
+                        return res.status(500).send({message: "Error sending email"})
+                    }
+
+                    console.log('Email sent:', info.response)
+                    res.send({message: 'Backup successfully emailed'})
+                })
+            }
+        )
     }
 }
 

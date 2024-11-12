@@ -97,7 +97,7 @@ routes.post('/assistance/:congregation_id', MeetingAssistanceController.create)
 routes.get('/assistance/:congregation_id', MeetingAssistanceController.getAssistance)
 
 routes.get('/deleteExpiredNotices', verifyCronSecret, CronJobController.deleteExpiredNotices)
-routes.get('/reportsCleanUp', CronJobController.reportsCleanUp)
-routes.get('/backup', CronJobController.backup)
+routes.get('/reportsCleanUp', verifyCronSecret, CronJobController.reportsCleanUp)
+routes.get('/backup', verifyCronSecret, CronJobController.backup)
 
 export default routes
