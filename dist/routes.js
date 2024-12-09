@@ -21,6 +21,7 @@ const NoticeController_1 = __importDefault(require("./controllers/NoticeControll
 const TotalsReportsController_1 = __importDefault(require("./controllers/TotalsReportsController"));
 const MeetingAssistanceController_1 = __importDefault(require("./controllers/MeetingAssistanceController"));
 const CronJobController_1 = __importDefault(require("./controllers/CronJobController"));
+const TerritoryController_1 = __importDefault(require("./controllers/TerritoryController"));
 const routes = (0, express_1.Router)();
 routes.post('/user', UserController_1.default.create); //
 routes.post('/login', UserController_1.default.login); //
@@ -29,7 +30,7 @@ routes.post('/forgot_password', UserController_1.default.forgot_password); //
 routes.post('/reset_password', UserController_1.default.reset_password); //
 routes.post('/add-domain', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.addUserDomain);
 routes.put('/user/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.updateRoles);
-routes.get('/users', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ UserController_1.default.getUsers);
+routes.get('/users', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.getUsers);
 routes.get('/publishers/congregationId/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers_1.default.getPublishers);
 routes.get('/publishers/congregationNumber/:congregationNumber', PublisherControllers_1.default.getPublishersWithCongregatioNumber);
 routes.get('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.getPublisher);
@@ -52,6 +53,8 @@ routes.delete('/document/:document_id', (0, permissions_1.is)(['ADMIN_CONGREGATI
 routes.post('/profile/:user_id', /*is(['ADMIN']),*/ multer_1.uploadFile.single('avatar'), ProfileController_1.default.create);
 routes.put('/profile/:profile_id', /*is(['ADMIN']),*/ multer_1.uploadFile.single('avatar'), ProfileController_1.default.update);
 routes.delete('/profile/:id', /*is(['ADMIN']),*/ ProfileController_1.default.delete);
+routes.post('/territory/:congregation_id', /*is(['ADMIN']),*/ multer_1.uploadFile.single('territory_image'), TerritoryController_1.default.create);
+routes.delete('/territory/:territory_id', /*is(['ADMIN']),*/ TerritoryController_1.default.delete);
 routes.post('/role', (0, permissions_1.is)(['ADMIN']), RoleController_1.default.create);
 routes.get('/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), RoleController_1.default.getRoles);
 routes.get('/role/:role_id', (0, permissions_1.is)(['ADMIN']), RoleController_1.default.getRole);

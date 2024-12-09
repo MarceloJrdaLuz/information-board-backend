@@ -4,6 +4,7 @@ import { Notice } from "./Notice"
 import { User } from "./User"
 import { EndweekDays, MidweekDays } from "../types/enumWeekDays"
 import { Group } from "./Group"
+import { Territory } from "./Territory"
 
 @Entity('congregation')
 export class Congregation {
@@ -47,11 +48,13 @@ export class Congregation {
     updated_at: Date
 
     @OneToMany(() => User, user => user.congregation)
-    @OneToMany(() => User, user => user.congregation)
     users: User[]
 
     @OneToMany(() => Document, document => document.congregation)
     documents: Document[]
+
+    @OneToMany(() => Territory, document => document.congregation)
+    territories: Territory[]
 
     @OneToMany(() => Notice, notice => notice.congregation)
     notices: Notice[]

@@ -26,8 +26,6 @@ class DocumentController {
         if (!file) {
             throw new api_errors_1.NotFoundError('Any file found');
         }
-        if (config_1.config.storage_type === 'local') {
-        }
         switch (config_1.config.storage_type) {
             case 'local':
                 fs_extra_1.default.move(`./tmp/uploads/${(_a = req.file) === null || _a === void 0 ? void 0 : _a.filename}`, `./tmp/uploads/documents/${congregation.number}/${(_b = req.file) === null || _b === void 0 ? void 0 : _b.filename}`, function (err) {

@@ -16,6 +16,7 @@ import NoticeController from "./controllers/NoticeController";
 import TotalsReportsController from "./controllers/TotalsReportsController";
 import MeetingAssistanceController from "./controllers/MeetingAssistanceController";
 import CronJobController from "./controllers/CronJobController";
+import TerritoryController from "./controllers/TerritoryController";
 
 const routes = Router()
 
@@ -26,7 +27,7 @@ routes.post('/forgot_password', UserController.forgot_password) //
 routes.post('/reset_password', UserController.reset_password) //
 routes.post('/add-domain', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.addUserDomain)
 routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.updateRoles)
-routes.get('/users', /*is(['ADMIN', 'ADMIN_CONGREGATION']),*/ UserController.getUsers)
+routes.get('/users', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.getUsers)
 
 routes.get('/publishers/congregationId/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers.getPublishers)
 routes.get('/publishers/congregationNumber/:congregationNumber', PublisherControllers.getPublishersWithCongregatioNumber)
@@ -47,7 +48,6 @@ routes.put('/category/:category_id', is(['ADMIN']), CategoryController.update)
 routes.get('/categories', CategoryController.getCategories)
 routes.get('/category/:category_id', CategoryController.getPermission)
 
-
 routes.post('/new-document', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), uploadFile.single('file'), DocumentController.create)
 routes.get('/documents-congregation/:congregation_id', DocumentController.filter)
 routes.delete('/document/:document_id', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), DocumentController.delete)
@@ -55,6 +55,9 @@ routes.delete('/document/:document_id', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MAN
 routes.post('/profile/:user_id', /*is(['ADMIN']),*/ uploadFile.single('avatar'), ProfileController.create)
 routes.put('/profile/:profile_id', /*is(['ADMIN']),*/ uploadFile.single('avatar'), ProfileController.update)
 routes.delete('/profile/:id', /*is(['ADMIN']),*/ ProfileController.delete)
+
+routes.post('/territory/:congregation_id', /*is(['ADMIN']),*/ uploadFile.single('territory_image'), TerritoryController.create)
+routes.delete('/territory/:territory_id', /*is(['ADMIN']),*/  TerritoryController.delete)
 
 routes.post('/role', is(['ADMIN']), RoleController.create)
 routes.get('/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), RoleController.getRoles)
@@ -67,7 +70,6 @@ routes.put('/permission/:permission_id', is(['ADMIN']), PermissionController.upd
 routes.delete('/permission/:permission_id', is(['ADMIN']), PermissionController.delete)
 routes.get('/permission', is(['ADMIN']), PermissionController.getPermissions)
 routes.get('/permission/:permission_id', is(['ADMIN']), PermissionController.getPermission)
-
 
 routes.get('/notices/:congregation_id', NoticeController.getNotices)
 routes.post('/notice/:congregation_id', is(['ADMIN_CONGREGATION', 'NOTICES_MANAGER']), NoticeController.create)

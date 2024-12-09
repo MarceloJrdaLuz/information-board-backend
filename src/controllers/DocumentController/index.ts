@@ -29,10 +29,6 @@ class DocumentController {
             throw new NotFoundError('Any file found')
         }
 
-        if (config.storage_type === 'local') {
-
-        }
-
         switch (config.storage_type) {
             case 'local':
                 fs.move(`./tmp/uploads/${req.file?.filename}`, `./tmp/uploads/documents/${congregation.number}/${req.file?.filename}`, function (err) {

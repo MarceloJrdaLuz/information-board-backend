@@ -16,6 +16,7 @@ const Notice_1 = require("./Notice");
 const User_1 = require("./User");
 const enumWeekDays_1 = require("../types/enumWeekDays");
 const Group_1 = require("./Group");
+const Territory_1 = require("./Territory");
 let Congregation = class Congregation {
 };
 __decorate([
@@ -72,13 +73,16 @@ __decorate([
 ], Congregation.prototype, "updated_at", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => User_1.User, user => user.congregation),
-    (0, typeorm_1.OneToMany)(() => User_1.User, user => user.congregation),
     __metadata("design:type", Array)
 ], Congregation.prototype, "users", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => Document_1.Document, document => document.congregation),
     __metadata("design:type", Array)
 ], Congregation.prototype, "documents", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => Territory_1.Territory, document => document.congregation),
+    __metadata("design:type", Array)
+], Congregation.prototype, "territories", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => Notice_1.Notice, notice => notice.congregation),
     __metadata("design:type", Array)
