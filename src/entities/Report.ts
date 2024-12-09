@@ -1,43 +1,52 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { 
+    Column, 
+    CreateDateColumn, 
+    Entity, 
+    JoinColumn, 
+    ManyToOne, 
+    PrimaryGeneratedColumn, 
+    UpdateDateColumn, 
+    Unique 
+} from "typeorm";
 import { Publisher } from "./Publisher";
 import { Months } from "../types/enumWeekDays";
-import { Privileges } from "../types/privileges";
 
 @Entity('reports')
+@Unique(["publisher", "month", "year"]) // Define a constraint única
 export class Report {
     @PrimaryGeneratedColumn('uuid')
-    id: string
+    id: string;
 
     @Column({ type: "enum", enum: Months })
-    month: Months
+    month: Months;
 
     @Column({ type: 'simple-array', nullable: true })
-    privileges: string[]
+    privileges: string[];
 
     @Column({ type: "text" })
-    year: string
+    year: string;
 
     @Column({ type: "text", nullable: true })
-    group: string
+    group: string;
 
     @ManyToOne(() => Publisher, publisher => publisher.id, {
         onDelete: "CASCADE"
     })
     @JoinColumn({ name: 'publisher_id' })
-    publisher: Publisher
+    publisher: Publisher;
 
-    @Column({ type: "int" || 'string' })
-    hours: number
+    @Column({ type: "int" })
+    hours: number;
 
     @Column({ type: "int", nullable: true })
-    studies: number
+    studies: number;
 
     @Column({ type: "text", nullable: true })
-    observations: string
+    observations: string;
 
     @CreateDateColumn()
-    created_at: Date
+    created_at: Date;
 
     @UpdateDateColumn()
-    updated_at: Date
+    updated_at: Date;
 }

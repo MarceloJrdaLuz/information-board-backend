@@ -43,7 +43,7 @@ __decorate([
     __metadata("design:type", Publisher_1.Publisher)
 ], Report.prototype, "publisher", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "int" || 'string' }),
+    (0, typeorm_1.Column)({ type: "int" }),
     __metadata("design:type", Number)
 ], Report.prototype, "hours", void 0);
 __decorate([
@@ -63,6 +63,7 @@ __decorate([
     __metadata("design:type", Date)
 ], Report.prototype, "updated_at", void 0);
 Report = __decorate([
-    (0, typeorm_1.Entity)('reports')
+    (0, typeorm_1.Entity)('reports'),
+    (0, typeorm_1.Unique)(["publisher", "month", "year"]) // Define a constraint única
 ], Report);
 exports.Report = Report;
