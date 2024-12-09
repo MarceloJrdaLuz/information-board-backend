@@ -1,5 +1,5 @@
 import { Response } from "express"
-import { BodyTerritoryCreateTypes, ParamsTerritoryCreateTypes, ParamsTerritoryDeleteTypes, ParamsTerritoryUpdateTypes } from "./types"
+import { BodyTerritoryCreateTypes, BodyTerritoryUpdateTypes, ParamsTerritoryCreateTypes, ParamsTerritoryDeleteTypes, ParamsTerritoryUpdateTypes } from "./types"
 import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
@@ -8,6 +8,7 @@ import fs from 'fs-extra'
 import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage"
 import { NormalizeFiles } from "../../types/normalizeFile"
 import { territoryRepository } from "../../repositories/territoryRepository"
+import path from "path"
 
 class TerritoryController {
     async create(req: CustomRequestPT<ParamsTerritoryCreateTypes, BodyTerritoryCreateTypes>, res: Response) {
@@ -75,8 +76,56 @@ class TerritoryController {
         }
     }
 
-    async update(req: ParamsCustomRequest<ParamsTerritoryUpdateTypes>, res: Response) {
+    async update(req: CustomRequestPT<ParamsTerritoryUpdateTypes, BodyTerritoryUpdateTypes>, res: Response) {
+        const { territory_id: id } = req.params
+        const { description, name } = req.body
 
+        const file = req.file as Express.Multer.File
+
+        const territory = await territoryRepository.findOneBy({ id })
+
+        if (!territory) {
+            throw new NotFoundError("Territory not exists")
+        }
+
+        if (file) {
+            switch (config.storage_type) {
+                case 'local':
+                    fs.move(`./tmp/uploads/${req.file?.filename}`, `./tmp/uploads/territories/${req.file?.filename}`, function (err) {
+                        if (err) {
+                            console.log(err)
+                        }
+                    })
+                    console.log('Moved')
+                    saveBD(null)
+                    break
+                case 'firebase':
+                    await firebaseUpload(req, res, `territories`, saveBD)
+                    break
+                default:
+                    res.send('Storage local type is not defined at .env')
+                    break
+            }
+        } else saveBD(null)
+
+        async function saveBD(file: NormalizeFiles | null) {
+            if (file) {
+                if (territory?.key) await deleteFirebase(territory?.key)
+            }
+            const updateTerritory = {
+                name,
+                description,
+                image_url: file?.url ?? territory?.image_url,
+                key: file?.key ?? territory?.key
+            }
+
+            await territoryRepository.save({ id, ...updateTerritory }).then(suc => {
+                return res.status(201).json(suc)
+            }).catch(err => {
+                console.log(err)
+                return res.status(500).json({ message: 'Internal server error' })
+            })
+        }
     }
 
     async delete(req: ParamsCustomRequest<ParamsTerritoryDeleteTypes>, res: Response) {
@@ -88,12 +137,13 @@ class TerritoryController {
             throw new NotFoundError('Territory not found')
         }
 
-        // await deleteFirebase(territory.key)
+        if (config.storage_type !== "local") {
+            await deleteFirebase(territory.key)
+        }
 
         await territoryRepository.remove(territory).catch(err => console.log(err))
 
         return res.status(200).end()
-
     }
 }
 

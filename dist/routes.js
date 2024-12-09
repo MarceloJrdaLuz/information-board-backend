@@ -40,7 +40,7 @@ routes.put('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATIO
 routes.post('/congregation', (0, permissions_1.is)(['ADMIN']), multer_1.uploadFile.single('image'), CongregationController_1.default.create); //
 routes.delete('/congregation/:id', (0, permissions_1.is)(['ADMIN']), CongregationController_1.default.delete);
 routes.get('/congregations', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.list);
-routes.get('/congregation/:number', /*is(['ADMIN']),*/ CongregationController_1.default.getCongregation);
+routes.get('/congregation/:number', CongregationController_1.default.getCongregation);
 routes.put('/congregation/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.update);
 routes.put('/congregation/:congregation_id/photo', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), multer_1.uploadFile.single('image'), CongregationController_1.default.uploadCongregationPhoto);
 routes.post('/category', (0, permissions_1.is)(['ADMIN']), CategoryController_1.default.create);
@@ -50,11 +50,12 @@ routes.get('/category/:category_id', CategoryController_1.default.getPermission)
 routes.post('/new-document', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), multer_1.uploadFile.single('file'), DocumentController_1.default.create);
 routes.get('/documents-congregation/:congregation_id', DocumentController_1.default.filter);
 routes.delete('/document/:document_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), DocumentController_1.default.delete);
-routes.post('/profile/:user_id', /*is(['ADMIN']),*/ multer_1.uploadFile.single('avatar'), ProfileController_1.default.create);
-routes.put('/profile/:profile_id', /*is(['ADMIN']),*/ multer_1.uploadFile.single('avatar'), ProfileController_1.default.update);
-routes.delete('/profile/:id', /*is(['ADMIN']),*/ ProfileController_1.default.delete);
-routes.post('/territory/:congregation_id', /*is(['ADMIN']),*/ multer_1.uploadFile.single('territory_image'), TerritoryController_1.default.create);
-routes.delete('/territory/:territory_id', /*is(['ADMIN']),*/ TerritoryController_1.default.delete);
+routes.post('/profile/:user_id', multer_1.uploadFile.single('avatar'), ProfileController_1.default.create);
+routes.put('/profile/:profile_id', multer_1.uploadFile.single('avatar'), ProfileController_1.default.update);
+routes.delete('/profile/:id', ProfileController_1.default.delete);
+routes.post('/territory/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), multer_1.uploadFile.single('territory_image'), TerritoryController_1.default.create);
+routes.put('/territory/:territory_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), multer_1.uploadFile.single('territory_image'), TerritoryController_1.default.update);
+routes.delete('/territory/:territory_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), TerritoryController_1.default.delete);
 routes.post('/role', (0, permissions_1.is)(['ADMIN']), RoleController_1.default.create);
 routes.get('/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), RoleController_1.default.getRoles);
 routes.get('/role/:role_id', (0, permissions_1.is)(['ADMIN']), RoleController_1.default.getRole);

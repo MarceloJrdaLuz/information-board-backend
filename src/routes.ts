@@ -39,7 +39,7 @@ routes.put('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MAN
 routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), CongregationController.create) //
 routes.delete('/congregation/:id', is(['ADMIN']), CongregationController.delete)
 routes.get('/congregations', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.list)
-routes.get('/congregation/:number', /*is(['ADMIN']),*/ CongregationController.getCongregation)
+routes.get('/congregation/:number', CongregationController.getCongregation)
 routes.put('/congregation/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.update)
 routes.put('/congregation/:congregation_id/photo', is(['ADMIN', 'ADMIN_CONGREGATION']), uploadFile.single('image'), CongregationController.uploadCongregationPhoto)
 
@@ -52,12 +52,13 @@ routes.post('/new-document', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), up
 routes.get('/documents-congregation/:congregation_id', DocumentController.filter)
 routes.delete('/document/:document_id', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), DocumentController.delete)
 
-routes.post('/profile/:user_id', /*is(['ADMIN']),*/ uploadFile.single('avatar'), ProfileController.create)
-routes.put('/profile/:profile_id', /*is(['ADMIN']),*/ uploadFile.single('avatar'), ProfileController.update)
-routes.delete('/profile/:id', /*is(['ADMIN']),*/ ProfileController.delete)
+routes.post('/profile/:user_id', uploadFile.single('avatar'), ProfileController.create)
+routes.put('/profile/:profile_id', uploadFile.single('avatar'), ProfileController.update)
+routes.delete('/profile/:id', ProfileController.delete)
 
-routes.post('/territory/:congregation_id', /*is(['ADMIN']),*/ uploadFile.single('territory_image'), TerritoryController.create)
-routes.delete('/territory/:territory_id', /*is(['ADMIN']),*/  TerritoryController.delete)
+routes.post('/territory/:congregation_id', is(['ADMIN_CONGREGATION']), uploadFile.single('territory_image'), TerritoryController.create)
+routes.put('/territory/:territory_id', is(['ADMIN_CONGREGATION']), uploadFile.single('territory_image'), TerritoryController.update)
+routes.delete('/territory/:territory_id', is(['ADMIN_CONGREGATION']), TerritoryController.delete)
 
 routes.post('/role', is(['ADMIN']), RoleController.create)
 routes.get('/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), RoleController.getRoles)

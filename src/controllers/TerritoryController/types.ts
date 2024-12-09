@@ -15,5 +15,7 @@ export interface BodyTerritoryCreateTypes {
     description: string
 }
 
+export type BodyTerritoryUpdateTypes = BodyTerritoryCreateTypes
+
 
 
