@@ -1,23 +1,23 @@
-import { Router } from "express";
-import UserController from "./controllers/UserController";
-import CongregationController from "./controllers/CongregationController";
-import ProfileController from "./controllers/ProfileController";
-import DocumentController from "./controllers/DocumentController";
-import CategoryController from "./controllers/CategoryController";
-import RoleController from "./controllers/RoleController";
-import PermissionController from "./controllers/PermissionController";
-import { is, verifyCronSecret } from "./middlewares/permissions";
-import { uploadFile } from "./config/multer";
-import PublisherControllers from "./controllers/PublisherControllers";
-import ReportController from "./controllers/ReportController";
-import GroupController from "./controllers/GroupController";
-import ConsentRecordController from "./controllers/ConsentRecordController";
-import NoticeController from "./controllers/NoticeController";
-import TotalsReportsController from "./controllers/TotalsReportsController";
-import MeetingAssistanceController from "./controllers/MeetingAssistanceController";
-import CronJobController from "./controllers/CronJobController";
-import TerritoryController from "./controllers/TerritoryController";
-import TerritoryHistoryController from "./controllers/TerritoryHistoryController";
+import { Router } from "express"
+import UserController from "./controllers/UserController"
+import CongregationController from "./controllers/CongregationController"
+import ProfileController from "./controllers/ProfileController"
+import DocumentController from "./controllers/DocumentController"
+import CategoryController from "./controllers/CategoryController"
+import RoleController from "./controllers/RoleController"
+import PermissionController from "./controllers/PermissionController"
+import { is, verifyCronSecret } from "./middlewares/permissions"
+import { uploadFile } from "./config/multer"
+import PublisherControllers from "./controllers/PublisherControllers"
+import ReportController from "./controllers/ReportController"
+import GroupController from "./controllers/GroupController"
+import ConsentRecordController from "./controllers/ConsentRecordController"
+import NoticeController from "./controllers/NoticeController"
+import TotalsReportsController from "./controllers/TotalsReportsController"
+import MeetingAssistanceController from "./controllers/MeetingAssistanceController"
+import CronJobController from "./controllers/CronJobController"
+import TerritoryController from "./controllers/TerritoryController"
+import TerritoryHistoryController from "./controllers/TerritoryHistoryController"
 
 const routes = Router()
 
@@ -57,10 +57,12 @@ routes.post('/profile/:user_id', uploadFile.single('avatar'), ProfileController.
 routes.put('/profile/:profile_id', uploadFile.single('avatar'), ProfileController.update)
 routes.delete('/profile/:id', ProfileController.delete)
 
+routes.get('/territories/:congregation_id', /*is(['ADMIN_CONGREGATION']),*/  TerritoryController.getTerritories)
 routes.post('/territory/:congregation_id', /*is(['ADMIN_CONGREGATION']),*/ uploadFile.single('territory_image'), TerritoryController.create)
 routes.put('/territory/:territory_id',/*is(['ADMIN_CONGREGATION']),*/ uploadFile.single('territory_image'), TerritoryController.update)
 routes.delete('/territory/:territory_id', /*is(['ADMIN_CONGREGATION']),*/ TerritoryController.delete)
 
+routes.get('/territoryHistory/:congregation_id', /*is(['ADMIN_CONGREGATION']),*/ TerritoryHistoryController.getTerritoriesHistory)
 routes.post('/territoryHistory/:territory_id', /*is(['ADMIN_CONGREGATION']),*/ TerritoryHistoryController.create)
 routes.put('/territoryHistory/:territoryHistory_id', /*is(['ADMIN_CONGREGATION']),*/ TerritoryHistoryController.update)
 routes.delete('/territoryHistory/:territoryHistory_id', /*is(['ADMIN_CONGREGATION']),*/ TerritoryHistoryController.delete)

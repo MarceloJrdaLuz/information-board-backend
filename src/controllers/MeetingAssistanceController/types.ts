@@ -1,5 +1,3 @@
-import { Months } from "../../types/enumWeekDays"
-
 export interface BodyMeetingAssistanceCreateTypes {
     month: string
     year: string

@@ -2,6 +2,10 @@ export type ParamsTerritoryHistoryCreateTypes = {
     territory_id: string
 }
 
+export type ParamsTerritoryHistoryGetTypes = {
+    congregation_id: string
+}
+
 export type ParamsTerritoryHistoryUpdateTypes = {
     territoryHistory_id: string
 }

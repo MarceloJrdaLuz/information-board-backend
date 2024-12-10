@@ -9,6 +9,7 @@ const config_1 = require("../../config");
 const fs_extra_1 = __importDefault(require("fs-extra"));
 const firebaseStorage_1 = require("../../provider/firebaseStorage");
 const territoryRepository_1 = require("../../repositories/territoryRepository");
+const messageErrors_1 = require("../../helpers/messageErrors");
 class TerritoryController {
     async create(req, res) {
         var _a, _b;
@@ -17,7 +18,7 @@ class TerritoryController {
         const file = req.file;
         const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
         if (!congregation) {
-            throw new api_errors_1.BadRequestError('Congregation not exists');
+            throw new api_errors_1.BadRequestError(messageErrors_1.messageErrors.notFound.congregation);
         }
         const territoryAlreadyExist = await territoryRepository_1.territoryRepository.findOne({
             where: {
@@ -78,7 +79,7 @@ class TerritoryController {
         const file = req.file;
         const territory = await territoryRepository_1.territoryRepository.findOneBy({ id });
         if (!territory) {
-            throw new api_errors_1.NotFoundError("Territory not exists");
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.territory);
         }
         if (file) {
             switch (config_1.config.storage_type) {
@@ -125,13 +126,28 @@ class TerritoryController {
         const { territory_id } = req.params;
         const territory = await territoryRepository_1.territoryRepository.findOneBy({ id: territory_id });
         if (!territory) {
-            throw new api_errors_1.NotFoundError('Territory not found');
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.territory);
         }
         if (config_1.config.storage_type !== "local") {
             await (0, firebaseStorage_1.deleteFirebase)(territory.key);
         }
         await territoryRepository_1.territoryRepository.remove(territory).catch(err => console.log(err));
         return res.status(200).end();
+    }
+    async getTerritories(req, res) {
+        const { congregation_id } = req.params;
+        const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
+        if (!congregation) {
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.congregation);
+        }
+        const territories = await territoryRepository_1.territoryRepository.find({
+            where: {
+                congregation: {
+                    id: congregation.id
+                }
+            }
+        });
+        res.send(territories);
     }
 }
 exports.default = new TerritoryController();

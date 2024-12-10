@@ -9,6 +9,7 @@ import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage"
 import { NormalizeFiles } from "../../types/normalizeFile"
 import { territoryRepository } from "../../repositories/territoryRepository"
 import path from "path"
+import { messageErrors } from "../../helpers/messageErrors"
 
 class TerritoryController {
     async create(req: CustomRequestPT<ParamsTerritoryCreateTypes, BodyTerritoryCreateTypes>, res: Response) {
@@ -19,7 +20,7 @@ class TerritoryController {
         const congregation = await congregationRepository.findOneBy({ id: congregation_id })
 
         if (!congregation) {
-            throw new BadRequestError('Congregation not exists')
+            throw new BadRequestError(messageErrors.notFound.congregation)
         }
 
         const territoryAlreadyExist = await territoryRepository.findOne({
@@ -85,7 +86,7 @@ class TerritoryController {
         const territory = await territoryRepository.findOneBy({ id })
 
         if (!territory) {
-            throw new NotFoundError("Territory not exists")
+            throw new NotFoundError(messageErrors.notFound.territory)
         }
 
         if (file) {
@@ -134,7 +135,7 @@ class TerritoryController {
         const territory = await territoryRepository.findOneBy({ id: territory_id })
 
         if (!territory) {
-            throw new NotFoundError('Territory not found')
+            throw new NotFoundError(messageErrors.notFound.territory)
         }
 
         if (config.storage_type !== "local") {
@@ -144,6 +145,25 @@ class TerritoryController {
         await territoryRepository.remove(territory).catch(err => console.log(err))
 
         return res.status(200).end()
+    }
+
+    async getTerritories(req: ParamsCustomRequest<ParamsTerritoryCreateTypes>, res: Response) {
+        const { congregation_id } = req.params
+
+        const congregation = await congregationRepository.findOneBy({ id: congregation_id })
+
+        if (!congregation) {
+            throw new NotFoundError(messageErrors.notFound.congregation)
+        }
+
+        const territories = await territoryRepository.find({
+            where: {
+                congregation: {
+                    id: congregation.id
+                }
+            }
+        })
+        res.send(territories)
     }
 }
 

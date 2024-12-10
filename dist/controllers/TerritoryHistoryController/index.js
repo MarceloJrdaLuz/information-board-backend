@@ -7,13 +7,14 @@ const territoryRepository_1 = require("../../repositories/territoryRepository");
 const api_errors_1 = require("../../helpers/api-errors");
 const moment_timezone_1 = __importDefault(require("moment-timezone"));
 const territoryHistoryRepository_1 = require("../../repositories/territoryHistoryRepository");
+const messageErrors_1 = require("../../helpers/messageErrors");
 class TerritoryHistoryController {
     async create(req, res) {
         const { territory_id: id } = req.params;
         const { assignment_date, caretaker, completion_date } = req.body;
         const territory = await territoryRepository_1.territoryRepository.findOneBy({ id });
         if (!territory) {
-            throw new api_errors_1.NotFoundError("Territory not exists");
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.territory);
         }
         // Validate that the assignment_date is before or equal to the completion_date
         const isValidDates = (0, moment_timezone_1.default)(assignment_date).isSameOrBefore((0, moment_timezone_1.default)(completion_date));
@@ -41,7 +42,7 @@ class TerritoryHistoryController {
         const { assignment_date, caretaker, completion_date } = req.body;
         const history = await territoryHistoryRepository_1.territoryHistoryRepository.findOneBy({ id });
         if (!history) {
-            throw new api_errors_1.NotFoundError("Territory history not found");
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.territoryHistory);
         }
         const isValidDates = (0, moment_timezone_1.default)(assignment_date).isSameOrBefore((0, moment_timezone_1.default)(completion_date));
         if (!isValidDates) {
@@ -64,7 +65,7 @@ class TerritoryHistoryController {
         const { territoryHistory_id: id } = req.params;
         const history = await territoryHistoryRepository_1.territoryHistoryRepository.findOneBy({ id });
         if (!history) {
-            throw new api_errors_1.NotFoundError("Territory history not found");
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.territoryHistory);
         }
         try {
             await territoryHistoryRepository_1.territoryHistoryRepository.remove(history);
@@ -74,6 +75,22 @@ class TerritoryHistoryController {
             console.error("Error deleting territory history:", err);
             return res.status(500).json({ message: "Internal server error" });
         }
+    }
+    async getTerritoriesHistory(req, res) {
+        const { congregation_id } = req.params;
+        const history = await territoryHistoryRepository_1.territoryHistoryRepository.find({
+            where: {
+                territory: {
+                    congregation: {
+                        id: congregation_id
+                    }
+                }
+            }
+        });
+        if (!history) {
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.territoryHistory);
+        }
+        res.send(history);
     }
 }
 exports.default = new TerritoryHistoryController();

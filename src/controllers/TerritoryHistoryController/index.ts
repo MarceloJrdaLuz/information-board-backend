@@ -1,10 +1,11 @@
 import { Response } from "express"
-import { BodyTerritoryHistoryCreateTypes, BodyTerritoryHistoryUpdateTypes, ParamsTerritoryHistoryCreateTypes, ParamsTerritoryHistoryDeleteTypes, ParamsTerritoryHistoryUpdateTypes } from "./types"
+import { BodyTerritoryHistoryCreateTypes, BodyTerritoryHistoryUpdateTypes, ParamsTerritoryHistoryCreateTypes, ParamsTerritoryHistoryDeleteTypes, ParamsTerritoryHistoryGetTypes, ParamsTerritoryHistoryUpdateTypes } from "./types"
 import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import { territoryRepository } from "../../repositories/territoryRepository"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import moment from "moment-timezone"
 import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
+import { messageErrors } from "../../helpers/messageErrors"
 
 class TerritoryHistoryController {
     async create(req: CustomRequestPT<ParamsTerritoryHistoryCreateTypes, BodyTerritoryHistoryCreateTypes>, res: Response) {
@@ -14,7 +15,7 @@ class TerritoryHistoryController {
         const territory = await territoryRepository.findOneBy({ id })
 
         if (!territory) {
-            throw new NotFoundError("Territory not exists")
+            throw new NotFoundError(messageErrors.notFound.territory)
         }
 
         // Validate that the assignment_date is before or equal to the completion_date
@@ -48,7 +49,7 @@ class TerritoryHistoryController {
         const history = await territoryHistoryRepository.findOneBy({ id })
 
         if (!history) {
-            throw new NotFoundError("Territory history not found")
+            throw new NotFoundError(messageErrors.notFound.territoryHistory)
         }
 
         const isValidDates = moment(assignment_date).isSameOrBefore(moment(completion_date))
@@ -77,7 +78,7 @@ class TerritoryHistoryController {
         const history = await territoryHistoryRepository.findOneBy({ id })
 
         if (!history) {
-            throw new NotFoundError("Territory history not found")
+            throw new NotFoundError(messageErrors.notFound.territoryHistory)
         }
 
         try {
@@ -87,6 +88,25 @@ class TerritoryHistoryController {
             console.error("Error deleting territory history:", err)
             return res.status(500).json({ message: "Internal server error" })
         }
+    }
+
+    async getTerritoriesHistory(req: ParamsCustomRequest<ParamsTerritoryHistoryGetTypes>, res: Response) {
+        const { congregation_id } = req.params
+
+        const history = await territoryHistoryRepository.find({
+            where: {
+                territory: {
+                    congregation: {
+                        id: congregation_id
+                    }
+                }
+            }
+        })
+
+        if (!history) {
+            throw new NotFoundError(messageErrors.notFound.territoryHistory)
+        }
+        res.send(history)
     }
 }
 
