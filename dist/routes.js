@@ -22,6 +22,7 @@ const TotalsReportsController_1 = __importDefault(require("./controllers/TotalsR
 const MeetingAssistanceController_1 = __importDefault(require("./controllers/MeetingAssistanceController"));
 const CronJobController_1 = __importDefault(require("./controllers/CronJobController"));
 const TerritoryController_1 = __importDefault(require("./controllers/TerritoryController"));
+const TerritoryHistoryController_1 = __importDefault(require("./controllers/TerritoryHistoryController"));
 const routes = (0, express_1.Router)();
 routes.post('/user', UserController_1.default.create); //
 routes.post('/login', UserController_1.default.login); //
@@ -53,9 +54,12 @@ routes.delete('/document/:document_id', (0, permissions_1.is)(['ADMIN_CONGREGATI
 routes.post('/profile/:user_id', multer_1.uploadFile.single('avatar'), ProfileController_1.default.create);
 routes.put('/profile/:profile_id', multer_1.uploadFile.single('avatar'), ProfileController_1.default.update);
 routes.delete('/profile/:id', ProfileController_1.default.delete);
-routes.post('/territory/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), multer_1.uploadFile.single('territory_image'), TerritoryController_1.default.create);
-routes.put('/territory/:territory_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), multer_1.uploadFile.single('territory_image'), TerritoryController_1.default.update);
-routes.delete('/territory/:territory_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), TerritoryController_1.default.delete);
+routes.post('/territory/:congregation_id', /*is(['ADMIN_CONGREGATION']),*/ multer_1.uploadFile.single('territory_image'), TerritoryController_1.default.create);
+routes.put('/territory/:territory_id', /*is(['ADMIN_CONGREGATION']),*/ multer_1.uploadFile.single('territory_image'), TerritoryController_1.default.update);
+routes.delete('/territory/:territory_id', /*is(['ADMIN_CONGREGATION']),*/ TerritoryController_1.default.delete);
+routes.post('/territoryHistory/:territory_id', /*is(['ADMIN_CONGREGATION']),*/ TerritoryHistoryController_1.default.create);
+routes.put('/territoryHistory/:territoryHistory_id', /*is(['ADMIN_CONGREGATION']),*/ TerritoryHistoryController_1.default.update);
+routes.delete('/territoryHistory/:territoryHistory_id', /*is(['ADMIN_CONGREGATION']),*/ TerritoryHistoryController_1.default.delete);
 routes.post('/role', (0, permissions_1.is)(['ADMIN']), RoleController_1.default.create);
 routes.get('/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), RoleController_1.default.getRoles);
 routes.get('/role/:role_id', (0, permissions_1.is)(['ADMIN']), RoleController_1.default.getRole);
