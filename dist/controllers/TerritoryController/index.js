@@ -3,13 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const congregationRepository_1 = require("../../repositories/congregationRepository");
-const api_errors_1 = require("../../helpers/api-errors");
-const config_1 = require("../../config");
 const fs_extra_1 = __importDefault(require("fs-extra"));
-const firebaseStorage_1 = require("../../provider/firebaseStorage");
-const territoryRepository_1 = require("../../repositories/territoryRepository");
+const config_1 = require("../../config");
+const api_errors_1 = require("../../helpers/api-errors");
 const messageErrors_1 = require("../../helpers/messageErrors");
+const firebaseStorage_1 = require("../../provider/firebaseStorage");
+const congregationRepository_1 = require("../../repositories/congregationRepository");
+const territoryRepository_1 = require("../../repositories/territoryRepository");
 class TerritoryController {
     async create(req, res) {
         var _a, _b;
@@ -76,6 +76,7 @@ class TerritoryController {
         var _a, _b;
         const { territory_id: id } = req.params;
         const { description, name } = req.body;
+        console.log(description, name, id);
         const file = req.file;
         const territory = await territoryRepository_1.territoryRepository.findOneBy({ id });
         if (!territory) {
@@ -133,6 +134,13 @@ class TerritoryController {
         }
         await territoryRepository_1.territoryRepository.remove(territory).catch(err => console.log(err));
         return res.status(200).end();
+    }
+    async getTerritory(req, res) {
+        const { territory_id: id } = req.params;
+        const territory = await territoryRepository_1.territoryRepository.findOneBy({ id });
+        if (!territory)
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.territory);
+        return res.status(200).json(territory);
     }
     async getTerritories(req, res) {
         const { congregation_id } = req.params;

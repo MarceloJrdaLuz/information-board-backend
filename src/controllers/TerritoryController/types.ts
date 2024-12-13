@@ -6,9 +6,9 @@ export type ParamsTerritoryUpdateTypes = {
     territory_id: string
 }
 
-export type ParamsTerritoryDeleteTypes = {
-    territory_id: string
-}
+export type ParamsTerritoryDeleteTypes = ParamsTerritoryUpdateTypes
+
+export type ParamsGetTerritoryTypes = ParamsTerritoryUpdateTypes
 
 export interface BodyTerritoryCreateTypes {
     name: string

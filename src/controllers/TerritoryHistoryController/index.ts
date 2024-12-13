@@ -1,17 +1,16 @@
 import { Response } from "express"
-import { BodyTerritoryHistoryCreateTypes, BodyTerritoryHistoryUpdateTypes, ParamsTerritoryHistoryCreateTypes, ParamsTerritoryHistoryDeleteTypes, ParamsTerritoryHistoryGetTypes, ParamsTerritoryHistoryUpdateTypes } from "./types"
-import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
-import { territoryRepository } from "../../repositories/territoryRepository"
-import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import moment from "moment-timezone"
-import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
+import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
+import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
+import { territoryRepository } from "../../repositories/territoryRepository"
+import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
+import { BodyTerritoryHistoryCreateTypes, BodyTerritoryHistoryUpdateTypes, ParamsGetTerritoryHistoryTypes, ParamsTerritoryHistoryCreateTypes, ParamsTerritoryHistoryDeleteTypes, ParamsTerritoryHistoryGetTypes, ParamsTerritoryHistoryUpdateTypes } from "./types"
 
 class TerritoryHistoryController {
     async create(req: CustomRequestPT<ParamsTerritoryHistoryCreateTypes, BodyTerritoryHistoryCreateTypes>, res: Response) {
         const { territory_id: id } = req.params
-        const { assignment_date, caretaker, completion_date } = req.body
-
+        const { assignment_date, caretaker, completion_date, work_type } = req.body
         const territory = await territoryRepository.findOneBy({ id })
 
         if (!territory) {
@@ -19,7 +18,7 @@ class TerritoryHistoryController {
         }
 
         // Validate that the assignment_date is before or equal to the completion_date
-        const isValidDates = moment(assignment_date).isSameOrBefore(moment(completion_date))
+        const isValidDates = !completion_date || moment(assignment_date).isSameOrBefore(moment(completion_date))
 
         if (!isValidDates) {
             throw new BadRequestError("The assignment date must be before or equal to the completion date")
@@ -29,6 +28,7 @@ class TerritoryHistoryController {
         const territoryHistory = territoryHistoryRepository.create({
             assignment_date,
             caretaker,
+            work_type: work_type ?? "Padrão",
             completion_date,
             territory
         })
@@ -44,7 +44,7 @@ class TerritoryHistoryController {
 
     async update(req: CustomRequestPT<ParamsTerritoryHistoryUpdateTypes, BodyTerritoryHistoryUpdateTypes>, res: Response) {
         const { territoryHistory_id: id } = req.params
-        const { assignment_date, caretaker, completion_date } = req.body
+        const { assignment_date, caretaker, completion_date, work_type } = req.body
 
         const history = await territoryHistoryRepository.findOneBy({ id })
 
@@ -52,7 +52,8 @@ class TerritoryHistoryController {
             throw new NotFoundError(messageErrors.notFound.territoryHistory)
         }
 
-        const isValidDates = moment(assignment_date).isSameOrBefore(moment(completion_date))
+        // Validate that the assignment_date is before or equal to the completion_date
+        const isValidDates = !completion_date || moment(assignment_date).isSameOrBefore(moment(completion_date))
 
         if (!isValidDates) {
             throw new BadRequestError("The assignment date must be before or equal to the completion date")
@@ -60,6 +61,7 @@ class TerritoryHistoryController {
 
         // Update the history record
         history.assignment_date = assignment_date || history.assignment_date
+        history.work_type = work_type || history.work_type
         history.caretaker = caretaker || history.caretaker
         history.completion_date = completion_date || history.completion_date
 
@@ -90,9 +92,26 @@ class TerritoryHistoryController {
         }
     }
 
+    async getTerritoryHistory(req: ParamsCustomRequest<ParamsGetTerritoryHistoryTypes>, res: Response) {
+        const { territory_id: id } = req.params
+        
+        if (!id) {
+            return res.status(400).json({ error: "Territory ID is required" });
+        }
+
+        const history = await territoryHistoryRepository.find({
+            where: {
+                territory: {
+                    id
+                }
+            }
+        })
+
+        return res.status(200).json(history)
+    }
+
     async getTerritoriesHistory(req: ParamsCustomRequest<ParamsTerritoryHistoryGetTypes>, res: Response) {
         const { congregation_id } = req.params
-
         const history = await territoryHistoryRepository.find({
             where: {
                 territory: {

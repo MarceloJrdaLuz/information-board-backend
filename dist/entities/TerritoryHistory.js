@@ -27,6 +27,10 @@ __decorate([
     __metadata("design:type", String)
 ], TerritoryHistory.prototype, "caretaker", void 0);
 __decorate([
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], TerritoryHistory.prototype, "work_type", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'date' }),
     __metadata("design:type", String)
 ], TerritoryHistory.prototype, "assignment_date", void 0);

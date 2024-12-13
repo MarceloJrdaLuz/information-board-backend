@@ -12,6 +12,9 @@ export class TerritoryHistory {
   @Column()
   caretaker: string
 
+  @Column()
+  work_type: string
+
   @Column({ type: 'date' })
   assignment_date: string
 

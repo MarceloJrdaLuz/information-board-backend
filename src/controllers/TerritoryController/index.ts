@@ -1,15 +1,14 @@
 import { Response } from "express"
-import { BodyTerritoryCreateTypes, BodyTerritoryUpdateTypes, ParamsTerritoryCreateTypes, ParamsTerritoryDeleteTypes, ParamsTerritoryUpdateTypes } from "./types"
-import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
-import { congregationRepository } from "../../repositories/congregationRepository"
-import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
-import { config } from "../../config"
 import fs from 'fs-extra'
-import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage"
-import { NormalizeFiles } from "../../types/normalizeFile"
-import { territoryRepository } from "../../repositories/territoryRepository"
-import path from "path"
+import { config } from "../../config"
+import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
+import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage"
+import { congregationRepository } from "../../repositories/congregationRepository"
+import { territoryRepository } from "../../repositories/territoryRepository"
+import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
+import { NormalizeFiles } from "../../types/normalizeFile"
+import { BodyTerritoryCreateTypes, BodyTerritoryUpdateTypes, ParamsGetTerritoryTypes, ParamsTerritoryCreateTypes, ParamsTerritoryDeleteTypes, ParamsTerritoryUpdateTypes } from "./types"
 
 class TerritoryController {
     async create(req: CustomRequestPT<ParamsTerritoryCreateTypes, BodyTerritoryCreateTypes>, res: Response) {
@@ -81,6 +80,8 @@ class TerritoryController {
         const { territory_id: id } = req.params
         const { description, name } = req.body
 
+        console.log(description, name, id)
+
         const file = req.file as Express.Multer.File
 
         const territory = await territoryRepository.findOneBy({ id })
@@ -131,7 +132,6 @@ class TerritoryController {
 
     async delete(req: ParamsCustomRequest<ParamsTerritoryDeleteTypes>, res: Response) {
         const { territory_id } = req.params
-
         const territory = await territoryRepository.findOneBy({ id: territory_id })
 
         if (!territory) {
@@ -145,6 +145,16 @@ class TerritoryController {
         await territoryRepository.remove(territory).catch(err => console.log(err))
 
         return res.status(200).end()
+    }
+
+    async getTerritory(req: ParamsCustomRequest<ParamsGetTerritoryTypes>, res: Response) {
+        const { territory_id: id } = req.params
+
+        const territory = await territoryRepository.findOneBy({ id })
+
+        if (!territory) throw new NotFoundError(messageErrors.notFound.territory)
+
+        return res.status(200).json(territory)
     }
 
     async getTerritories(req: ParamsCustomRequest<ParamsTerritoryCreateTypes>, res: Response) {
