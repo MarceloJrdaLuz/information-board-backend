@@ -59,6 +59,7 @@ routes.get('/territory/:territory_id', (0, permissions_1.is)(['ADMIN_CONGREGATIO
 routes.post('/territory/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), multer_1.uploadFile.single('territory_image'), TerritoryController_1.default.create);
 routes.put('/territory/:territory_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), multer_1.uploadFile.single('territory_image'), TerritoryController_1.default.update);
 routes.delete('/territory/:territory_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryController_1.default.delete);
+routes.get('/territoriesHistory/:congregation_id', TerritoryHistoryController_1.default.getTerritoriesHistory);
 routes.get('/territoryHistory/:territory_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryHistoryController_1.default.getTerritoryHistory);
 routes.post('/territoryHistory/:territory_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryHistoryController_1.default.create);
 routes.put('/territoryHistory/:territoryHistory_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryHistoryController_1.default.update);

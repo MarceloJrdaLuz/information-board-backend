@@ -19,7 +19,7 @@ __decorate([
     __metadata("design:type", String)
 ], TerritoryHistory.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => Territory_1.Territory, territory => territory.histories, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.ManyToOne)(() => Territory_1.Territory, territory => territory.histories, { onDelete: 'CASCADE', eager: true }),
     __metadata("design:type", Territory_1.Territory)
 ], TerritoryHistory.prototype, "territory", void 0);
 __decorate([

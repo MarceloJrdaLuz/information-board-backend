@@ -6,7 +6,7 @@ export class TerritoryHistory {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Territory, territory => territory.histories, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Territory, territory => territory.histories, { onDelete: 'CASCADE', eager: true })
   territory: Territory
 
   @Column()

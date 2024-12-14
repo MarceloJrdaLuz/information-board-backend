@@ -63,6 +63,7 @@ routes.post('/territory/:congregation_id', is(['ADMIN_CONGREGATION', 'TERRITORIE
 routes.put('/territory/:territory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), uploadFile.single('territory_image'), TerritoryController.update)
 routes.delete('/territory/:territory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryController.delete)
 
+routes.get('/territoriesHistory/:congregation_id',  TerritoryHistoryController.getTerritoriesHistory)
 routes.get('/territoryHistory/:territory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryHistoryController.getTerritoryHistory)
 routes.post('/territoryHistory/:territory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryHistoryController.create)
 routes.put('/territoryHistory/:territoryHistory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryHistoryController.update)
