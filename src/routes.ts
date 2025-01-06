@@ -105,8 +105,8 @@ routes.put('/group/:group_id/change-groupOverseer', is(['ADMIN_CONGREGATION', 'G
 routes.post('/consentRecord', ConsentRecordController.create)
 routes.post('/checkConsentRecords', ConsentRecordController.checkConsent)
 
-routes.post('/assistance/:congregation_id', MeetingAssistanceController.create)
-routes.get('/assistance/:congregation_id', MeetingAssistanceController.getAssistance)
+routes.post('/assistance/:congregation_id', is(['ADMIN_CONGREGATION', 'ASSISTANCE_MANAGER']), MeetingAssistanceController.create)
+routes.get('/assistance/:congregation_id', is(['ADMIN_CONGREGATION', 'ASSISTANCE_MANAGER', 'ASSISTANCE_VIEWER']), MeetingAssistanceController.getAssistance)
 
 routes.get('/deleteExpiredNotices', verifyCronSecret, CronJobController.deleteExpiredNotices)
 routes.get('/reportsCleanUp', verifyCronSecret, CronJobController.reportsCleanUp)
