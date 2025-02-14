@@ -94,8 +94,8 @@ routes.get('/groups/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATIO
 routes.put('/group/:group_id/change-groupOverseer', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController_1.default.updateGroupOverseer);
 routes.post('/consentRecord', ConsentRecordController_1.default.create);
 routes.post('/checkConsentRecords', ConsentRecordController_1.default.checkConsent);
-routes.post('/assistance/:congregation_id', MeetingAssistanceController_1.default.create);
-routes.get('/assistance/:congregation_id', MeetingAssistanceController_1.default.getAssistance);
+routes.post('/assistance/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'ASSISTANCE_MANAGER']), MeetingAssistanceController_1.default.create);
+routes.get('/assistance/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'ASSISTANCE_MANAGER', 'ASSISTANCE_VIEWER']), MeetingAssistanceController_1.default.getAssistance);
 routes.get('/deleteExpiredNotices', permissions_1.verifyCronSecret, CronJobController_1.default.deleteExpiredNotices);
 routes.get('/reportsCleanUp', permissions_1.verifyCronSecret, CronJobController_1.default.reportsCleanUp);
 routes.get('/backup', permissions_1.verifyCronSecret, CronJobController_1.default.backup);

@@ -24,6 +24,10 @@ __decorate([
     __metadata("design:type", String)
 ], Territory.prototype, "name", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: "int", nullable: true }),
+    __metadata("design:type", Number)
+], Territory.prototype, "number", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: "text" }),
     __metadata("design:type", String)
 ], Territory.prototype, "image_url", void 0);
@@ -45,7 +49,6 @@ __decorate([
 ], Territory.prototype, "updated_at", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Congregation_1.Congregation, congregation => congregation.territories, {
-        eager: true,
         onDelete: "CASCADE"
     }),
     (0, typeorm_1.JoinColumn)({ name: 'congregation_id' }),

@@ -13,7 +13,7 @@ import { BodyTerritoryCreateTypes, BodyTerritoryUpdateTypes, ParamsGetTerritoryT
 class TerritoryController {
     async create(req: CustomRequestPT<ParamsTerritoryCreateTypes, BodyTerritoryCreateTypes>, res: Response) {
         const { congregation_id } = req.params
-        const { name, description } = req.body
+        const { name, number, description } = req.body
         const file = req.file
 
         const congregation = await congregationRepository.findOneBy({ id: congregation_id })
@@ -59,6 +59,7 @@ class TerritoryController {
             if (congregation) {
                 const newTerritory = territoryRepository.create({
                     name,
+                    number: Number(number),
                     description,
                     image_url: file?.url ?? "",
                     key: file?.key ?? "",
@@ -78,9 +79,7 @@ class TerritoryController {
 
     async update(req: CustomRequestPT<ParamsTerritoryUpdateTypes, BodyTerritoryUpdateTypes>, res: Response) {
         const { territory_id: id } = req.params
-        const { description, name } = req.body
-
-        console.log(description, name, id)
+        const { description, name, number } = req.body
 
         const file = req.file as Express.Multer.File
 
@@ -116,6 +115,7 @@ class TerritoryController {
             }
             const updateTerritory = {
                 name,
+                number: Number(number),
                 description,
                 image_url: file?.url ?? territory?.image_url,
                 key: file?.key ?? territory?.key

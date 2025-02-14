@@ -12,6 +12,7 @@ export type ParamsGetTerritoryTypes = ParamsTerritoryUpdateTypes
 
 export interface BodyTerritoryCreateTypes {
     name: string
+    number: string
     description: string
 }
 

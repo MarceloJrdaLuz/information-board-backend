@@ -10,6 +10,9 @@ export class Territory {
     @Column({ type: "text" })
     name: string
 
+    @Column({ type: "int", nullable: true })
+    number: number
+
     @Column({ type: "text" })
     image_url: string
 
@@ -26,7 +29,6 @@ export class Territory {
     updated_at: Date
 
     @ManyToOne(() => Congregation, congregation => congregation.territories, {
-        eager: true,
         onDelete: "CASCADE"
     })
     @JoinColumn({ name: 'congregation_id' })

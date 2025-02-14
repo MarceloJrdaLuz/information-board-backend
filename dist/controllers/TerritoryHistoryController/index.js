@@ -102,7 +102,7 @@ class TerritoryHistoryController {
                         id: congregation_id
                     }
                 }
-            },
+            }
         });
         if (!history) {
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.territoryHistory);

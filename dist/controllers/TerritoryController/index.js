@@ -14,7 +14,7 @@ class TerritoryController {
     async create(req, res) {
         var _a, _b;
         const { congregation_id } = req.params;
-        const { name, description } = req.body;
+        const { name, number, description } = req.body;
         const file = req.file;
         const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
         if (!congregation) {
@@ -57,6 +57,7 @@ class TerritoryController {
             if (congregation) {
                 const newTerritory = territoryRepository_1.territoryRepository.create({
                     name,
+                    number: Number(number),
                     description,
                     image_url: (_a = file === null || file === void 0 ? void 0 : file.url) !== null && _a !== void 0 ? _a : "",
                     key: (_b = file === null || file === void 0 ? void 0 : file.key) !== null && _b !== void 0 ? _b : "",
@@ -75,8 +76,7 @@ class TerritoryController {
     async update(req, res) {
         var _a, _b;
         const { territory_id: id } = req.params;
-        const { description, name } = req.body;
-        console.log(description, name, id);
+        const { description, name, number } = req.body;
         const file = req.file;
         const territory = await territoryRepository_1.territoryRepository.findOneBy({ id });
         if (!territory) {
@@ -111,6 +111,7 @@ class TerritoryController {
             }
             const updateTerritory = {
                 name,
+                number: Number(number),
                 description,
                 image_url: (_a = file === null || file === void 0 ? void 0 : file.url) !== null && _a !== void 0 ? _a : territory === null || territory === void 0 ? void 0 : territory.image_url,
                 key: (_b = file === null || file === void 0 ? void 0 : file.key) !== null && _b !== void 0 ? _b : territory === null || territory === void 0 ? void 0 : territory.key
