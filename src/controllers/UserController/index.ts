@@ -94,7 +94,7 @@ class UserController {
 
         const token = jwt.sign({ id: foundUser.id }, process.env.JWT_PASS ?? '', {
             subject: foundUser.id,
-            expiresIn: '8h'
+            expiresIn: '30d'
         })
 
         const { password: _, ...userLogin } = foundUser
