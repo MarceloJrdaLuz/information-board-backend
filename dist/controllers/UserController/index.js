@@ -75,7 +75,7 @@ class UserController {
         }
         const token = jsonwebtoken_1.default.sign({ id: foundUser.id }, (_a = process.env.JWT_PASS) !== null && _a !== void 0 ? _a : '', {
             subject: foundUser.id,
-            expiresIn: '8h'
+            expiresIn: '30d'
         });
         const { password: _, ...userLogin } = foundUser;
         return res.json({
