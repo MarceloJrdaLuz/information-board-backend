@@ -17,7 +17,7 @@
           {{code}}
         </mj-button>
 
-        <mj-text font-size="15px" color="gray" font-family="helvetica">Caso você precise mais tarde desse código por algum motivo, ele fica no rodapé do Painel.</mj-text>
+        <mj-text font-size="15px" color="gray" font-family="helvetica">Caso você precise mais tarde desse código por algum motivo, ele fica no rodapé do Painel do sistema.</mj-text>
 
       </mj-column>
     </mj-section>
