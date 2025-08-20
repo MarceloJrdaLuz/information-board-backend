@@ -5,9 +5,11 @@ const congregationRepository_1 = require("../../repositories/congregationReposit
 const privileges_1 = require("../../types/privileges");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const messageErrors_1 = require("../../helpers/messageErrors");
+const emergencyContact_1 = require("../../repositories/emergencyContact");
+const typeorm_1 = require("typeorm");
 class PublisherControler {
     async create(req, res) {
-        const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation } = req.body;
+        const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContactsIds } = req.body;
         if (privileges) {
             if (privileges.includes(privileges_1.Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
                 throw new api_errors_1.BadRequestError('You must provide the "pioneerMonths" field when assigning the "Pioneiro Auxiliar" privilege');
@@ -50,15 +52,23 @@ class PublisherControler {
             pioneerMonths,
             congregation,
             startPioneer,
-            situation
+            situation,
+            phone,
+            address
         });
+        // Associa os contatos de emergência já existentes, se enviados
+        if (emergencyContactsIds && emergencyContactsIds.length) {
+            const contacts = await emergencyContact_1.emergencyContactRepository.findBy({ id: (0, typeorm_1.In)(emergencyContactsIds) });
+            newPublisher.emergencyContacts = contacts;
+        }
         await publisherRepository_1.publisherRepository.save(newPublisher).catch(err => {
             throw new api_errors_1.BadRequestError(err);
         });
         return res.status(201).json(newPublisher);
     }
     async update(req, res) {
-        const { id, fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, startPioneer } = req.body;
+        const { publisher_id: id } = req.params;
+        const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContactsIds } = req.body;
         const publisher = await publisherRepository_1.publisherRepository.findOne({ where: { id } });
         if (!publisher) {
             throw new api_errors_1.NotFoundError('Publisher not exists');
@@ -75,17 +85,26 @@ class PublisherControler {
                 throw new api_errors_1.BadRequestError('Some privilege not exists');
             }
         }
-        if ((fullName === undefined || fullName === publisher.fullName) &&
-            (gender === undefined || gender === publisher.gender) &&
-            (hope === undefined || hope === publisher.hope) &&
-            (nickname === undefined || nickname === publisher.nickname) &&
-            (birthDate === undefined || birthDate === publisher.birthDate) &&
-            (pioneerMonths === undefined || pioneerMonths === publisher.pioneerMonths) &&
-            (situation === undefined || situation === publisher.situation) &&
-            (startPioneer === undefined || startPioneer === publisher.startPioneer) &&
-            privileges === undefined) {
-            throw new api_errors_1.BadRequestError('Any change detected');
+        if (emergencyContactsIds && emergencyContactsIds.length) {
+            const contacts = await emergencyContact_1.emergencyContactRepository.findBy({ id: (0, typeorm_1.In)(emergencyContactsIds) });
+            publisher.emergencyContacts = contacts;
         }
+        // const noChange =
+        //   (fullName === undefined || fullName === publisher.fullName) &&
+        //   (gender === undefined || gender === publisher.gender) &&
+        //   (hope === undefined || hope === publisher.hope) &&
+        //   (nickname === undefined || nickname === publisher.nickname) &&
+        //   (birthDate === undefined || birthDate?.toISOString() === publisher.birthDate?.toISOString()) &&
+        //   (pioneerMonths === undefined || arraysEqual(pioneerMonths, publisher.pioneerMonths)) &&
+        //   (situation === undefined || situation === publisher.situation) &&
+        //   (startPioneer === undefined || startPioneer?.toISOString() === publisher.startPioneer?.toISOString()) &&
+        //   (dateImmersed === undefined || dateImmersed?.toISOString() === publisher.dateImmersed?.toISOString()) &&
+        //   (phone === undefined || phone === publisher.phone) &&
+        //   (address === undefined || address === publisher.address) &&
+        //   (privileges === undefined || arraysEqual(privileges, publisher.privileges));
+        // if (noChange) {
+        //   throw new BadRequestError('Any change detected');
+        // }
         if (fullName !== publisher.fullName) {
             const existingPublisherSomeFullName = await publisherRepository_1.publisherRepository.find({
                 where: {
@@ -113,6 +132,8 @@ class PublisherControler {
         publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed;
         publisher.situation = situation !== undefined ? situation : publisher.situation;
         publisher.startPioneer = startPioneer !== undefined ? startPioneer : publisher.startPioneer;
+        publisher.phone = phone !== undefined ? phone : publisher.phone;
+        publisher.address = address !== undefined ? address : publisher.address;
         await publisherRepository_1.publisherRepository.save(publisher);
         return res.status(201).json(publisher);
     }

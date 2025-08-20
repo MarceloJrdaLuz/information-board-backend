@@ -1,7 +1,8 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { Congregation } from "./Congregation";
-import { GroupOverseers } from "./GroupOverseers";
-import { Group } from "./Group";
+import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
+import { Congregation } from "./Congregation"
+import { GroupOverseers } from "./GroupOverseers"
+import { Group } from "./Group"
+import { EmergencyContact } from "./EmergencyContact"
 
 export enum Gender {
     Masculino = "Masculino",
@@ -50,6 +51,9 @@ export class Publisher {
     @Column({ type: 'text', nullable: true })
     phone: string
 
+    @Column({ type: 'text', nullable: true })
+    address: string
+
     @Column({ type: "timestamp", nullable: true })
     dateImmersed: Date
 
@@ -78,7 +82,15 @@ export class Publisher {
 
     @ManyToOne(() => GroupOverseers, { nullable: true, onDelete: "SET NULL" }) // Relacionamento Many-to-One opcional com GroupOverseers
     @JoinColumn({ name: 'group_overseers_id' })
-    groupOverseers: GroupOverseers;
+    groupOverseers: GroupOverseers
+
+    @ManyToMany(() => EmergencyContact, emergencyContact => emergencyContact.publishers, { cascade: true, eager: true })
+    @JoinTable({
+        name: "publisher_emergency_contacts",
+        joinColumn: { name: "publisher_id", referencedColumnName: "id" },
+        inverseJoinColumn: { name: "emergency_contact_id", referencedColumnName: "id" }
+    })
+    emergencyContacts: EmergencyContact[]
 
     @CreateDateColumn()
     created_at: Date

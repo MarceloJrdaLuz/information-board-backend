@@ -1,4 +1,4 @@
-import {  Response } from "express-serve-static-core"
+import { Response } from "express-serve-static-core"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { Privileges } from "../../types/privileges"
@@ -6,17 +6,20 @@ import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherT
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { messageErrors } from "../../helpers/messageErrors"
+import { emergencyContactRepository } from "../../repositories/emergencyContact"
+import { In } from "typeorm"
+import { arraysEqual } from "../../functions/arraysEqual"
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
-    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation } = req.body
+    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContactsIds } = req.body
 
     if (privileges) {
       if (privileges.includes(Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
         throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "Pioneiro Auxiliar" privilege')
       }
 
-      if(privileges.includes(Privileges.PIONEIROREGULAR) && !startPioneer){
+      if (privileges.includes(Privileges.PIONEIROREGULAR) && !startPioneer) {
         throw new BadRequestError('You must provide the "startPioneer" field when assigning the "Pioneiro Regular" ou "Pioneiro auxiliar indeterminado" privilege')
       }
     }
@@ -57,10 +60,18 @@ class PublisherControler {
       birthDate,
       privileges,
       pioneerMonths,
-      congregation, 
-      startPioneer, 
-      situation
+      congregation,
+      startPioneer,
+      situation,
+      phone,
+      address
     })
+
+    // Associa os contatos de emergência já existentes, se enviados
+    if (emergencyContactsIds && emergencyContactsIds.length) {
+      const contacts = await emergencyContactRepository.findBy({ id: In(emergencyContactsIds) });
+      newPublisher.emergencyContacts = contacts;
+    }
 
     await publisherRepository.save(newPublisher).catch(err => {
       throw new BadRequestError(err)
@@ -70,7 +81,8 @@ class PublisherControler {
   }
 
   async update(req: CustomRequest<BodyPublisherUpdateTypes>, res: Response) {
-    const { id, fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, startPioneer } = req.body
+    const { publisher_id: id } = req.params
+    const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContactsIds } = req.body
 
     const publisher = await publisherRepository.findOne({ where: { id } })
 
@@ -83,7 +95,7 @@ class PublisherControler {
         throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "PIONEIRO AUXILIAR" privilege')
       }
 
-      if(privileges.includes(Privileges.PIONEIROREGULAR) && !startPioneer){
+      if (privileges.includes(Privileges.PIONEIROREGULAR) && !startPioneer) {
         throw new BadRequestError('You must provide the "startRegularPioneer" field when assigning the "Pioneiro Regular" privilege')
       }
 
@@ -93,19 +105,28 @@ class PublisherControler {
       }
     }
 
-    if (
-      (fullName === undefined || fullName === publisher.fullName) &&
-      (gender === undefined || gender === publisher.gender) &&
-      (hope === undefined || hope === publisher.hope) &&
-      (nickname === undefined || nickname === publisher.nickname) &&
-      (birthDate === undefined || birthDate === publisher.birthDate) &&
-      (pioneerMonths === undefined || pioneerMonths === publisher.pioneerMonths) &&
-      (situation === undefined || situation === publisher.situation) &&
-      (startPioneer === undefined || startPioneer === publisher.startPioneer) &&
-      privileges === undefined
-    ) {
-      throw new BadRequestError('Any change detected')
+    if (emergencyContactsIds && emergencyContactsIds.length) {
+      const contacts = await emergencyContactRepository.findBy({ id: In(emergencyContactsIds) })
+      publisher.emergencyContacts = contacts
     }
+
+    // const noChange =
+    //   (fullName === undefined || fullName === publisher.fullName) &&
+    //   (gender === undefined || gender === publisher.gender) &&
+    //   (hope === undefined || hope === publisher.hope) &&
+    //   (nickname === undefined || nickname === publisher.nickname) &&
+    //   (birthDate === undefined || birthDate?.toISOString() === publisher.birthDate?.toISOString()) &&
+    //   (pioneerMonths === undefined || arraysEqual(pioneerMonths, publisher.pioneerMonths)) &&
+    //   (situation === undefined || situation === publisher.situation) &&
+    //   (startPioneer === undefined || startPioneer?.toISOString() === publisher.startPioneer?.toISOString()) &&
+    //   (dateImmersed === undefined || dateImmersed?.toISOString() === publisher.dateImmersed?.toISOString()) &&
+    //   (phone === undefined || phone === publisher.phone) &&
+    //   (address === undefined || address === publisher.address) &&
+    //   (privileges === undefined || arraysEqual(privileges, publisher.privileges));
+
+    // if (noChange) {
+    //   throw new BadRequestError('Any change detected');
+    // }
 
     if (fullName !== publisher.fullName) {
       const existingPublisherSomeFullName = await publisherRepository.find({
@@ -137,6 +158,8 @@ class PublisherControler {
     publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed
     publisher.situation = situation !== undefined ? situation : publisher.situation
     publisher.startPioneer = startPioneer !== undefined ? startPioneer : publisher.startPioneer
+    publisher.phone = phone !== undefined ? phone : publisher.phone
+    publisher.address = address !== undefined ? address : publisher.address
 
     await publisherRepository.save(publisher)
 

@@ -28,9 +28,11 @@ export interface BodyPublisherCreateTypes {
     pioneerMonths: string[]
     congregation_id: string
     situation: Situation
+    phone: string
+    address: string
+    emergencyContactsIds?: string[]
 }
 export interface BodyPublisherUpdateTypes {
-    id: string
     fullName?: string
     nickname?: string
     dateImmersed?: Date
@@ -41,5 +43,12 @@ export interface BodyPublisherUpdateTypes {
     hope: Hope
     gender: Gender
     situation?: Situation
+    phone?: string
+    address?: string
+    emergencyContactsIds?: string[] 
+}
+
+export type ParamsPublisherUpdateTypes = {
+    publisher_id: string
 }
 

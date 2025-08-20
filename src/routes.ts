@@ -18,6 +18,7 @@ import MeetingAssistanceController from "./controllers/MeetingAssistanceControll
 import CronJobController from "./controllers/CronJobController"
 import TerritoryController from "./controllers/TerritoryController"
 import TerritoryHistoryController from "./controllers/TerritoryHistoryController"
+import EmergencyContactController from "./controllers/EmergencyContactController"
 
 const routes = Router()
 
@@ -36,6 +37,11 @@ routes.get('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MAN
 routes.post('/publisher', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.create)
 routes.delete('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.delete)
 routes.put('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.update)
+
+routes.get('/emergencyContacts/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController.listByCongregation)
+routes.post('/emergencyContact', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController.create)
+routes.put('/emergencyContact/:emergencyContact_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController.update)
+routes.delete('/emergencyContact/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController.delete)
 
 routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), CongregationController.create) //
 routes.delete('/congregation/:id', is(['ADMIN']), CongregationController.delete)
@@ -57,13 +63,13 @@ routes.post('/profile/:user_id', uploadFile.single('avatar'), ProfileController.
 routes.put('/profile/:profile_id', uploadFile.single('avatar'), ProfileController.update)
 routes.delete('/profile/:id', ProfileController.delete)
 
-routes.get('/territories/:congregation_id',  is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER', 'TERRITORIES_VIEWER']), TerritoryController.getTerritories)
-routes.get('/territory/:territory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER', 'TERRITORIES_VIEWER']),  TerritoryController.getTerritory)
+routes.get('/territories/:congregation_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER', 'TERRITORIES_VIEWER']), TerritoryController.getTerritories)
+routes.get('/territory/:territory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER', 'TERRITORIES_VIEWER']), TerritoryController.getTerritory)
 routes.post('/territory/:congregation_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), uploadFile.single('territory_image'), TerritoryController.create)
 routes.put('/territory/:territory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), uploadFile.single('territory_image'), TerritoryController.update)
 routes.delete('/territory/:territory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryController.delete)
 
-routes.get('/territoriesHistory/:congregation_id',  TerritoryHistoryController.getTerritoriesHistory)
+routes.get('/territoriesHistory/:congregation_id', TerritoryHistoryController.getTerritoriesHistory)
 routes.get('/territoryHistory/:territory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryHistoryController.getTerritoryHistory)
 routes.post('/territoryHistory/:territory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryHistoryController.create)
 routes.put('/territoryHistory/:territoryHistory_id', is(['ADMIN_CONGREGATION', 'TERRITORIES_MANAGER']), TerritoryHistoryController.update)

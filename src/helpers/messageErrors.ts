@@ -1,6 +1,7 @@
 export const messageErrors = {
     notFound: {
         congregation: "Congregation was not found",
+        emergencyContact: "Emergency Contact was not found",
         territory: "Territory not exists",
         territoryHistory: "Territory history not found",
         category: "Category was not found",

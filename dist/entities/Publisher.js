@@ -14,6 +14,7 @@ const typeorm_1 = require("typeorm");
 const Congregation_1 = require("./Congregation");
 const GroupOverseers_1 = require("./GroupOverseers");
 const Group_1 = require("./Group");
+const EmergencyContact_1 = require("./EmergencyContact");
 var Gender;
 (function (Gender) {
     Gender["Masculino"] = "Masculino";
@@ -70,6 +71,10 @@ __decorate([
     __metadata("design:type", String)
 ], Publisher.prototype, "phone", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], Publisher.prototype, "address", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
     __metadata("design:type", Date)
 ], Publisher.prototype, "dateImmersed", void 0);
@@ -108,6 +113,15 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'group_overseers_id' }),
     __metadata("design:type", GroupOverseers_1.GroupOverseers)
 ], Publisher.prototype, "groupOverseers", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => EmergencyContact_1.EmergencyContact, emergencyContact => emergencyContact.publishers, { cascade: true, eager: true }),
+    (0, typeorm_1.JoinTable)({
+        name: "publisher_emergency_contacts",
+        joinColumn: { name: "publisher_id", referencedColumnName: "id" },
+        inverseJoinColumn: { name: "emergency_contact_id", referencedColumnName: "id" }
+    }),
+    __metadata("design:type", Array)
+], Publisher.prototype, "emergencyContacts", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
