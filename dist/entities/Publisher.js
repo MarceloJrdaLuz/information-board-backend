@@ -114,14 +114,12 @@ __decorate([
     __metadata("design:type", GroupOverseers_1.GroupOverseers)
 ], Publisher.prototype, "groupOverseers", void 0);
 __decorate([
-    (0, typeorm_1.ManyToMany)(() => EmergencyContact_1.EmergencyContact, emergencyContact => emergencyContact.publishers, { cascade: true, eager: true }),
-    (0, typeorm_1.JoinTable)({
-        name: "publisher_emergency_contacts",
-        joinColumn: { name: "publisher_id", referencedColumnName: "id" },
-        inverseJoinColumn: { name: "emergency_contact_id", referencedColumnName: "id" }
+    (0, typeorm_1.ManyToOne)(() => EmergencyContact_1.EmergencyContact, emergencyContact => emergencyContact.publishers, {
+        nullable: true,
+        onDelete: "SET NULL", // se o contato for deletado, o publisher continua mas sem contato
     }),
-    __metadata("design:type", Array)
-], Publisher.prototype, "emergencyContacts", void 0);
+    __metadata("design:type", Object)
+], Publisher.prototype, "emergencyContact", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

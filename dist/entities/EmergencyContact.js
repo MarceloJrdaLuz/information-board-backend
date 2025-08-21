@@ -35,7 +35,7 @@ __decorate([
     __metadata("design:type", Boolean)
 ], EmergencyContact.prototype, "isTj", void 0);
 __decorate([
-    (0, typeorm_1.ManyToMany)(() => Publisher_1.Publisher, publisher => publisher.emergencyContacts),
+    (0, typeorm_1.OneToMany)(() => Publisher_1.Publisher, publisher => publisher.emergencyContact),
     __metadata("design:type", Array)
 ], EmergencyContact.prototype, "publishers", void 0);
 EmergencyContact = __decorate([

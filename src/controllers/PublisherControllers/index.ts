@@ -12,7 +12,7 @@ import { arraysEqual } from "../../functions/arraysEqual"
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
-    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContactsIds } = req.body
+    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContactId } = req.body
 
     if (privileges) {
       if (privileges.includes(Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
@@ -67,12 +67,10 @@ class PublisherControler {
       address
     })
 
-    // Associa os contatos de emergência já existentes, se enviados
-    if (emergencyContactsIds && emergencyContactsIds.length) {
-      const contacts = await emergencyContactRepository.findBy({ id: In(emergencyContactsIds) });
-      newPublisher.emergencyContacts = contacts;
+    if (emergencyContactId) {
+      const contact = await emergencyContactRepository.findOneBy({ id: emergencyContactId });
+      newPublisher.emergencyContact = contact ?? null; // permite que seja null
     }
-
     await publisherRepository.save(newPublisher).catch(err => {
       throw new BadRequestError(err)
     })
@@ -82,7 +80,7 @@ class PublisherControler {
 
   async update(req: CustomRequest<BodyPublisherUpdateTypes>, res: Response) {
     const { publisher_id: id } = req.params
-    const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContactsIds } = req.body
+    const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContactId } = req.body
 
     const publisher = await publisherRepository.findOne({ where: { id } })
 
@@ -105,11 +103,10 @@ class PublisherControler {
       }
     }
 
-    if (emergencyContactsIds && emergencyContactsIds.length) {
-      const contacts = await emergencyContactRepository.findBy({ id: In(emergencyContactsIds) })
-      publisher.emergencyContacts = contacts
+    if (emergencyContactId) {
+      const contact = await emergencyContactRepository.findOneBy({ id: emergencyContactId });
+      publisher.emergencyContact = contact ?? null; // permite que seja null
     }
-
     // const noChange =
     //   (fullName === undefined || fullName === publisher.fullName) &&
     //   (gender === undefined || gender === publisher.gender) &&

@@ -4,7 +4,7 @@ export interface BodyEmergencyCreateTypes {
    phone: string
    relationship?: string
    isTj?: boolean
-   publisherIds: string[]
+   publisherId: string
 }
 
 export type BodyUpdateEmergencyContactTypes = BodyEmergencyCreateTypes

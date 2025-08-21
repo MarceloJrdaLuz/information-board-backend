@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable } from "typeorm"
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm"
 import { Publisher } from "./Publisher"
 
 @Entity('emergency_contacts')
@@ -18,6 +18,6 @@ export class EmergencyContact {
     @Column({ type: 'boolean', default: true })
     isTj: boolean
 
-    @ManyToMany(() => Publisher, publisher => publisher.emergencyContacts)
-    publishers: Publisher[]
+    @OneToMany(() => Publisher, publisher => publisher.emergencyContact)
+    publishers: Publisher[];
 }

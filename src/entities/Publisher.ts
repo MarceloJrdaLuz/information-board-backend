@@ -84,13 +84,11 @@ export class Publisher {
     @JoinColumn({ name: 'group_overseers_id' })
     groupOverseers: GroupOverseers
 
-    @ManyToMany(() => EmergencyContact, emergencyContact => emergencyContact.publishers, { cascade: true, eager: true })
-    @JoinTable({
-        name: "publisher_emergency_contacts",
-        joinColumn: { name: "publisher_id", referencedColumnName: "id" },
-        inverseJoinColumn: { name: "emergency_contact_id", referencedColumnName: "id" }
+    @ManyToOne(() => EmergencyContact, emergencyContact => emergencyContact.publishers, {
+        nullable: true,
+        onDelete: "SET NULL", // se o contato for deletado, o publisher continua mas sem contato
     })
-    emergencyContacts: EmergencyContact[]
+    emergencyContact: EmergencyContact | null
 
     @CreateDateColumn()
     created_at: Date

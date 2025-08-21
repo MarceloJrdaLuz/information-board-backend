@@ -34,13 +34,13 @@ routes.get('/users', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.getUser
 routes.get('/publishers/congregationId/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers.getPublishers)
 routes.get('/publishers/congregationNumber/:congregationNumber', PublisherControllers.getPublishersWithCongregatioNumber)
 routes.get('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.getPublisher)
-routes.post('/publisher', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.create)
+routes.post('/publisher', /*is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']),*/ PublisherControllers.create)
 routes.delete('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.delete)
-routes.put('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.update)
+routes.put('/publisher/:publisher_id', /*is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']),*/ PublisherControllers.update)
 
 routes.get('/emergencyContacts/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController.listByCongregation)
-routes.post('/emergencyContact', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController.create)
-routes.put('/emergencyContact/:emergencyContact_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController.update)
+routes.post('/emergencyContact', /*is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']),*/ EmergencyContactController.create)
+routes.put('/emergencyContact/:emergencyContact_id', /*is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']),*/ EmergencyContactController.update)
 routes.delete('/emergencyContact/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController.delete)
 
 routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), CongregationController.create) //
