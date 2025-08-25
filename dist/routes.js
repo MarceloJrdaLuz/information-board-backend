@@ -36,13 +36,14 @@ routes.get('/users', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), Use
 routes.get('/publishers/congregationId/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers_1.default.getPublishers);
 routes.get('/publishers/congregationNumber/:congregationNumber', PublisherControllers_1.default.getPublishersWithCongregatioNumber);
 routes.get('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.getPublisher);
-routes.post('/publisher', /*is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']),*/ PublisherControllers_1.default.create);
+routes.post('/publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.create);
 routes.delete('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.delete);
-routes.put('/publisher/:publisher_id', /*is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']),*/ PublisherControllers_1.default.update);
+routes.put('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.update);
 routes.get('/emergencyContacts/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController_1.default.listByCongregation);
-routes.post('/emergencyContact', /*is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']),*/ EmergencyContactController_1.default.create);
-routes.put('/emergencyContact/:emergencyContact_id', /*is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']),*/ EmergencyContactController_1.default.update);
-routes.delete('/emergencyContact/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController_1.default.delete);
+routes.get('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController_1.default.getEmergencyContact);
+routes.post('/emergencyContact', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController_1.default.create);
+routes.put('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController_1.default.update);
+routes.delete('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController_1.default.delete);
 routes.post('/congregation', (0, permissions_1.is)(['ADMIN']), multer_1.uploadFile.single('image'), CongregationController_1.default.create); //
 routes.delete('/congregation/:id', (0, permissions_1.is)(['ADMIN']), CongregationController_1.default.delete);
 routes.get('/congregations', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.list);

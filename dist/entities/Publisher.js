@@ -115,6 +115,7 @@ __decorate([
 ], Publisher.prototype, "groupOverseers", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => EmergencyContact_1.EmergencyContact, emergencyContact => emergencyContact.publishers, {
+        eager: true,
         nullable: true,
         onDelete: "SET NULL", // se o contato for deletado, o publisher continua mas sem contato
     }),

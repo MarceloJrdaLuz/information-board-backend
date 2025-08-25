@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmergencyContact = void 0;
 const typeorm_1 = require("typeorm");
 const Publisher_1 = require("./Publisher");
+const Congregation_1 = require("./Congregation");
 let EmergencyContact = class EmergencyContact {
 };
 __decorate([
@@ -38,6 +39,12 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => Publisher_1.Publisher, publisher => publisher.emergencyContact),
     __metadata("design:type", Array)
 ], EmergencyContact.prototype, "publishers", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Congregation_1.Congregation, (congregation) => congregation.emergencyContacts, {
+        onDelete: 'CASCADE',
+    }),
+    __metadata("design:type", Congregation_1.Congregation)
+], EmergencyContact.prototype, "congregation", void 0);
 EmergencyContact = __decorate([
     (0, typeorm_1.Entity)('emergency_contacts')
 ], EmergencyContact);

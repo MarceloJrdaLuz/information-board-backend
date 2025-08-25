@@ -1,5 +1,6 @@
 
 export interface BodyEmergencyCreateTypes {
+   congregation_id: string
    name: string
    phone: string
    relationship?: string

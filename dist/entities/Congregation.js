@@ -17,6 +17,7 @@ const User_1 = require("./User");
 const enumWeekDays_1 = require("../types/enumWeekDays");
 const Group_1 = require("./Group");
 const Territory_1 = require("./Territory");
+const EmergencyContact_1 = require("./EmergencyContact");
 let Congregation = class Congregation {
 };
 __decorate([
@@ -92,6 +93,10 @@ __decorate([
     ,
     __metadata("design:type", Array)
 ], Congregation.prototype, "groups", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => EmergencyContact_1.EmergencyContact, (emergencyContact) => emergencyContact.congregation),
+    __metadata("design:type", Array)
+], Congregation.prototype, "emergencyContacts", void 0);
 Congregation = __decorate([
     (0, typeorm_1.Entity)('congregation')
 ], Congregation);

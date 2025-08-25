@@ -1,5 +1,6 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm"
+import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm"
 import { Publisher } from "./Publisher"
+import { Congregation } from "./Congregation"
 
 @Entity('emergency_contacts')
 export class EmergencyContact {
@@ -20,4 +21,9 @@ export class EmergencyContact {
 
     @OneToMany(() => Publisher, publisher => publisher.emergencyContact)
     publishers: Publisher[];
+
+    @ManyToOne(() => Congregation, (congregation) => congregation.emergencyContacts, {
+        onDelete: 'CASCADE',
+    })
+    congregation: Congregation;
 }

@@ -5,6 +5,7 @@ import { User } from "./User"
 import { EndweekDays, MidweekDays } from "../types/enumWeekDays"
 import { Group } from "./Group"
 import { Territory } from "./Territory"
+import { EmergencyContact } from "./EmergencyContact"
 
 @Entity('congregation')
 export class Congregation {
@@ -35,10 +36,10 @@ export class Congregation {
     @Column({ type: "time", nullable: true })
     hourMeetingPublic: string
 
-    @Column({ type: 'text', nullable:true })
+    @Column({ type: 'text', nullable: true })
     image_url: string
 
-    @Column({ type: "text", nullable: true})
+    @Column({ type: "text", nullable: true })
     imageKey: string
 
     @CreateDateColumn()
@@ -59,6 +60,9 @@ export class Congregation {
     @OneToMany(() => Notice, notice => notice.congregation)
     notices: Notice[]
 
-    @OneToMany(() => Group, group => group.groupOverseers, { nullable: true}) // Relacionamento One-to-Many com Group (opcional)
+    @OneToMany(() => Group, group => group.groupOverseers, { nullable: true }) // Relacionamento One-to-Many com Group (opcional)
     groups: Group[]
+
+    @OneToMany(() => EmergencyContact, (emergencyContact) => emergencyContact.congregation)
+    emergencyContacts: EmergencyContact[];
 }

@@ -8,7 +8,7 @@ const messageErrors_1 = require("../../helpers/messageErrors");
 const emergencyContact_1 = require("../../repositories/emergencyContact");
 class PublisherControler {
     async create(req, res) {
-        const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContactId } = req.body;
+        const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContact_id } = req.body;
         if (privileges) {
             if (privileges.includes(privileges_1.Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
                 throw new api_errors_1.BadRequestError('You must provide the "pioneerMonths" field when assigning the "Pioneiro Auxiliar" privilege');
@@ -55,8 +55,8 @@ class PublisherControler {
             phone,
             address
         });
-        if (emergencyContactId) {
-            const contact = await emergencyContact_1.emergencyContactRepository.findOneBy({ id: emergencyContactId });
+        if (emergencyContact_id) {
+            const contact = await emergencyContact_1.emergencyContactRepository.findOneBy({ id: emergencyContact_id });
             newPublisher.emergencyContact = contact !== null && contact !== void 0 ? contact : null; // permite que seja null
         }
         await publisherRepository_1.publisherRepository.save(newPublisher).catch(err => {
@@ -66,7 +66,7 @@ class PublisherControler {
     }
     async update(req, res) {
         const { publisher_id: id } = req.params;
-        const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContactId } = req.body;
+        const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContact_id } = req.body;
         const publisher = await publisherRepository_1.publisherRepository.findOne({ where: { id } });
         if (!publisher) {
             throw new api_errors_1.NotFoundError('Publisher not exists');
@@ -83,8 +83,8 @@ class PublisherControler {
                 throw new api_errors_1.BadRequestError('Some privilege not exists');
             }
         }
-        if (emergencyContactId) {
-            const contact = await emergencyContact_1.emergencyContactRepository.findOneBy({ id: emergencyContactId });
+        if (emergencyContact_id) {
+            const contact = await emergencyContact_1.emergencyContactRepository.findOneBy({ id: emergencyContact_id });
             publisher.emergencyContact = contact !== null && contact !== void 0 ? contact : null; // permite que seja null
         }
         // const noChange =

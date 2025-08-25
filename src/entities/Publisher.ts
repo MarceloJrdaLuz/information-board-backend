@@ -85,6 +85,7 @@ export class Publisher {
     groupOverseers: GroupOverseers
 
     @ManyToOne(() => EmergencyContact, emergencyContact => emergencyContact.publishers, {
+        eager: true,
         nullable: true,
         onDelete: "SET NULL", // se o contato for deletado, o publisher continua mas sem contato
     })

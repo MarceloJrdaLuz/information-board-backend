@@ -30,7 +30,7 @@ export interface BodyPublisherCreateTypes {
     situation: Situation
     phone: string
     address: string
-    emergencyContactId?: string
+    emergencyContact_id?: string
 }
 export interface BodyPublisherUpdateTypes {
     fullName?: string
@@ -45,7 +45,7 @@ export interface BodyPublisherUpdateTypes {
     situation?: Situation
     phone?: string
     address?: string
-    emergencyContactId?: string
+    emergencyContact_id?: string
 }
 
 export type ParamsPublisherUpdateTypes = {
