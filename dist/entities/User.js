@@ -13,6 +13,7 @@ exports.User = void 0;
 const typeorm_1 = require("typeorm");
 const Congregation_1 = require("./Congregation");
 const Profile_1 = require("./Profile");
+const Publisher_1 = require("./Publisher");
 const Role_1 = require("./Role");
 let User = class User {
 };
@@ -75,6 +76,11 @@ __decorate([
     }),
     __metadata("design:type", Array)
 ], User.prototype, "roles", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => Publisher_1.Publisher, { nullable: true, onDelete: "SET NULL", eager: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'publisher_id' }),
+    __metadata("design:type", Object)
+], User.prototype, "publisher", void 0);
 User = __decorate([
     (0, typeorm_1.Entity)('users')
 ], User);

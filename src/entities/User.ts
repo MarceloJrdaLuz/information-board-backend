@@ -1,7 +1,7 @@
-import { BeforeInsert, Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { v4 } from "uuid";
+import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Congregation } from "./Congregation";
 import { Profile } from "./Profile";
+import { Publisher } from "./Publisher";
 import { Role } from "./Role";
 
 @Entity('users')
@@ -21,8 +21,8 @@ export class User {
     @Column({ type: "text" })
     code: string
 
-    @ManyToOne(() => Congregation, congregation => congregation.id, {eager:true})
-    @JoinColumn({name: 'congregation_id',})
+    @ManyToOne(() => Congregation, congregation => congregation.id, { eager: true })
+    @JoinColumn({ name: 'congregation_id', })
     congregation: Congregation
 
     @Column({ type: "text", nullable: true })
@@ -52,4 +52,8 @@ export class User {
         }],
     })
     roles: Role[]
+
+    @OneToOne(() => Publisher, { nullable: true, onDelete: "SET NULL", eager: true })
+    @JoinColumn({ name: 'publisher_id' })
+    publisher: Publisher | null
 }

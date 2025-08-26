@@ -1,8 +1,9 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
+import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 import { Congregation } from "./Congregation"
 import { GroupOverseers } from "./GroupOverseers"
 import { Group } from "./Group"
 import { EmergencyContact } from "./EmergencyContact"
+import { User } from "./User"
 
 export enum Gender {
     Masculino = "Masculino",
@@ -90,6 +91,9 @@ export class Publisher {
         onDelete: "SET NULL", // se o contato for deletado, o publisher continua mas sem contato
     })
     emergencyContact: EmergencyContact | null
+
+    @OneToOne(() => User, user => user.publisher, { nullable: true  })
+    user: User | null
 
     @CreateDateColumn()
     created_at: Date

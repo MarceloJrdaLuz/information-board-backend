@@ -1,7 +1,7 @@
 import { Response } from "express"
 import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors"
 import { userRepository } from "../../repositories/userRepository"
-import { BodyAddDomainsTypes, BodyResetPasswordTypes, BodyUserCreateTypes, BodyUserLoginTypes, BodyUserUpdateTypes } from "./types"
+import { BodyAddDomainsTypes, BodyLinkPublisherToUserTypes, BodyResetPasswordTypes, BodyUserCreateTypes, BodyUserLoginTypes, BodyUserUpdateTypes, ParamsLinkPublisherToUserTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
 import bcrypt from 'bcryptjs'
 import jwt, { decode } from 'jsonwebtoken'
 import { In, Not, Any } from "typeorm"
@@ -13,9 +13,11 @@ import { config } from "../../config"
 import moment from 'moment-timezone'
 import { Request } from "express-serve-static-core"
 import { congregationRepository } from "../../repositories/congregationRepository"
-import { CustomRequest } from "../../types/customRequest"
+import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import { decoder } from "../../middlewares/permissions"
 import { User } from "../../entities/User"
+import { publisherRepository } from "../../repositories/publisherRepository"
+import { messageErrors } from "../../helpers/messageErrors"
 
 class UserController {
     async create(req: CustomRequest<BodyUserCreateTypes>, res: Response) {
@@ -340,6 +342,55 @@ class UserController {
             res.status(500).send({ message: 'Internal server error, check the logs' }).end()
         })
     }
+
+    async linkPublisherToUser(req: CustomRequestPT<ParamsLinkPublisherToUserTypes, BodyLinkPublisherToUserTypes>, res: Response) {
+        const { user_id } = req.params
+        const { publisher_id, force } = req.body
+
+        const user = await userRepository.findOne({ where: { id: user_id }, relations: ["publisher"] })
+        const publisher = await publisherRepository.findOne({ where: { id: publisher_id }, relations: ["user"] })
+
+        if (!user || !publisher) {
+            throw new NotFoundError("User or Publisher not found")
+        }
+
+        if (publisher_id !== user.publisher?.id) { // se for o mesmo publisher não precisa fazer nada
+            if (!force) {
+                return res.status(409).json({
+                    message: "Publisher already linked to another user. Use force to override.",
+                })
+            }
+        }
+        user.publisher = publisher
+        await userRepository.save(user)
+
+        return res.json({ message: "Publisher linked successfully" })
+    }
+
+    async unlinkPublisherFromUser(req: ParamsCustomRequest<ParamsUnLinkPublisherToUserTypes>, res: Response) {
+        const { user_id } = req.params
+
+        const user = await userRepository.findOne({
+            where: { id: user_id },
+            relations: ["publisher"]
+        })
+
+        if (!user) {
+            throw new NotFoundError(messageErrors.notFound.user)
+        }
+
+        if (!user.publisher) {
+            throw new BadRequestError("This user is not linked to any publisher")
+
+        }
+
+        // remove vínculo
+        user.publisher = null
+        await userRepository.save(user)
+
+        return res.json({ message: "Publisher unlinked successfully" })
+    }
+
 
     async getUsers(req: Request, res: Response) {
         const requestByUserId = await decoder(req)

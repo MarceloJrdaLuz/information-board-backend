@@ -1,14 +1,12 @@
 import { Response } from "express-serve-static-core"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
+import { messageErrors } from "../../helpers/messageErrors"
 import { congregationRepository } from "../../repositories/congregationRepository"
+import { emergencyContactRepository } from "../../repositories/emergencyContact"
+import { publisherRepository } from "../../repositories/publisherRepository"
+import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 import { Privileges } from "../../types/privileges"
 import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes } from "./types"
-import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
-import { publisherRepository } from "../../repositories/publisherRepository"
-import { messageErrors } from "../../helpers/messageErrors"
-import { emergencyContactRepository } from "../../repositories/emergencyContact"
-import { In } from "typeorm"
-import { arraysEqual } from "../../functions/arraysEqual"
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
@@ -68,8 +66,8 @@ class PublisherControler {
     })
 
     if (emergencyContact_id) {
-      const contact = await emergencyContactRepository.findOneBy({ id: emergencyContact_id });
-      newPublisher.emergencyContact = contact ?? null; // permite que seja null
+      const contact = await emergencyContactRepository.findOneBy({ id: emergencyContact_id })
+      newPublisher.emergencyContact = contact ?? null // permite que seja null
     }
     await publisherRepository.save(newPublisher).catch(err => {
       throw new BadRequestError(err)
@@ -104,8 +102,8 @@ class PublisherControler {
     }
 
     if (emergencyContact_id) {
-      const contact = await emergencyContactRepository.findOneBy({ id: emergencyContact_id });
-      publisher.emergencyContact = contact ?? null; // permite que seja null
+      const contact = await emergencyContactRepository.findOneBy({ id: emergencyContact_id })
+      publisher.emergencyContact = contact ?? null // permite que seja null
     }
     // const noChange =
     //   (fullName === undefined || fullName === publisher.fullName) &&
@@ -119,10 +117,10 @@ class PublisherControler {
     //   (dateImmersed === undefined || dateImmersed?.toISOString() === publisher.dateImmersed?.toISOString()) &&
     //   (phone === undefined || phone === publisher.phone) &&
     //   (address === undefined || address === publisher.address) &&
-    //   (privileges === undefined || arraysEqual(privileges, publisher.privileges));
+    //   (privileges === undefined || arraysEqual(privileges, publisher.privileges))
 
     // if (noChange) {
-    //   throw new BadRequestError('Any change detected');
+    //   throw new BadRequestError('Any change detected')
     // }
 
     if (fullName !== publisher.fullName) {

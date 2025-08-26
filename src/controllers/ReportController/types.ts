@@ -40,3 +40,7 @@ export type ParamsGetReportsTypes = {
 export type ParamsDeleteReportypes = {
     report_id: string
 }
+
+export type ParamsGetMyReportstypes = {
+   user_id: string
+}

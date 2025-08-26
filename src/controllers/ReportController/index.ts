@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
-import { BodyReportCreateManuallyTypes, BodyReportCreateTypes, BodyUpdatePrivilegeTypes, ParamsDeleteReportypes, ParamsGetReportsTypes } from "./types"
+import { BodyReportCreateManuallyTypes, BodyReportCreateTypes, BodyUpdatePrivilegeTypes, ParamsDeleteReportypes, ParamsGetMyReportstypes, ParamsGetReportsTypes } from "./types"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { reportRepository } from "../../repositories/reportRepository"
@@ -10,6 +10,9 @@ import { FindOperator, Not } from "typeorm"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { Report } from "../../entities/Report"
 import { Privileges } from "../../types/privileges"
+import { userRepository } from "../../repositories/userRepository"
+import { messageErrors } from "../../helpers/messageErrors"
+import { decoder } from "../../middlewares/permissions"
 
 class ReportController {
   async create(req: CustomRequest<BodyReportCreateTypes>, res: Response) {
@@ -104,6 +107,26 @@ class ReportController {
     res.json(response)
   }
 
+  async getMyReports(req: Request, res: Response) {
+    const userLogged = await decoder(req)
+
+    const user = await userRepository.findOne({ where: { id: userLogged.id }, relations: ["publisher"], select: ["publisher"] })
+
+    if (!user) throw new NotFoundError(messageErrors.notFound.user)
+
+    if (!user.publisher) throw new BadRequestError("You are not linked to a publisher yet")
+
+    const reports = await reportRepository.find({
+      where: {
+        publisher: {
+          id: user?.publisher?.id
+        },
+      },
+    })
+
+    res.json(reports)
+  }
+
   async getReportsByMonth(req: ParamsCustomRequest<ParamsGetReportsTypes>, res: Response) {
     const { congregationId } = req.params
 
@@ -162,8 +185,8 @@ class ReportController {
     res.send()
   }
 
-  async deleteReport(req: ParamsCustomRequest<ParamsDeleteReportypes>, res: Response){
-    const {report_id: id} = req.params
+  async deleteReport(req: ParamsCustomRequest<ParamsDeleteReportypes>, res: Response) {
+    const { report_id: id } = req.params
 
     const report = await reportRepository.findOne({
       where: {

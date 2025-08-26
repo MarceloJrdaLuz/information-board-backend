@@ -24,3 +24,15 @@ export interface BodyAddDomainsTypes {
     user_code: string
     congregation_number: string
 }
+
+export type ParamsLinkPublisherToUserTypes = {
+    user_id: string
+}
+
+export type ParamsUnLinkPublisherToUserTypes = ParamsLinkPublisherToUserTypes
+
+export interface BodyLinkPublisherToUserTypes {
+   publisher_id: string
+   force: boolean
+}
+

@@ -30,6 +30,8 @@ routes.post('/reset_password', UserController.reset_password) //
 routes.post('/add-domain', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.addUserDomain)
 routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.updateRoles)
 routes.get('/users', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.getUsers)
+routes.patch('/users/:user_id/link-publisher', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.linkPublisherToUser)
+routes.patch('/users/:user_id/unlink-publisher', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.unlinkPublisherFromUser)
 
 routes.get('/publishers/congregationId/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers.getPublishers)
 routes.get('/publishers/congregationNumber/:congregationNumber', PublisherControllers.getPublishersWithCongregatioNumber)
@@ -101,6 +103,7 @@ routes.post('/report/totals/:congregation_id', TotalsReportsController.create)
 routes.get('/report/totals/:congregation_id', TotalsReportsController.get)
 routes.post('/report', ReportController.create)
 routes.get('/reports/:congregationId', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'REPORTS_VIEWER']), ReportController.getReports)
+routes.get('/myReports', ReportController.getMyReports)
 
 routes.post('/group/:group_id/add-publishers', is(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController.addPublishersGroup)
 routes.delete('/group/:group_id/remove-publishers', is(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController.removePublishersGroup)

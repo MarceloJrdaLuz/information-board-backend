@@ -16,6 +16,8 @@ const config_1 = require("../../config");
 const moment_timezone_1 = __importDefault(require("moment-timezone"));
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const permissions_1 = require("../../middlewares/permissions");
+const publisherRepository_1 = require("../../repositories/publisherRepository");
+const messageErrors_1 = require("../../helpers/messageErrors");
 class UserController {
     async create(req, res) {
         var _a;
@@ -248,6 +250,43 @@ class UserController {
             console.log(err);
             res.status(500).send({ message: 'Internal server error, check the logs' }).end();
         });
+    }
+    async linkPublisherToUser(req, res) {
+        var _a;
+        const { user_id } = req.params;
+        const { publisher_id, force } = req.body;
+        const user = await userRepository_1.userRepository.findOne({ where: { id: user_id }, relations: ["publisher"] });
+        const publisher = await publisherRepository_1.publisherRepository.findOne({ where: { id: publisher_id }, relations: ["user"] });
+        if (!user || !publisher) {
+            throw new api_errors_1.NotFoundError("User or Publisher not found");
+        }
+        if (publisher_id !== ((_a = user.publisher) === null || _a === void 0 ? void 0 : _a.id)) { // se for o mesmo publisher não precisa fazer nada
+            if (!force) {
+                return res.status(409).json({
+                    message: "Publisher already linked to another user. Use force to override.",
+                });
+            }
+        }
+        user.publisher = publisher;
+        await userRepository_1.userRepository.save(user);
+        return res.json({ message: "Publisher linked successfully" });
+    }
+    async unlinkPublisherFromUser(req, res) {
+        const { user_id } = req.params;
+        const user = await userRepository_1.userRepository.findOne({
+            where: { id: user_id },
+            relations: ["publisher"]
+        });
+        if (!user) {
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.user);
+        }
+        if (!user.publisher) {
+            throw new api_errors_1.BadRequestError("This user is not linked to any publisher");
+        }
+        // remove vínculo
+        user.publisher = null;
+        await userRepository_1.userRepository.save(user);
+        return res.json({ message: "Publisher unlinked successfully" });
     }
     async getUsers(req, res) {
         const requestByUserId = await (0, permissions_1.decoder)(req);

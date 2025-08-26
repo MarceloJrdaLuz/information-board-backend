@@ -15,6 +15,7 @@ exports.messageErrors = {
         permission: "Permission was not found",
         notice: "Notice was not found",
         role: "Role was not found",
+        user: "User not found",
     },
     dataBase: {
         save: "Error saving to database"

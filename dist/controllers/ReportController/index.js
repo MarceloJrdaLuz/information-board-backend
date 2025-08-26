@@ -6,6 +6,9 @@ const reportRepository_1 = require("../../repositories/reportRepository");
 const enumWeekDays_1 = require("../../types/enumWeekDays");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const privileges_1 = require("../../types/privileges");
+const userRepository_1 = require("../../repositories/userRepository");
+const messageErrors_1 = require("../../helpers/messageErrors");
+const permissions_1 = require("../../middlewares/permissions");
 class ReportController {
     async create(req, res) {
         const { month, year, publisher, hours, studies, observations } = req.body;
@@ -88,6 +91,23 @@ class ReportController {
             privileges: report.privileges
         }));
         res.json(response);
+    }
+    async getMyReports(req, res) {
+        var _a;
+        const userLogged = await (0, permissions_1.decoder)(req);
+        const user = await userRepository_1.userRepository.findOne({ where: { id: userLogged.id }, relations: ["publisher"], select: ["publisher"] });
+        if (!user)
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.user);
+        if (!user.publisher)
+            throw new api_errors_1.BadRequestError("You are not linked to a publisher yet");
+        const reports = await reportRepository_1.reportRepository.find({
+            where: {
+                publisher: {
+                    id: (_a = user === null || user === void 0 ? void 0 : user.publisher) === null || _a === void 0 ? void 0 : _a.id
+                },
+            },
+        });
+        res.json(reports);
     }
     async getReportsByMonth(req, res) {
         const { congregationId } = req.params;

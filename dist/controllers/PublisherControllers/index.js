@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_errors_1 = require("../../helpers/api-errors");
-const congregationRepository_1 = require("../../repositories/congregationRepository");
-const privileges_1 = require("../../types/privileges");
-const publisherRepository_1 = require("../../repositories/publisherRepository");
 const messageErrors_1 = require("../../helpers/messageErrors");
+const congregationRepository_1 = require("../../repositories/congregationRepository");
 const emergencyContact_1 = require("../../repositories/emergencyContact");
+const publisherRepository_1 = require("../../repositories/publisherRepository");
+const privileges_1 = require("../../types/privileges");
 class PublisherControler {
     async create(req, res) {
         const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContact_id } = req.body;
@@ -99,9 +99,9 @@ class PublisherControler {
         //   (dateImmersed === undefined || dateImmersed?.toISOString() === publisher.dateImmersed?.toISOString()) &&
         //   (phone === undefined || phone === publisher.phone) &&
         //   (address === undefined || address === publisher.address) &&
-        //   (privileges === undefined || arraysEqual(privileges, publisher.privileges));
+        //   (privileges === undefined || arraysEqual(privileges, publisher.privileges))
         // if (noChange) {
-        //   throw new BadRequestError('Any change detected');
+        //   throw new BadRequestError('Any change detected')
         // }
         if (fullName !== publisher.fullName) {
             const existingPublisherSomeFullName = await publisherRepository_1.publisherRepository.find({

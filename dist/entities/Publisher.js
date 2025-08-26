@@ -15,6 +15,7 @@ const Congregation_1 = require("./Congregation");
 const GroupOverseers_1 = require("./GroupOverseers");
 const Group_1 = require("./Group");
 const EmergencyContact_1 = require("./EmergencyContact");
+const User_1 = require("./User");
 var Gender;
 (function (Gender) {
     Gender["Masculino"] = "Masculino";
@@ -121,6 +122,10 @@ __decorate([
     }),
     __metadata("design:type", Object)
 ], Publisher.prototype, "emergencyContact", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => User_1.User, user => user.publisher, { nullable: true }),
+    __metadata("design:type", Object)
+], Publisher.prototype, "user", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
