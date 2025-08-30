@@ -82,7 +82,7 @@ class UserController {
         })
 
         if (!user || user.length === 0) {
-            throw new BadRequestError('E-mail não cadastrado')
+            throw new BadRequestError('Credentials invalid!')
         }
 
         const foundUser = user[0]
@@ -90,7 +90,7 @@ class UserController {
         const verifyPass = await bcrypt.compare(password, foundUser.password)
 
         if (!verifyPass) {
-            throw new BadRequestError('Senha inválida')
+            throw new BadRequestError('Credentials invalid!')
         }
 
         const token = jwt.sign({ id: foundUser.id }, process.env.JWT_PASS ?? '', {
