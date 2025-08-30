@@ -29,9 +29,9 @@ routes.post('/forgot_password', UserController.forgot_password) //
 routes.post('/reset_password', UserController.reset_password) //
 routes.post('/add-domain', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.addUserDomain)
 routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.updateRoles)
-routes.get('/users', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.getUsers)
-routes.patch('/users/:user_id/link-publisher', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.linkPublisherToUser)
-routes.patch('/users/:user_id/unlink-publisher', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.unlinkPublisherFromUser)
+routes.get('/users', is(['ADMIN']), UserController.getUsers)
+routes.get('/users/:congregation_id', is(['ADMIN_CONGREGATION']), UserController.getUsersByCongregation)
+routes.patch('/users/:user_id/link-publisher', is(['ADMIN_CONGREGATION']), UserController.linkPublisherToUser)
 
 routes.get('/publishers/congregationId/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers.getPublishers)
 routes.get('/publishers/congregationNumber/:congregationNumber', PublisherControllers.getPublishersWithCongregatioNumber)
@@ -39,6 +39,7 @@ routes.get('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MAN
 routes.post('/publisher', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.create)
 routes.delete('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.delete)
 routes.put('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.update)
+routes.patch('/publisher/:publisher_id/unlink-publisher', is(['ADMIN_CONGREGATION']), PublisherControllers.unlinkPublisherFromUser)
 
 routes.get('/emergencyContacts/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController.listByCongregation)
 routes.get('/emergencyContact/:emergencyContact_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController.getEmergencyContact)

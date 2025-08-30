@@ -3,21 +3,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const api_errors_1 = require("../../helpers/api-errors");
-const userRepository_1 = require("../../repositories/userRepository");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const moment_timezone_1 = __importDefault(require("moment-timezone"));
 const typeorm_1 = require("typeorm");
-const roleRepository_1 = require("../../repositories/roleRepository");
 const uuid_1 = require("uuid");
+const config_1 = require("../../config");
+const api_errors_1 = require("../../helpers/api-errors");
+const messageErrors_1 = require("../../helpers/messageErrors");
+const permissions_1 = require("../../middlewares/permissions");
+const congregationRepository_1 = require("../../repositories/congregationRepository");
+const publisherRepository_1 = require("../../repositories/publisherRepository");
+const roleRepository_1 = require("../../repositories/roleRepository");
+const userRepository_1 = require("../../repositories/userRepository");
 //@ts-expect-error
 const mailer_1 = __importDefault(require("../../modules/mailer"));
-const config_1 = require("../../config");
-const moment_timezone_1 = __importDefault(require("moment-timezone"));
-const congregationRepository_1 = require("../../repositories/congregationRepository");
-const permissions_1 = require("../../middlewares/permissions");
-const publisherRepository_1 = require("../../repositories/publisherRepository");
-const messageErrors_1 = require("../../helpers/messageErrors");
 class UserController {
     async create(req, res) {
         var _a;
@@ -252,86 +252,86 @@ class UserController {
         });
     }
     async linkPublisherToUser(req, res) {
-        var _a;
+        var _a, _b;
         const { user_id } = req.params;
         const { publisher_id, force } = req.body;
-        const user = await userRepository_1.userRepository.findOne({ where: { id: user_id }, relations: ["publisher"] });
-        const publisher = await publisherRepository_1.publisherRepository.findOne({ where: { id: publisher_id }, relations: ["user"] });
-        if (!user || !publisher) {
-            throw new api_errors_1.NotFoundError("User or Publisher not found");
-        }
-        if (publisher_id !== ((_a = user.publisher) === null || _a === void 0 ? void 0 : _a.id)) { // se for o mesmo publisher não precisa fazer nada
-            if (!force) {
-                return res.status(409).json({
-                    message: "Publisher already linked to another user. Use force to override.",
-                });
-            }
-        }
-        user.publisher = publisher;
-        await userRepository_1.userRepository.save(user);
-        return res.json({ message: "Publisher linked successfully" });
-    }
-    async unlinkPublisherFromUser(req, res) {
-        const { user_id } = req.params;
         const user = await userRepository_1.userRepository.findOne({
             where: { id: user_id },
             relations: ["publisher"]
         });
+        const publisher = await publisherRepository_1.publisherRepository.findOne({
+            where: { id: publisher_id },
+            relations: ["user"]
+        });
         if (!user) {
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.user);
         }
-        if (!user.publisher) {
-            throw new api_errors_1.BadRequestError("This user is not linked to any publisher");
+        if (!publisher) {
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.publisher);
         }
-        // remove vínculo
-        user.publisher = null;
-        await userRepository_1.userRepository.save(user);
-        return res.json({ message: "Publisher unlinked successfully" });
-    }
-    async getUsers(req, res) {
-        const requestByUserId = await (0, permissions_1.decoder)(req);
-        const usersResponse = [];
-        const isAdmin = requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN';
-        const isAdminCongregation = requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION';
-        if (isAdminCongregation) {
-            const requestUser = await userRepository_1.userRepository.findOne({
-                where: {
-                    id: requestByUserId.id
-                }
-            });
-            if (requestUser) {
-                const users = await userRepository_1.userRepository.find({
-                    where: {
-                        congregation: {
-                            id: requestUser.congregation.id
-                        }
-                    },
-                    select: ["id", "email"]
+        // Cenário: Publisher já está vinculado a outro User
+        // Verifica se o publisher já tem um user E se esse user não é o que estamos tentando vincular
+        if (publisher.user && publisher.user.id !== user.id) {
+            if (!force) {
+                return res.status(409).json({
+                    message: `Publisher ${publisher.id} is already linked to another user (${publisher.user.id}). Use 'force: true' to override.`
                 });
-                if (users)
-                    usersResponse.push(...users);
+            }
+            else {
+                // Se houver force, desvincula o publisher do usuário anterior
+                const previousUserLinkedToPublisher = await userRepository_1.userRepository.findOne({ where: { id: publisher.user.id } });
+                if (previousUserLinkedToPublisher) {
+                    previousUserLinkedToPublisher.publisher = null; // Desvincula o publisher do usuário anterior
+                    await userRepository_1.userRepository.save(previousUserLinkedToPublisher);
+                }
+                publisher.user = null; // Garante que a relação no objeto publisher seja nula antes de reatribuir
             }
         }
-        if (isAdmin) {
-            const users = await userRepository_1.userRepository.find({ select: ["id", "email"] });
-            usersResponse.push(...users);
+        // Cenário: User já está vinculado a outro Publisher
+        // Verifica se o user já tem um publisher E se esse publisher não é o que estamos tentando vincular
+        if (user.publisher && user.publisher.id !== publisher.id) {
+            if (!force) {
+                // Se não houver force, impede a operação
+                return res.status(409).json({
+                    message: `User (${user.id}) is already linked to another publisher (${user.publisher.id}). Use 'force: true' to override.`
+                });
+            }
+            else {
+                // Se houver force, desvincula o user do publisher anterior
+                user.publisher = null; // Desvincula o publisher do usuário atual
+                await userRepository_1.userRepository.save(user); // Salva para efetivar a desvinculação
+            }
         }
-        if (!usersResponse) {
-            throw new api_errors_1.NotFoundError('Users not found');
+        // Cenário: Já estão vinculados (ou tentando vincular ao mesmo)
+        // Se ambos já estão vinculados um ao outro, não há necessidade de fazer nada.
+        if (((_a = user.publisher) === null || _a === void 0 ? void 0 : _a.id) === publisher.id && ((_b = publisher.user) === null || _b === void 0 ? void 0 : _b.id) === user.id) {
+            return res.status(409).json({ message: "User and Publisher are already linked." });
         }
-        const usersFilter = [];
-        if (isAdminCongregation) {
-            const filter = usersResponse.filter(user => {
-                return (user.id !== requestByUserId.id &&
-                    (!user.roles || !user.roles.some(role => role.name === "ADMIN")));
-            });
-            usersFilter.push(...filter);
+        // 6. Realizar a vinculação (ou atualização)
+        // Atribui o publisher ao user
+        user.publisher = publisher;
+        await userRepository_1.userRepository.save(user);
+        return res.status(200).json({ message: "Publisher linked successfully" });
+    }
+    async getUsers(req, res) {
+        const users = await userRepository_1.userRepository.find({
+            select: ["id", "email", "fullName"]
+        });
+        if (!users || users.length === 0) {
+            throw new api_errors_1.NotFoundError("No users found");
         }
-        if (isAdmin) {
-            const filter = usersResponse.filter(user => user.id !== requestByUserId.id);
-            usersFilter.push(...filter);
+        return res.status(200).json(users);
+    }
+    async getUsersByCongregation(req, res) {
+        const { congregation_id } = req.params;
+        const users = await userRepository_1.userRepository.find({
+            where: { congregation: { id: congregation_id } },
+            select: ["id", "email", "fullName"]
+        });
+        if (!users || users.length === 0) {
+            throw new api_errors_1.NotFoundError("No users found in this congregation");
         }
-        res.send(usersFilter);
+        return res.status(200).json(users);
     }
 }
 exports.default = new UserController();

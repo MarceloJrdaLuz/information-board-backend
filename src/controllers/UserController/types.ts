@@ -28,11 +28,11 @@ export interface BodyAddDomainsTypes {
 export type ParamsLinkPublisherToUserTypes = {
     user_id: string
 }
-
-export type ParamsUnLinkPublisherToUserTypes = ParamsLinkPublisherToUserTypes
-
 export interface BodyLinkPublisherToUserTypes {
-   publisher_id: string
-   force: boolean
+    publisher_id: string
+    force: boolean
 }
 
+export type ParamsGetUsersByCongregationTypes = {
+    congregation_id: string
+}

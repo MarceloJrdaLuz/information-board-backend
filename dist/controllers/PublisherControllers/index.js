@@ -6,6 +6,7 @@ const congregationRepository_1 = require("../../repositories/congregationReposit
 const emergencyContact_1 = require("../../repositories/emergencyContact");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const privileges_1 = require("../../types/privileges");
+const userRepository_1 = require("../../repositories/userRepository");
 class PublisherControler {
     async create(req, res) {
         const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContact_id } = req.body;
@@ -67,7 +68,7 @@ class PublisherControler {
     async update(req, res) {
         const { publisher_id: id } = req.params;
         const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContact_id } = req.body;
-        const publisher = await publisherRepository_1.publisherRepository.findOne({ where: { id } });
+        const publisher = await publisherRepository_1.publisherRepository.findOne({ where: { id }, relations: ["user"] });
         if (!publisher) {
             throw new api_errors_1.NotFoundError('Publisher not exists');
         }
@@ -87,22 +88,6 @@ class PublisherControler {
             const contact = await emergencyContact_1.emergencyContactRepository.findOneBy({ id: emergencyContact_id });
             publisher.emergencyContact = contact !== null && contact !== void 0 ? contact : null; // permite que seja null
         }
-        // const noChange =
-        //   (fullName === undefined || fullName === publisher.fullName) &&
-        //   (gender === undefined || gender === publisher.gender) &&
-        //   (hope === undefined || hope === publisher.hope) &&
-        //   (nickname === undefined || nickname === publisher.nickname) &&
-        //   (birthDate === undefined || birthDate?.toISOString() === publisher.birthDate?.toISOString()) &&
-        //   (pioneerMonths === undefined || arraysEqual(pioneerMonths, publisher.pioneerMonths)) &&
-        //   (situation === undefined || situation === publisher.situation) &&
-        //   (startPioneer === undefined || startPioneer?.toISOString() === publisher.startPioneer?.toISOString()) &&
-        //   (dateImmersed === undefined || dateImmersed?.toISOString() === publisher.dateImmersed?.toISOString()) &&
-        //   (phone === undefined || phone === publisher.phone) &&
-        //   (address === undefined || address === publisher.address) &&
-        //   (privileges === undefined || arraysEqual(privileges, publisher.privileges))
-        // if (noChange) {
-        //   throw new BadRequestError('Any change detected')
-        // }
         if (fullName !== publisher.fullName) {
             const existingPublisherSomeFullName = await publisherRepository_1.publisherRepository.find({
                 where: {
@@ -185,10 +170,35 @@ class PublisherControler {
     }
     async getPublisher(req, res) {
         const { publisher_id } = req.params;
-        const publisher = await publisherRepository_1.publisherRepository.findOneBy({ id: publisher_id });
+        const publisher = await publisherRepository_1.publisherRepository.findOne({
+            where: {
+                id: publisher_id
+            },
+            relations: ["user"],
+        });
         if (!publisher)
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.publisher);
         return res.status(200).json(publisher);
+    }
+    async unlinkPublisherFromUser(req, res) {
+        const { publisher_id } = req.params;
+        const publisher = await publisherRepository_1.publisherRepository.findOne({
+            where: {
+                id: publisher_id
+            },
+            relations: ["user"]
+        });
+        if (!publisher) {
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.publisher);
+        }
+        if (!publisher.user) {
+            throw new api_errors_1.BadRequestError("This publisher is not linked to any user");
+        }
+        const user = publisher.user;
+        // remove vínculo
+        user.publisher = null;
+        await userRepository_1.userRepository.save(user);
+        return res.json({ message: "Publisher unlinked successfully" });
     }
 }
 exports.default = new PublisherControler();

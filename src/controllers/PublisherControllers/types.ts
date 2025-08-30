@@ -52,3 +52,6 @@ export type ParamsPublisherUpdateTypes = {
     publisher_id: string
 }
 
+export type ParamsUnLinkPublisherToUserTypes = {
+    publisher_id: string
+}

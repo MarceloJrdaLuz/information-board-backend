@@ -50,7 +50,8 @@ function is(role) {
     const roleAuthorized = async (req, res, next) => {
         var _a;
         const user = await decoder(req);
-        const { congregation_id } = req.body;
+        // pega do body ou dos params
+        const congregation_id = req.body.congregation_id || req.params.id;
         const userRoles = (_a = user === null || user === void 0 ? void 0 : user.roles) === null || _a === void 0 ? void 0 : _a.map(role => role.name);
         const rolesExists = userRoles === null || userRoles === void 0 ? void 0 : userRoles.some(r => role.includes(r));
         if (rolesExists) {
@@ -58,11 +59,11 @@ function is(role) {
                 return next();
             }
             else {
+                // se for admin_congregation, precisa pertencer à congregação
                 const userCongregation = await userRepository_1.userRepository.find({
                     where: {
-                        congregation: {
-                            id: congregation_id
-                        },
+                        id: user.id,
+                        congregation: { id: congregation_id }
                     }
                 });
                 if (userCongregation.length < 1) {

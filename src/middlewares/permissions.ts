@@ -57,21 +57,21 @@ export function is(role: string[]) {
     const roleAuthorized = async (req: Request, res: Response, next: NextFunction) => {
         const user = await decoder(req)
 
-        const { congregation_id } = req.body
+        // pega do body ou dos params
+        const congregation_id = req.body.congregation_id || req.params.id
 
         const userRoles = user?.roles?.map(role => role.name)
-
         const rolesExists = userRoles?.some(r => role.includes(r))
 
         if (rolesExists) {
             if (userRoles?.includes("ADMIN")) {
                 return next()
             } else {
+                // se for admin_congregation, precisa pertencer à congregação
                 const userCongregation = await userRepository.find({
                     where: {
-                        congregation: {
-                            id: congregation_id
-                        },
+                        id: user.id,
+                        congregation: { id: congregation_id }
                     }
                 })
 

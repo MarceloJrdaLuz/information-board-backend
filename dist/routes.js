@@ -32,15 +32,16 @@ routes.post('/forgot_password', UserController_1.default.forgot_password); //
 routes.post('/reset_password', UserController_1.default.reset_password); //
 routes.post('/add-domain', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.addUserDomain);
 routes.put('/user/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.updateRoles);
-routes.get('/users', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.getUsers);
-routes.patch('/users/:user_id/link-publisher', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.linkPublisherToUser);
-routes.patch('/users/:user_id/unlink-publisher', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.unlinkPublisherFromUser);
+routes.get('/users', (0, permissions_1.is)(['ADMIN']), UserController_1.default.getUsers);
+routes.get('/users/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), UserController_1.default.getUsersByCongregation);
+routes.patch('/users/:user_id/link-publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION']), UserController_1.default.linkPublisherToUser);
 routes.get('/publishers/congregationId/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers_1.default.getPublishers);
 routes.get('/publishers/congregationNumber/:congregationNumber', PublisherControllers_1.default.getPublishersWithCongregatioNumber);
 routes.get('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.getPublisher);
 routes.post('/publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.create);
 routes.delete('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.delete);
 routes.put('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.update);
+routes.patch('/publisher/:publisher_id/unlink-publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION']), PublisherControllers_1.default.unlinkPublisherFromUser);
 routes.get('/emergencyContacts/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController_1.default.listByCongregation);
 routes.get('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController_1.default.getEmergencyContact);
 routes.post('/emergencyContact', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController_1.default.create);

@@ -6,7 +6,8 @@ import { emergencyContactRepository } from "../../repositories/emergencyContact"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 import { Privileges } from "../../types/privileges"
-import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes } from "./types"
+import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
+import { userRepository } from "../../repositories/userRepository"
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
@@ -80,7 +81,7 @@ class PublisherControler {
     const { publisher_id: id } = req.params
     const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContact_id } = req.body
 
-    const publisher = await publisherRepository.findOne({ where: { id } })
+    const publisher = await publisherRepository.findOne({ where: { id }, relations: ["user"] })
 
     if (!publisher) {
       throw new NotFoundError('Publisher not exists')
@@ -105,23 +106,6 @@ class PublisherControler {
       const contact = await emergencyContactRepository.findOneBy({ id: emergencyContact_id })
       publisher.emergencyContact = contact ?? null // permite que seja null
     }
-    // const noChange =
-    //   (fullName === undefined || fullName === publisher.fullName) &&
-    //   (gender === undefined || gender === publisher.gender) &&
-    //   (hope === undefined || hope === publisher.hope) &&
-    //   (nickname === undefined || nickname === publisher.nickname) &&
-    //   (birthDate === undefined || birthDate?.toISOString() === publisher.birthDate?.toISOString()) &&
-    //   (pioneerMonths === undefined || arraysEqual(pioneerMonths, publisher.pioneerMonths)) &&
-    //   (situation === undefined || situation === publisher.situation) &&
-    //   (startPioneer === undefined || startPioneer?.toISOString() === publisher.startPioneer?.toISOString()) &&
-    //   (dateImmersed === undefined || dateImmersed?.toISOString() === publisher.dateImmersed?.toISOString()) &&
-    //   (phone === undefined || phone === publisher.phone) &&
-    //   (address === undefined || address === publisher.address) &&
-    //   (privileges === undefined || arraysEqual(privileges, publisher.privileges))
-
-    // if (noChange) {
-    //   throw new BadRequestError('Any change detected')
-    // }
 
     if (fullName !== publisher.fullName) {
       const existingPublisherSomeFullName = await publisherRepository.find({
@@ -225,12 +209,46 @@ class PublisherControler {
   async getPublisher(req: ParamsCustomRequest<ParamsGetPublisherTypes>, res: Response) {
     const { publisher_id } = req.params
 
-    const publisher = await publisherRepository.findOneBy({ id: publisher_id })
+    const publisher = await publisherRepository.findOne({
+      where: {
+        id: publisher_id
+      },
+      relations: ["user"],
+    })
 
     if (!publisher) throw new NotFoundError(messageErrors.notFound.publisher)
 
     return res.status(200).json(publisher)
   }
+
+  async unlinkPublisherFromUser(req: ParamsCustomRequest<ParamsUnLinkPublisherToUserTypes>, res: Response) {
+    const { publisher_id } = req.params
+
+    const publisher = await publisherRepository.findOne({
+      where: {
+        id: publisher_id
+      },
+      relations: ["user"]
+    })
+
+    if (!publisher) {
+      throw new NotFoundError(messageErrors.notFound.publisher)
+    }
+
+
+    if (!publisher.user) {
+      throw new BadRequestError("This publisher is not linked to any user")
+    }
+
+    const user = publisher.user
+
+    // remove vínculo
+    user.publisher = null
+    await userRepository.save(user)
+
+    return res.json({ message: "Publisher unlinked successfully" })
+  }
+
 }
 
 export default new PublisherControler()
