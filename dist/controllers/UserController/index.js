@@ -68,12 +68,12 @@ class UserController {
             relations: ['congregation', 'profile']
         });
         if (!user || user.length === 0) {
-            throw new api_errors_1.BadRequestError('E-mail não cadastrado');
+            throw new api_errors_1.BadRequestError('Credentials invalid!');
         }
         const foundUser = user[0];
         const verifyPass = await bcryptjs_1.default.compare(password, foundUser.password);
         if (!verifyPass) {
-            throw new api_errors_1.BadRequestError('Senha inválida');
+            throw new api_errors_1.BadRequestError('Credentials invalid!');
         }
         const token = jsonwebtoken_1.default.sign({ id: foundUser.id }, (_a = process.env.JWT_PASS) !== null && _a !== void 0 ? _a : '', {
             subject: foundUser.id,
