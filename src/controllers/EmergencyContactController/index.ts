@@ -1,4 +1,9 @@
 import { Response } from "express";
+import { NotFoundError } from "../../helpers/api-errors";
+import { messageErrors } from "../../helpers/messageErrors";
+import { congregationRepository } from "../../repositories/congregationRepository";
+import { emergencyContactRepository } from "../../repositories/emergencyContact";
+import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 import {
     BodyEmergencyCreateTypes,
     BodyUpdateEmergencyContactTypes,
@@ -6,12 +11,6 @@ import {
     ParamsListEmergencyContactsTypes,
     ParamsUpdateEmergencyContactsTypes
 } from "./types";
-import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
-import { emergencyContactRepository } from "../../repositories/emergencyContact";
-import { publisherRepository } from "../../repositories/publisherRepository";
-import { NotFoundError } from "../../helpers/api-errors";
-import { messageErrors } from "../../helpers/messageErrors";
-import { congregationRepository } from "../../repositories/congregationRepository";
 
 class EmergencyContactController {
     // Listar todos os contatos de emergência de uma congregação (via publishers)

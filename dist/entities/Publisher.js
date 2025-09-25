@@ -12,10 +12,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Publisher = exports.Situation = exports.Hope = exports.Gender = void 0;
 const typeorm_1 = require("typeorm");
 const Congregation_1 = require("./Congregation");
-const GroupOverseers_1 = require("./GroupOverseers");
-const Group_1 = require("./Group");
 const EmergencyContact_1 = require("./EmergencyContact");
+const Group_1 = require("./Group");
+const GroupOverseers_1 = require("./GroupOverseers");
+const HospitalityGroup_1 = require("./HospitalityGroup.");
 const User_1 = require("./User");
+const PublisherPrivilege_1 = require("./PublisherPrivilege");
 var Gender;
 (function (Gender) {
     Gender["Masculino"] = "Masculino";
@@ -92,13 +94,16 @@ __decorate([
     __metadata("design:type", Array)
 ], Publisher.prototype, "privileges", void 0);
 __decorate([
+    (0, typeorm_1.OneToMany)(() => PublisherPrivilege_1.PublisherPrivilege, pp => pp.publisher),
+    __metadata("design:type", Array)
+], Publisher.prototype, "privilegesRelation", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: "simple-array", nullable: true }),
     __metadata("design:type", Array)
 ], Publisher.prototype, "pioneerMonths", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Congregation_1.Congregation, congregation => congregation.id, {
         onDelete: "CASCADE",
-        eager: true
     }),
     (0, typeorm_1.JoinColumn)({ name: 'congregation_id' }),
     __metadata("design:type", Congregation_1.Congregation)
@@ -116,7 +121,6 @@ __decorate([
 ], Publisher.prototype, "groupOverseers", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => EmergencyContact_1.EmergencyContact, emergencyContact => emergencyContact.publishers, {
-        eager: true,
         nullable: true,
         onDelete: "SET NULL", // se o contato for deletado, o publisher continua mas sem contato
     }),
@@ -126,6 +130,18 @@ __decorate([
     (0, typeorm_1.OneToOne)(() => User_1.User, user => user.publisher, { nullable: true }),
     __metadata("design:type", Object)
 ], Publisher.prototype, "user", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => HospitalityGroup_1.HospitalityGroup, hospitalityGroup => hospitalityGroup.members, {
+        nullable: true,
+        onDelete: "SET NULL"
+    }),
+    (0, typeorm_1.JoinColumn)({ name: "hospitality_group_id" }),
+    __metadata("design:type", Object)
+], Publisher.prototype, "hospitalityGroup", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "uuid", nullable: true }),
+    __metadata("design:type", Object)
+], Publisher.prototype, "hospitality_group_id", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

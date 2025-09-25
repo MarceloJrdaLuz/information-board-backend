@@ -1,24 +1,22 @@
 import { Request, Response } from "express";
+import fs from 'fs-extra';
 import { config } from "../../config";
-import { ApiError, BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
-import { congregationRepository } from "../../repositories/congregationRepository";
-import { BodyCongregationCreateTypes, BodyCongregationUpdateTypes, ParamsUpdateCongregationTypes, QueryCongregationDeleteTypes, QueryGetCongregationTypes } from "./types";
-import fs from 'fs-extra'
-import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage";
-import { NormalizeFiles } from "../../types/normalizeFile";
-import { documentRepository } from "../../repositories/documentRepository";
-import { CustomRequest, CustomRequestPT, ParamsCustomRequest, QueryCustomRequest } from "../../types/customRequest";
-import { groupRepository } from "../../repositories/groupRepository";
-import { Congregation } from "../../entities/Congregation";
+import { Congregation, CongregationType } from "../../entities/Congregation";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
 import { messageErrors } from "../../helpers/messageErrors";
 import { decoder } from "../../middlewares/permissions";
+import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage";
+import { congregationRepository } from "../../repositories/congregationRepository";
+import { groupRepository } from "../../repositories/groupRepository";
 import { userRepository } from "../../repositories/userRepository";
+import { CustomRequest, CustomRequestPT, ParamsCustomRequest, QueryCustomRequest } from "../../types/customRequest";
+import { NormalizeFiles } from "../../types/normalizeFile";
+import { BodyAuxiliaryCongregationCreateTypes, BodyAuxiliaryCongregationUpdateTypes, BodyCongregationCreateTypes, BodyCongregationUpdateTypes, ParamsCongregationDeleteTypes, ParamsUpdateCongregationTypes, QueryCongregationDeleteTypes, QueryGetCongregationTypes } from "./types";
 
 
 class CongregationController {
-
     async create(req: CustomRequest<BodyCongregationCreateTypes>, res: Response) {
-        const { name, number, city, image_url, circuit } = req.body
+        const { name, number, city, circuit, image_url } = req.body
 
         const file = req.file as Express.Multer.File
 
@@ -58,6 +56,7 @@ class CongregationController {
                 number,
                 city,
                 circuit,
+                type: CongregationType.SYSTEM,
                 image_url: file?.url ?? "",
                 imageKey: file?.key
             })
@@ -85,43 +84,6 @@ class CongregationController {
         return res.status(200).end()
     }
 
-    async list(req: Request, res: Response) {
-        const requestByUserId = await decoder(req)
-
-        const congregationsResponse: Congregation[] = []
-
-        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION') {
-            const requestUser = await userRepository.findOne({
-                where: {
-                    id: requestByUserId.id
-                }
-            })
-
-            if (requestUser) {
-                const cong = await congregationRepository.findOne({
-                    where: {
-                        id: requestUser.congregation.id
-                    }
-                })
-
-                if(cong) congregationsResponse.push(cong)
-            }
-        }
-
-        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN'){
-            const congExists = await congregationRepository.find({})
-
-            if(congExists) congregationsResponse.push(...congExists)
-        }
-
-
-        if (!congregationsResponse) {
-            throw new NotFoundError('Congregations not found')
-        }
-
-        return res.status(200).json(congregationsResponse)
-    }
-
     async update(req: CustomRequestPT<ParamsUpdateCongregationTypes, BodyCongregationUpdateTypes>, res: Response) {
         const {
             name,
@@ -132,28 +94,15 @@ class CongregationController {
             hourMeetingLifeAndMinistary,
             hourMeetingPublic
         } = req.body
-
         const { congregation_id } = req.params
 
         if (!congregation_id) new BadRequestError("Congregation Id does not provided")
 
         const congregation = await congregationRepository.findOneBy({ id: congregation_id })
 
-        if (!congregation) new NotFoundError("Congregation does not exists")
+        if (!congregation) new NotFoundError(messageErrors.notFound.congregation)
 
         if (congregation) {
-
-            if (
-                congregation.name === name &&
-                congregation.circuit === circuit &&
-                congregation.city === city &&
-                congregation.dayMeetingLifeAndMinistary === dayMeetingLifeAndMinistary &&
-                congregation.hourMeetingLifeAndMinistary === `${hourMeetingLifeAndMinistary}:00` &&
-                congregation.dayMeetingPublic === dayMeetingPublic &&
-                congregation.hourMeetingPublic === `${hourMeetingPublic}:00`
-            ) {
-                throw new BadRequestError('Any changes found')
-            }
 
             congregation.name = name ?? congregation?.name
             congregation.circuit = circuit ?? congregation?.circuit
@@ -162,6 +111,7 @@ class CongregationController {
             congregation.hourMeetingLifeAndMinistary = hourMeetingLifeAndMinistary ?? congregation?.hourMeetingLifeAndMinistary
             congregation.dayMeetingPublic = dayMeetingPublic ?? congregation?.dayMeetingPublic
             congregation.hourMeetingPublic = hourMeetingPublic ?? congregation?.hourMeetingPublic
+            congregation.type = CongregationType.SYSTEM
 
             await congregationRepository.save(congregation).then(suc => {
                 return res.status(201).json(suc)
@@ -221,16 +171,77 @@ class CongregationController {
         }
     }
 
+    async list(req: Request, res: Response) {
+        const requestByUserId = await decoder(req)
+
+        const congregationsResponse: Congregation[] = []
+
+        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION') {
+            const requestUser = await userRepository.findOne({
+                where: {
+                    id: requestByUserId.id
+                }
+            })
+
+            if (requestUser) {
+                const cong = await congregationRepository.findOne({
+                    where: {
+                        id: requestUser.congregation.id
+                    }
+                })
+
+                if (cong) congregationsResponse.push(cong)
+            }
+        }
+
+        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN') {
+            const congExists = await congregationRepository.find({})
+
+            if (congExists) congregationsResponse.push(...congExists)
+        }
+
+
+        if (!congregationsResponse) {
+            throw new NotFoundError('Congregations not found')
+        }
+
+        return res.status(200).json(congregationsResponse)
+    }
+
+    async getAuxiliaryCongregations(req: Request, res: Response) {
+        const requestByUserId = await decoder(req)
+        const requestUser = await userRepository.findOne({
+            where: {
+                id: requestByUserId.id
+            }
+        })
+
+        if (requestUser) {
+            const congregations = await congregationRepository.find({
+                where: {
+                    type: CongregationType.AUXILIARY,
+                    creatorCongregation: {
+                        id: requestUser.congregation.id
+                    }
+                }
+            })
+            return res.status(200).json(congregations)
+        }
+    }
+
     async getCongregation(req: QueryCustomRequest<QueryGetCongregationTypes>, res: Response) {
 
         const { number } = req.params
 
         const congExists = await congregationRepository.findOne({
-            where: { number },
+            where: {
+                number,
+                type: CongregationType.SYSTEM
+            },
         })
 
         if (!congExists) {
-            throw new NotFoundError('Congregation not found')
+            throw new NotFoundError(messageErrors.notFound.congregation)
         }
 
 
@@ -243,6 +254,94 @@ class CongregationController {
         })
 
         return res.status(200).json({ ...congExists, groups })
+    }
+
+    async createAuxiliaryCongregation(req: CustomRequest<BodyAuxiliaryCongregationCreateTypes>, res: Response) {
+        const { name, number, city, circuit, dayMeetingPublic, hourMeetingPublic } = req.body
+
+        const requestUser = await decoder(req)
+        const userReq = await userRepository.findOne({
+            where: {
+                id: requestUser.id
+            }
+        })
+
+        const congExists = await congregationRepository.findOneBy({ number })
+
+        if (congExists) {
+            throw new BadRequestError('Congregation already exists')
+        }
+
+        const newCongregation = congregationRepository.create({
+            name,
+            number,
+            city,
+            circuit,
+            type: CongregationType.AUXILIARY,
+            dayMeetingPublic,
+            hourMeetingPublic,
+            creatorCongregation: userReq?.congregation
+        })
+
+        await congregationRepository.save(newCongregation)
+        res.status(201).send(newCongregation)
+    }
+
+    async updateAuxiliaryCongregation(req: CustomRequestPT<ParamsUpdateCongregationTypes, BodyAuxiliaryCongregationUpdateTypes>, res: Response) {
+        const { congregation_id } = req.params
+        const { name, number, city, circuit, dayMeetingPublic, hourMeetingPublic } = req.body
+
+        const requestUser = await decoder(req)
+        const userReq = await userRepository.findOne({
+            where: {
+                id: requestUser.id
+            }
+        })
+
+        const congregation = await congregationRepository.findOneBy({ id: congregation_id })
+
+        if (!congregation) {
+            throw new BadRequestError(messageErrors.notFound.congregation)
+        }
+
+        congregation.name = name ?? congregation.name
+        congregation.number = number ?? congregation.number
+        congregation.city = city ?? congregation.city
+        congregation.circuit = circuit ?? congregation.circuit
+        congregation.type = congregation.type
+        congregation.dayMeetingPublic = dayMeetingPublic ?? congregation.dayMeetingPublic
+        congregation.hourMeetingPublic = hourMeetingPublic ?? congregation.hourMeetingPublic
+
+        await congregationRepository.save(congregation)
+        res.status(201).send(congregation)
+    }
+
+    async deleteAuxiliaryCongregation(req: QueryCustomRequest<ParamsCongregationDeleteTypes>, res: Response) {
+        const { congregation_id: id } = req.params
+        const requestByUserId = await decoder(req)
+        const requestUser = await userRepository.findOne({
+            where: {
+                id: requestByUserId.id
+            }
+        })
+
+        if (requestUser) {
+            const congregation = await congregationRepository.findOne({
+                where: {
+                    id,
+                    type: CongregationType.AUXILIARY,
+                    creatorCongregation: {
+                        id: requestUser.congregation.id
+                    }
+                }
+            })
+
+            if (!congregation) {
+                throw new NotFoundError(messageErrors.notFound.congregation)
+            }
+            await congregationRepository.remove(congregation)
+        }
+        return res.status(200).end()
     }
 }
 

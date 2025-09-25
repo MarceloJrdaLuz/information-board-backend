@@ -1,13 +1,17 @@
 import { Response } from "express-serve-static-core"
+import { In, Not } from "typeorm"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
+import { privilegePTtoEN, translatePrivilegesPTToEN } from "../../helpers/privilegesTranslations"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { emergencyContactRepository } from "../../repositories/emergencyContact"
+import { privilegeRepository } from "../../repositories/privilegeRepository"
+import { publisherPrivilegeRepository } from "../../repositories/publisherPrivilegeRepository"
 import { publisherRepository } from "../../repositories/publisherRepository"
+import { userRepository } from "../../repositories/userRepository"
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 import { Privileges } from "../../types/privileges"
 import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
-import { userRepository } from "../../repositories/userRepository"
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
@@ -74,6 +78,23 @@ class PublisherControler {
       throw new BadRequestError(err)
     })
 
+    if (privileges?.length) {
+      for (const privilegePT of privileges) {
+        const privilegeEN = privilegePTtoEN[privilegePT];
+        if (!privilegeEN) continue; // ou lançar erro se quiser validar
+
+        const privilegeEntity = await privilegeRepository.findOneBy({ name: privilegeEN });
+        if (privilegeEntity) {
+          await publisherPrivilegeRepository.save({
+            publisher: newPublisher,
+            privilege: privilegeEntity,
+            startDate: startPioneer ?? null,
+            endDate: null
+          });
+        }
+      }
+    }
+
     return res.status(201).json(newPublisher)
   }
 
@@ -81,13 +102,17 @@ class PublisherControler {
     const { publisher_id: id } = req.params
     const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContact_id } = req.body
 
-    const publisher = await publisherRepository.findOne({ where: { id }, relations: ["user"] })
+    const publisher = await publisherRepository.findOne({
+      where: { id },
+      relations: ["congregation"]
+    })
 
     if (!publisher) {
-      throw new NotFoundError('Publisher not exists')
+      throw new NotFoundError(messageErrors.notFound.publisher)
     }
 
     if (privileges) {
+
       if (privileges.includes(Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
         throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "PIONEIRO AUXILIAR" privilege')
       }
@@ -107,7 +132,7 @@ class PublisherControler {
       publisher.emergencyContact = contact ?? null // permite que seja null
     }
 
-    if (fullName !== publisher.fullName) {
+    if (fullName && fullName !== publisher.fullName) {
       const existingPublisherSomeFullName = await publisherRepository.find({
         where: {
           fullName,
@@ -126,6 +151,7 @@ class PublisherControler {
       if (nicknameAlreadyExists) throw new BadRequestError('Nickname already exists too')
     }
 
+    const privilegesEN = translatePrivilegesPTToEN(privileges ?? [])
     // Atualizar as propriedades do publisher
     publisher.fullName = fullName !== undefined ? fullName : publisher.fullName
     publisher.nickname = nickname !== undefined ? nickname : publisher.nickname
@@ -139,9 +165,45 @@ class PublisherControler {
     publisher.startPioneer = startPioneer !== undefined ? startPioneer : publisher.startPioneer
     publisher.phone = phone !== undefined ? phone : publisher.phone
     publisher.address = address !== undefined ? address : publisher.address
+    publisher.privileges = privileges && privileges?.length > 0 ? privileges : publisher.privileges
+
 
     await publisherRepository.save(publisher)
 
+    if (privileges && privileges.length > 0) {
+      const privilegesEN = translatePrivilegesPTToEN(privileges)
+
+      // Busca entidades reais dos privilégios em inglês
+      const privilegeEntities = await privilegeRepository.findBy({
+        name: In(privilegesEN)
+      })
+
+      // Extrai os IDs
+      const privilegeIds = privilegeEntities.map(p => p.id)
+
+      // Remove privilégios antigos que não estão mais na lista
+      await publisherPrivilegeRepository.delete({
+        publisher: { id: publisher.id },
+        privilege: { id: Not(In(privilegeIds)) }
+      })
+
+      for (const privilegeName of privilegesEN) {
+        const privilegeEntity = await privilegeRepository.findOneBy({ name: privilegeName })
+        if (!privilegeEntity) continue
+
+        const exists = await publisherPrivilegeRepository.findOne({
+          where: { publisher: { id: publisher.id }, privilege: { id: privilegeEntity.id } }
+        })
+        if (!exists) {
+          await publisherPrivilegeRepository.save({
+            publisher,
+            privilege: privilegeEntity,
+            startDate: startPioneer ?? null,
+            endDate: null
+          })
+        }
+      }
+    }
     return res.status(201).json(publisher)
   }
 
@@ -151,8 +213,7 @@ class PublisherControler {
     const publisher = await publisherRepository.findOne({
       where: {
         id
-      },
-      relations: ['groupOverseers']
+      }
     })
 
     if (!publisher) throw new BadRequestError('Publisher not exists')
@@ -174,7 +235,7 @@ class PublisherControler {
         congregation: {
           id: congregation_id
         }
-      }, relations: ['group']
+      }, relations: ['group', 'congregation']
     }).catch(err => console.log(err))
 
     return res.status(200).json(publishers)

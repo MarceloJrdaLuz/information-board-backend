@@ -10,4 +10,7 @@ var Privileges;
     Privileges["PIONEIROREGULAR"] = "Pioneiro Regular";
     Privileges["PIONEIROESPECIAL"] = "Pioneiro Especial";
     Privileges["AUXILIARINDETERMINADO"] = "Auxiliar Indeterminado";
+    Privileges["ORADOR"] = "Orador";
+    Privileges["PRESIDENTE"] = "Presidente";
+    Privileges["LEITOR"] = "Leitor";
 })(Privileges = exports.Privileges || (exports.Privileges = {}));

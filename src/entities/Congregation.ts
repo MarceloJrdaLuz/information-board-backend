@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 import { Document } from "./Document"
 import { Notice } from "./Notice"
 import { User } from "./User"
@@ -7,62 +7,82 @@ import { Group } from "./Group"
 import { Territory } from "./Territory"
 import { EmergencyContact } from "./EmergencyContact"
 
+export enum CongregationType {
+  SYSTEM = "system",   // congregações que usam o sistema normalmente
+  AUXILIARY = "auxiliary" // congregações criadas para outro objetivo
+}
+
 @Entity('congregation')
 export class Congregation {
-    @PrimaryGeneratedColumn("uuid")
-    id: string
+  @PrimaryGeneratedColumn("uuid")
+  id: string
 
-    @Column({ type: 'text' })
-    name: string
+  @Column({ type: 'text' })
+  name: string
 
-    @Column({ type: 'text', unique: true })
-    number: string
+  @Column({ type: 'text', unique: true })
+  number: string
 
-    @Column({ type: 'text' })
-    city: string
+  @Column({ type: 'text' })
+  city: string
 
-    @Column({ type: 'text' })
-    circuit: string
+  @Column({ type: 'text' })
+  circuit: string
 
-    @Column({ type: "enum", enum: MidweekDays, nullable: true })
-    dayMeetingLifeAndMinistary: MidweekDays
+  @Column({
+    type: "enum",
+    enum: CongregationType,
+  })
+  type: CongregationType
 
-    @Column({ type: "time", nullable: true })
-    hourMeetingLifeAndMinistary: string
+  @Column({ type: "enum", enum: MidweekDays, nullable: true })
+  dayMeetingLifeAndMinistary: MidweekDays
 
-    @Column({ type: "enum", enum: EndweekDays, nullable: true })
-    dayMeetingPublic: EndweekDays
+  @Column({ type: "time", nullable: true })
+  hourMeetingLifeAndMinistary: string
 
-    @Column({ type: "time", nullable: true })
-    hourMeetingPublic: string
+  @Column({ type: "enum", enum: EndweekDays, nullable: true })
+  dayMeetingPublic: EndweekDays
 
-    @Column({ type: 'text', nullable: true })
-    image_url: string
+  @Column({ type: "time", nullable: true })
+  hourMeetingPublic: string
 
-    @Column({ type: "text", nullable: true })
-    imageKey: string
+  @Column({ type: 'text', nullable: true })
+  image_url: string
 
-    @CreateDateColumn()
-    created_at: Date
+  @Column({ type: "text", nullable: true })
+  imageKey: string
 
-    @UpdateDateColumn()
-    updated_at: Date
+  @CreateDateColumn()
+  created_at: Date
 
-    @OneToMany(() => User, user => user.congregation)
-    users: User[]
+  @UpdateDateColumn()
+  updated_at: Date
 
-    @OneToMany(() => Document, document => document.congregation)
-    documents: Document[]
+  /**
+* creatorCongregation:
+* - null para congregações SYSTEM (criadas pelo superAdmin)
+* - aponta para a congregação SYSTEM que criou, no caso das AUXILIARY
+*/
+  @ManyToOne(() => Congregation, { nullable: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "creator_congregation_id" })
+  creatorCongregation: Congregation | null
 
-    @OneToMany(() => Territory, document => document.congregation)
-    territories: Territory[]
+  @OneToMany(() => User, user => user.congregation)
+  users: User[]
 
-    @OneToMany(() => Notice, notice => notice.congregation)
-    notices: Notice[]
+  @OneToMany(() => Document, document => document.congregation)
+  documents: Document[]
 
-    @OneToMany(() => Group, group => group.groupOverseers, { nullable: true }) // Relacionamento One-to-Many com Group (opcional)
-    groups: Group[]
+  @OneToMany(() => Territory, document => document.congregation)
+  territories: Territory[]
 
-    @OneToMany(() => EmergencyContact, (emergencyContact) => emergencyContact.congregation)
-    emergencyContacts: EmergencyContact[];
+  @OneToMany(() => Notice, notice => notice.congregation)
+  notices: Notice[]
+
+  @OneToMany(() => Group, group => group.groupOverseers, { nullable: true }) // Relacionamento One-to-Many com Group (opcional)
+  groups: Group[]
+
+  @OneToMany(() => EmergencyContact, (emergencyContact) => emergencyContact.congregation)
+  emergencyContacts: EmergencyContact[]
 }

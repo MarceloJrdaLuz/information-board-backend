@@ -17,3 +17,10 @@ export interface CustomRequestPT<P extends ParamsDictionary, T> extends Request 
 export interface QueryCustomRequest<P extends ParamsDictionary> extends Request {
     params: P
 }
+
+export type TypedRequest<
+    P extends ParamsDictionary = {},
+    ResBody = any,
+    ReqBody = any,
+    ReqQuery = any
+> = Request<P, ResBody, ReqBody, ReqQuery>;

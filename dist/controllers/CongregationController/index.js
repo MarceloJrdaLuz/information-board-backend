@@ -3,19 +3,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const config_1 = require("../../config");
-const api_errors_1 = require("../../helpers/api-errors");
-const congregationRepository_1 = require("../../repositories/congregationRepository");
 const fs_extra_1 = __importDefault(require("fs-extra"));
-const firebaseStorage_1 = require("../../provider/firebaseStorage");
-const groupRepository_1 = require("../../repositories/groupRepository");
+const config_1 = require("../../config");
+const Congregation_1 = require("../../entities/Congregation");
+const api_errors_1 = require("../../helpers/api-errors");
 const messageErrors_1 = require("../../helpers/messageErrors");
 const permissions_1 = require("../../middlewares/permissions");
+const firebaseStorage_1 = require("../../provider/firebaseStorage");
+const congregationRepository_1 = require("../../repositories/congregationRepository");
+const groupRepository_1 = require("../../repositories/groupRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 class CongregationController {
     async create(req, res) {
         var _a, _b;
-        const { name, number, city, image_url, circuit } = req.body;
+        const { name, number, city, circuit, image_url } = req.body;
         const file = req.file;
         const congExists = await congregationRepository_1.congregationRepository.findOneBy({ number });
         if (congExists) {
@@ -50,6 +51,7 @@ class CongregationController {
                 number,
                 city,
                 circuit,
+                type: Congregation_1.CongregationType.SYSTEM,
                 image_url: (_a = file === null || file === void 0 ? void 0 : file.url) !== null && _a !== void 0 ? _a : "",
                 imageKey: file === null || file === void 0 ? void 0 : file.key
             });
@@ -70,35 +72,6 @@ class CongregationController {
         await congregationRepository_1.congregationRepository.remove(congregation);
         return res.status(200).end();
     }
-    async list(req, res) {
-        const requestByUserId = await (0, permissions_1.decoder)(req);
-        const congregationsResponse = [];
-        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION') {
-            const requestUser = await userRepository_1.userRepository.findOne({
-                where: {
-                    id: requestByUserId.id
-                }
-            });
-            if (requestUser) {
-                const cong = await congregationRepository_1.congregationRepository.findOne({
-                    where: {
-                        id: requestUser.congregation.id
-                    }
-                });
-                if (cong)
-                    congregationsResponse.push(cong);
-            }
-        }
-        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN') {
-            const congExists = await congregationRepository_1.congregationRepository.find({});
-            if (congExists)
-                congregationsResponse.push(...congExists);
-        }
-        if (!congregationsResponse) {
-            throw new api_errors_1.NotFoundError('Congregations not found');
-        }
-        return res.status(200).json(congregationsResponse);
-    }
     async update(req, res) {
         const { name, circuit, city, dayMeetingLifeAndMinistary, dayMeetingPublic, hourMeetingLifeAndMinistary, hourMeetingPublic } = req.body;
         const { congregation_id } = req.params;
@@ -106,17 +79,8 @@ class CongregationController {
             new api_errors_1.BadRequestError("Congregation Id does not provided");
         const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
         if (!congregation)
-            new api_errors_1.NotFoundError("Congregation does not exists");
+            new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.congregation);
         if (congregation) {
-            if (congregation.name === name &&
-                congregation.circuit === circuit &&
-                congregation.city === city &&
-                congregation.dayMeetingLifeAndMinistary === dayMeetingLifeAndMinistary &&
-                congregation.hourMeetingLifeAndMinistary === `${hourMeetingLifeAndMinistary}:00` &&
-                congregation.dayMeetingPublic === dayMeetingPublic &&
-                congregation.hourMeetingPublic === `${hourMeetingPublic}:00`) {
-                throw new api_errors_1.BadRequestError('Any changes found');
-            }
             congregation.name = name !== null && name !== void 0 ? name : congregation === null || congregation === void 0 ? void 0 : congregation.name;
             congregation.circuit = circuit !== null && circuit !== void 0 ? circuit : congregation === null || congregation === void 0 ? void 0 : congregation.circuit;
             congregation.city = city !== null && city !== void 0 ? city : congregation === null || congregation === void 0 ? void 0 : congregation.city;
@@ -124,6 +88,7 @@ class CongregationController {
             congregation.hourMeetingLifeAndMinistary = hourMeetingLifeAndMinistary !== null && hourMeetingLifeAndMinistary !== void 0 ? hourMeetingLifeAndMinistary : congregation === null || congregation === void 0 ? void 0 : congregation.hourMeetingLifeAndMinistary;
             congregation.dayMeetingPublic = dayMeetingPublic !== null && dayMeetingPublic !== void 0 ? dayMeetingPublic : congregation === null || congregation === void 0 ? void 0 : congregation.dayMeetingPublic;
             congregation.hourMeetingPublic = hourMeetingPublic !== null && hourMeetingPublic !== void 0 ? hourMeetingPublic : congregation === null || congregation === void 0 ? void 0 : congregation.hourMeetingPublic;
+            congregation.type = Congregation_1.CongregationType.SYSTEM;
             await congregationRepository_1.congregationRepository.save(congregation).then(suc => {
                 return res.status(201).json(suc);
             }).catch(err => {
@@ -175,13 +140,64 @@ class CongregationController {
             }
         }
     }
+    async list(req, res) {
+        const requestByUserId = await (0, permissions_1.decoder)(req);
+        const congregationsResponse = [];
+        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN_CONGREGATION') {
+            const requestUser = await userRepository_1.userRepository.findOne({
+                where: {
+                    id: requestByUserId.id
+                }
+            });
+            if (requestUser) {
+                const cong = await congregationRepository_1.congregationRepository.findOne({
+                    where: {
+                        id: requestUser.congregation.id
+                    }
+                });
+                if (cong)
+                    congregationsResponse.push(cong);
+            }
+        }
+        if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN') {
+            const congExists = await congregationRepository_1.congregationRepository.find({});
+            if (congExists)
+                congregationsResponse.push(...congExists);
+        }
+        if (!congregationsResponse) {
+            throw new api_errors_1.NotFoundError('Congregations not found');
+        }
+        return res.status(200).json(congregationsResponse);
+    }
+    async getAuxiliaryCongregations(req, res) {
+        const requestByUserId = await (0, permissions_1.decoder)(req);
+        const requestUser = await userRepository_1.userRepository.findOne({
+            where: {
+                id: requestByUserId.id
+            }
+        });
+        if (requestUser) {
+            const congregations = await congregationRepository_1.congregationRepository.find({
+                where: {
+                    type: Congregation_1.CongregationType.AUXILIARY,
+                    creatorCongregation: {
+                        id: requestUser.congregation.id
+                    }
+                }
+            });
+            return res.status(200).json(congregations);
+        }
+    }
     async getCongregation(req, res) {
         const { number } = req.params;
         const congExists = await congregationRepository_1.congregationRepository.findOne({
-            where: { number },
+            where: {
+                number,
+                type: Congregation_1.CongregationType.SYSTEM
+            },
         });
         if (!congExists) {
-            throw new api_errors_1.NotFoundError('Congregation not found');
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.congregation);
         }
         const groups = await groupRepository_1.groupRepository.find({
             where: {
@@ -191,6 +207,79 @@ class CongregationController {
             }, select: ["id", "name", "number"]
         });
         return res.status(200).json({ ...congExists, groups });
+    }
+    async createAuxiliaryCongregation(req, res) {
+        const { name, number, city, circuit, dayMeetingPublic, hourMeetingPublic } = req.body;
+        const requestUser = await (0, permissions_1.decoder)(req);
+        const userReq = await userRepository_1.userRepository.findOne({
+            where: {
+                id: requestUser.id
+            }
+        });
+        const congExists = await congregationRepository_1.congregationRepository.findOneBy({ number });
+        if (congExists) {
+            throw new api_errors_1.BadRequestError('Congregation already exists');
+        }
+        const newCongregation = congregationRepository_1.congregationRepository.create({
+            name,
+            number,
+            city,
+            circuit,
+            type: Congregation_1.CongregationType.AUXILIARY,
+            dayMeetingPublic,
+            hourMeetingPublic,
+            creatorCongregation: userReq === null || userReq === void 0 ? void 0 : userReq.congregation
+        });
+        await congregationRepository_1.congregationRepository.save(newCongregation);
+        res.status(201).send(newCongregation);
+    }
+    async updateAuxiliaryCongregation(req, res) {
+        const { congregation_id } = req.params;
+        const { name, number, city, circuit, dayMeetingPublic, hourMeetingPublic } = req.body;
+        const requestUser = await (0, permissions_1.decoder)(req);
+        const userReq = await userRepository_1.userRepository.findOne({
+            where: {
+                id: requestUser.id
+            }
+        });
+        const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
+        if (!congregation) {
+            throw new api_errors_1.BadRequestError(messageErrors_1.messageErrors.notFound.congregation);
+        }
+        congregation.name = name !== null && name !== void 0 ? name : congregation.name;
+        congregation.number = number !== null && number !== void 0 ? number : congregation.number;
+        congregation.city = city !== null && city !== void 0 ? city : congregation.city;
+        congregation.circuit = circuit !== null && circuit !== void 0 ? circuit : congregation.circuit;
+        congregation.type = congregation.type;
+        congregation.dayMeetingPublic = dayMeetingPublic !== null && dayMeetingPublic !== void 0 ? dayMeetingPublic : congregation.dayMeetingPublic;
+        congregation.hourMeetingPublic = hourMeetingPublic !== null && hourMeetingPublic !== void 0 ? hourMeetingPublic : congregation.hourMeetingPublic;
+        await congregationRepository_1.congregationRepository.save(congregation);
+        res.status(201).send(congregation);
+    }
+    async deleteAuxiliaryCongregation(req, res) {
+        const { congregation_id: id } = req.params;
+        const requestByUserId = await (0, permissions_1.decoder)(req);
+        const requestUser = await userRepository_1.userRepository.findOne({
+            where: {
+                id: requestByUserId.id
+            }
+        });
+        if (requestUser) {
+            const congregation = await congregationRepository_1.congregationRepository.findOne({
+                where: {
+                    id,
+                    type: Congregation_1.CongregationType.AUXILIARY,
+                    creatorCongregation: {
+                        id: requestUser.congregation.id
+                    }
+                }
+            });
+            if (!congregation) {
+                throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.congregation);
+            }
+            await congregationRepository_1.congregationRepository.remove(congregation);
+        }
+        return res.status(200).end();
     }
 }
 exports.default = new CongregationController();

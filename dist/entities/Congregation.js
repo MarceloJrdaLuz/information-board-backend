@@ -8,8 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var Congregation_1;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Congregation = void 0;
+exports.Congregation = exports.CongregationType = void 0;
 const typeorm_1 = require("typeorm");
 const Document_1 = require("./Document");
 const Notice_1 = require("./Notice");
@@ -18,7 +19,12 @@ const enumWeekDays_1 = require("../types/enumWeekDays");
 const Group_1 = require("./Group");
 const Territory_1 = require("./Territory");
 const EmergencyContact_1 = require("./EmergencyContact");
-let Congregation = class Congregation {
+var CongregationType;
+(function (CongregationType) {
+    CongregationType["SYSTEM"] = "system";
+    CongregationType["AUXILIARY"] = "auxiliary"; // congregações criadas para outro objetivo
+})(CongregationType = exports.CongregationType || (exports.CongregationType = {}));
+let Congregation = Congregation_1 = class Congregation {
 };
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)("uuid"),
@@ -40,6 +46,13 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'text' }),
     __metadata("design:type", String)
 ], Congregation.prototype, "circuit", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: "enum",
+        enum: CongregationType,
+    }),
+    __metadata("design:type", String)
+], Congregation.prototype, "type", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "enum", enum: enumWeekDays_1.MidweekDays, nullable: true }),
     __metadata("design:type", String)
@@ -70,8 +83,19 @@ __decorate([
 ], Congregation.prototype, "created_at", void 0);
 __decorate([
     (0, typeorm_1.UpdateDateColumn)(),
-    __metadata("design:type", Date)
+    __metadata("design:type", Date
+    /**
+  * creatorCongregation:
+  * - null para congregações SYSTEM (criadas pelo superAdmin)
+  * - aponta para a congregação SYSTEM que criou, no caso das AUXILIARY
+  */
+    )
 ], Congregation.prototype, "updated_at", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Congregation_1, { nullable: true, onDelete: "CASCADE" }),
+    (0, typeorm_1.JoinColumn)({ name: "creator_congregation_id" }),
+    __metadata("design:type", Object)
+], Congregation.prototype, "creatorCongregation", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => User_1.User, user => user.congregation),
     __metadata("design:type", Array)
@@ -97,7 +121,7 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => EmergencyContact_1.EmergencyContact, (emergencyContact) => emergencyContact.congregation),
     __metadata("design:type", Array)
 ], Congregation.prototype, "emergencyContacts", void 0);
-Congregation = __decorate([
+Congregation = Congregation_1 = __decorate([
     (0, typeorm_1.Entity)('congregation')
 ], Congregation);
 exports.Congregation = Congregation;

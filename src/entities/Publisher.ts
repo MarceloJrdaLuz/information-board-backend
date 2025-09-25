@@ -1,9 +1,11 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 import { Congregation } from "./Congregation"
-import { GroupOverseers } from "./GroupOverseers"
-import { Group } from "./Group"
 import { EmergencyContact } from "./EmergencyContact"
+import { Group } from "./Group"
+import { GroupOverseers } from "./GroupOverseers"
+import { HospitalityGroup } from "./HospitalityGroup."
 import { User } from "./User"
+import { PublisherPrivilege } from "./PublisherPrivilege"
 
 export enum Gender {
     Masculino = "Masculino",
@@ -67,12 +69,14 @@ export class Publisher {
     @Column({ type: 'simple-array', nullable: true })
     privileges: string[]
 
+    @OneToMany(() => PublisherPrivilege, pp => pp.publisher)
+    privilegesRelation: PublisherPrivilege[]
+
     @Column({ type: "simple-array", nullable: true })
     pioneerMonths: string[]
 
     @ManyToOne(() => Congregation, congregation => congregation.id, {
         onDelete: "CASCADE",
-        eager: true
     })
     @JoinColumn({ name: 'congregation_id' })
     congregation: Congregation
@@ -86,14 +90,23 @@ export class Publisher {
     groupOverseers: GroupOverseers
 
     @ManyToOne(() => EmergencyContact, emergencyContact => emergencyContact.publishers, {
-        eager: true,
         nullable: true,
         onDelete: "SET NULL", // se o contato for deletado, o publisher continua mas sem contato
     })
     emergencyContact: EmergencyContact | null
 
-    @OneToOne(() => User, user => user.publisher, { nullable: true  })
+    @OneToOne(() => User, user => user.publisher, { nullable: true })
     user: User | null
+
+    @ManyToOne(() => HospitalityGroup, hospitalityGroup => hospitalityGroup.members, {
+        nullable: true,
+        onDelete: "SET NULL"
+    })
+    @JoinColumn({ name: "hospitality_group_id" })
+    hospitalityGroup: HospitalityGroup | null
+
+    @Column({ type: "uuid", nullable: true })
+    hospitality_group_id: string | null
 
     @CreateDateColumn()
     created_at: Date

@@ -4,6 +4,7 @@ exports.messageErrors = void 0;
 exports.messageErrors = {
     notFound: {
         congregation: "Congregation was not found",
+        originCongregation: "Congregation from origin not found",
         emergencyContact: "Emergency Contact was not found",
         territory: "Territory not exists",
         territoryHistory: "Territory history not found",
@@ -16,6 +17,13 @@ exports.messageErrors = {
         notice: "Notice was not found",
         role: "Role was not found",
         user: "User not found",
+        groupHospitality: "Group hospitality not found",
+        talk: "Talk not found",
+        weekendSchedule: "WeekendSchedule not found",
+        externalTalk: "External Talk not found",
+        speaker: "Speaker not found",
+        reader: "Reader not found",
+        chairman: "Chairman not found",
     },
     dataBase: {
         save: "Error saving to database"

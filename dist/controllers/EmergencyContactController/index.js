@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const emergencyContact_1 = require("../../repositories/emergencyContact");
 const api_errors_1 = require("../../helpers/api-errors");
 const messageErrors_1 = require("../../helpers/messageErrors");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
+const emergencyContact_1 = require("../../repositories/emergencyContact");
 class EmergencyContactController {
     // Listar todos os contatos de emergência de uma congregação (via publishers)
     async listByCongregation(req, res) {

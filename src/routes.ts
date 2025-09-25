@@ -1,24 +1,31 @@
 import { Router } from "express"
-import UserController from "./controllers/UserController"
-import CongregationController from "./controllers/CongregationController"
-import ProfileController from "./controllers/ProfileController"
-import DocumentController from "./controllers/DocumentController"
-import CategoryController from "./controllers/CategoryController"
-import RoleController from "./controllers/RoleController"
-import PermissionController from "./controllers/PermissionController"
-import { is, verifyCronSecret } from "./middlewares/permissions"
 import { uploadFile } from "./config/multer"
+import CategoryController from "./controllers/CategoryController"
+import CongregationController from "./controllers/CongregationController"
+import ConsentRecordController from "./controllers/ConsentRecordController"
+import CronJobController from "./controllers/CronJobController"
+import DocumentController from "./controllers/DocumentController"
+import EmergencyContactController from "./controllers/EmergencyContactController"
+import FormDataController from "./controllers/FormDataController"
+import GroupController from "./controllers/GroupController"
+import HospitalityGroupController from "./controllers/HospitalityGroupController"
+import MeetingAssistanceController from "./controllers/MeetingAssistanceController"
+import NoticeController from "./controllers/NoticeController"
+import PermissionController from "./controllers/PermissionController"
+import ProfileController from "./controllers/ProfileController"
 import PublisherControllers from "./controllers/PublisherControllers"
 import ReportController from "./controllers/ReportController"
-import GroupController from "./controllers/GroupController"
-import ConsentRecordController from "./controllers/ConsentRecordController"
-import NoticeController from "./controllers/NoticeController"
-import TotalsReportsController from "./controllers/TotalsReportsController"
-import MeetingAssistanceController from "./controllers/MeetingAssistanceController"
-import CronJobController from "./controllers/CronJobController"
+import RoleController from "./controllers/RoleController"
+import SpeakerController from "./controllers/SpeakerController"
+import TalkController from "./controllers/TalkController"
 import TerritoryController from "./controllers/TerritoryController"
 import TerritoryHistoryController from "./controllers/TerritoryHistoryController"
-import EmergencyContactController from "./controllers/EmergencyContactController"
+import TotalsReportsController from "./controllers/TotalsReportsController"
+import UserController from "./controllers/UserController"
+import WeekendScheduleController from "./controllers/WeekendScheduleController"
+import { is, verifyCronSecret } from "./middlewares/permissions"
+import ExternalTalkController from "./controllers/ExternalTalkController"
+import HospitalityController from "./controllers/HospitalityController"
 
 const routes = Router()
 
@@ -30,7 +37,7 @@ routes.post('/reset_password', UserController.reset_password) //
 routes.post('/add-domain', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.addUserDomain)
 routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.updateRoles)
 routes.get('/users', is(['ADMIN']), UserController.getUsers)
-routes.get('/users/:congregation_id', is(['ADMIN_CONGREGATION']), UserController.getUsersByCongregation)
+routes.get('/users/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController.getUsersByCongregation)
 routes.patch('/users/:user_id/link-publisher', is(['ADMIN_CONGREGATION']), UserController.linkPublisherToUser)
 
 routes.get('/publishers/congregationId/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers.getPublishers)
@@ -53,6 +60,18 @@ routes.get('/congregations', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationCo
 routes.get('/congregation/:number', CongregationController.getCongregation)
 routes.put('/congregation/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.update)
 routes.put('/congregation/:congregation_id/photo', is(['ADMIN', 'ADMIN_CONGREGATION']), uploadFile.single('image'), CongregationController.uploadCongregationPhoto)
+
+routes.get('/auxiliaryCongregations', is(['ADMIN_CONGREGATION']), CongregationController.getAuxiliaryCongregations)
+routes.post('/auxiliaryCongregations', is(['ADMIN_CONGREGATION']), CongregationController.createAuxiliaryCongregation)
+routes.patch('/auxiliaryCongregation/:congregation_id', is(['ADMIN_CONGREGATION']), CongregationController.updateAuxiliaryCongregation)
+routes.delete('/auxiliaryCongregation/:congregation_id', is(['ADMIN_CONGREGATION']), CongregationController.deleteAuxiliaryCongregation)
+
+routes.get('/congregation/:congregation_id/hospitalityGroups', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.getHospitalityGroups)
+routes.get('/hospitalityGroup/:hospitalityGroup_id', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.getHospitalityGroup)
+routes.post('/congregation/:congregation_id/hospitalityGroup', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.create)
+routes.patch('/hospitalityGroup/:hospitalityGroup_id', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.update)
+routes.patch('/congregation/:congregation_id/groups/reorder', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.reorderGroups)
+routes.delete('/hospitalityGroup/:hospitalityGroup_id', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.delete)
 
 routes.post('/category', is(['ADMIN']), CategoryController.create)
 routes.put('/category/:category_id', is(['ADMIN']), CategoryController.update)
@@ -118,6 +137,44 @@ routes.post('/checkConsentRecords', ConsentRecordController.checkConsent)
 
 routes.post('/assistance/:congregation_id', is(['ADMIN_CONGREGATION', 'ASSISTANCE_MANAGER']), MeetingAssistanceController.create)
 routes.get('/assistance/:congregation_id', is(['ADMIN_CONGREGATION', 'ASSISTANCE_MANAGER', 'ASSISTANCE_VIEWER']), MeetingAssistanceController.getAssistance)
+
+routes.post('/talk', /*is(['ADMIN_CONGREGATION']),*/ TalkController.create)
+routes.post('/talks', /*is(['ADMIN_CONGREGATION']),*/ TalkController.importFromData)
+routes.patch('/talk/:talk_id', /*is(['ADMIN_CONGREGATION']),*/ TalkController.update)
+routes.delete('/talk/:talk_id', /*is(['ADMIN_CONGREGATION']),*/ TalkController.delete)
+routes.get('/talk/:talk_id', /*is(['ADMIN_CONGREGATION']),*/ TalkController.getTalk)
+routes.get('/talks', /*is(['ADMIN_CONGREGATION']),*/ TalkController.getTalks)
+
+routes.get('/congregation/:congregation_id/weekendSchedules', /*is(['ADMIN_CONGREGATION']),*/ WeekendScheduleController.getSchedules)
+routes.get('/weekendSchedule/:weekendSchedule_id', /*is(['ADMIN_CONGREGATION']),*/ WeekendScheduleController.getSchedule)
+routes.post('/congregation/:congregation_id/weekendSchedule', /*is(['ADMIN_CONGREGATION']),*/ WeekendScheduleController.create)
+routes.patch('/weekendSchedule', /*is(['ADMIN_CONGREGATION']),*/ WeekendScheduleController.update)
+routes.delete('/weekendSchedule/:weekendSchedule_id', /*is(['ADMIN_CONGREGATION']),*/ WeekendScheduleController.delete)
+
+routes.post("/weekends", is(["ADMIN_CONGREGATION"]), HospitalityController.createWeekendsBatch);
+routes.put("/assignment/:assignment_id/status", is(["ADMIN_CONGREGATION"]),HospitalityController.updateAssignmentStatus)
+routes.put("/assignment/:assignment_id", is(["ADMIN"]), HospitalityController.updateAssignment);
+routes.delete("/assignment/:assignment_id", is(["ADMIN"]), HospitalityController.deleteAssignment);
+routes.delete("/weekend/:weekend_id", is(["ADMIN"]), HospitalityController.deleteWeekend);
+routes.get('/weekends', /*is(['ADMIN_CONGREGATION']),*/ HospitalityController.getWeekends)
+
+
+routes.post('/congregation/:congregation_id/externalTalks', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.create)
+routes.get('/congregation/:congregation_id/externalTalks/', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.getExternalTalks)
+routes.get('/congregation/:congregation_id/externalTalks/period', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.getExternalTalksByPeriod)
+routes.patch('/externalTalk/:externalTalk_id', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.update)
+routes.patch('/externalTalk/:externalTalk_id/status', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.updateStatus)
+routes.delete('/externalTalk/:externalTalk_id', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.delete)
+
+routes.get('/speakers', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.getSpeakers)
+routes.get('/my-congregation/speakers', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.getPublishersSpeaker)
+routes.get('/speaker/:speaker_id', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.getSpeaker)
+routes.post('/speaker', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.create)
+routes.patch('/speaker/:speaker_id', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.update)
+routes.delete('/speaker/:speaker_id', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.delete)
+
+routes.get('/form-data', /*is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']),*/ FormDataController.getFormData)
+
 
 routes.get('/deleteExpiredNotices', verifyCronSecret, CronJobController.deleteExpiredNotices)
 routes.get('/reportsCleanUp', verifyCronSecret, CronJobController.reportsCleanUp)

@@ -1,3 +1,4 @@
+import { CongregationType } from "../../entities/Congregation";
 import { EndweekDays, MidweekDays } from "../../types/enumWeekDays";
 
 export interface BodyCongregationCreateTypes {
@@ -7,6 +8,15 @@ export interface BodyCongregationCreateTypes {
     circuit: string
     image_url?: string
 }
+export interface BodyAuxiliaryCongregationCreateTypes {
+    name: string
+    number: string
+    city: string
+    circuit: string
+    dayMeetingPublic: EndweekDays
+    hourMeetingPublic: string
+}
+export type BodyAuxiliaryCongregationUpdateTypes = Partial<BodyAuxiliaryCongregationCreateTypes>
 export interface BodyCongregationUpdateTypes {
     name?: string
     city?: string
@@ -15,6 +25,7 @@ export interface BodyCongregationUpdateTypes {
     dayMeetingPublic?: EndweekDays
     hourMeetingLifeAndMinistary?: string
     hourMeetingPublic?: string
+    type?: CongregationType
 }
 
 export type ParamsUpdateCongregationTypes = {
@@ -23,6 +34,10 @@ export type ParamsUpdateCongregationTypes = {
 
 export type QueryCongregationDeleteTypes = {
     id: string
+}
+
+export type ParamsCongregationDeleteTypes = {
+    congregation_id: string
 }
 
 export type QueryGetCongregationTypes = {
