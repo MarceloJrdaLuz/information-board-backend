@@ -1,11 +1,15 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SeedPrivileges1757259899998 = void 0;
-class SeedPrivileges1757259899998 {
-    constructor() {
-        this.name = "SeedPrivileges1757259899998";
-    }
-    async up(queryRunner) {
+import { MigrationInterface, QueryRunner } from "typeorm";
+
+export class SeedPrivileges1757259899998 implements MigrationInterface {
+    name = "SeedPrivileges1757259899998";
+
+    public async up(queryRunner: QueryRunner): Promise<void> {
+        // Garantir que a extensão de UUID existe
+        await queryRunner.query(`
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+        `);
+
+        // Inserir registros sem duplicar
         await queryRunner.query(`
             INSERT INTO privileges (id, name, created_at, updated_at)
             VALUES 
@@ -22,9 +26,11 @@ class SeedPrivileges1757259899998 {
                 (uuid_generate_v4(), 'Microphone Attendant', NOW(), NOW()),
                 (uuid_generate_v4(), 'Special Pioneer', NOW(), NOW()),
                 (uuid_generate_v4(), 'Missionary Worldwide', NOW(), NOW())
+            ON CONFLICT (name) DO NOTHING;
         `);
     }
-    async down(queryRunner) {
+
+    public async down(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`
             DELETE FROM privileges
             WHERE name IN (
@@ -45,4 +51,3 @@ class SeedPrivileges1757259899998 {
         `);
     }
 }
-exports.SeedPrivileges1757259899998 = SeedPrivileges1757259899998;

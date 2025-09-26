@@ -66,12 +66,12 @@ routes.post('/auxiliaryCongregations', is(['ADMIN_CONGREGATION']), CongregationC
 routes.patch('/auxiliaryCongregation/:congregation_id', is(['ADMIN_CONGREGATION']), CongregationController.updateAuxiliaryCongregation)
 routes.delete('/auxiliaryCongregation/:congregation_id', is(['ADMIN_CONGREGATION']), CongregationController.deleteAuxiliaryCongregation)
 
-routes.get('/congregation/:congregation_id/hospitalityGroups', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.getHospitalityGroups)
-routes.get('/hospitalityGroup/:hospitalityGroup_id', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.getHospitalityGroup)
-routes.post('/congregation/:congregation_id/hospitalityGroup', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.create)
-routes.patch('/hospitalityGroup/:hospitalityGroup_id', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.update)
-routes.patch('/congregation/:congregation_id/groups/reorder', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.reorderGroups)
-routes.delete('/hospitalityGroup/:hospitalityGroup_id', /*is(['ADMIN_CONGREGATION']),*/ HospitalityGroupController.delete)
+routes.get('/congregation/:congregation_id/hospitalityGroups', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.getHospitalityGroups)
+routes.get('/hospitalityGroup/:hospitalityGroup_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.getHospitalityGroup)
+routes.post('/congregation/:congregation_id/hospitalityGroup', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.create)
+routes.patch('/hospitalityGroup/:hospitalityGroup_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.update)
+routes.patch('/congregation/:congregation_id/groups/reorder', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.reorderGroups)
+routes.delete('/hospitalityGroup/:hospitalityGroup_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.delete)
 
 routes.post('/category', is(['ADMIN']), CategoryController.create)
 routes.put('/category/:category_id', is(['ADMIN']), CategoryController.update)
@@ -138,43 +138,42 @@ routes.post('/checkConsentRecords', ConsentRecordController.checkConsent)
 routes.post('/assistance/:congregation_id', is(['ADMIN_CONGREGATION', 'ASSISTANCE_MANAGER']), MeetingAssistanceController.create)
 routes.get('/assistance/:congregation_id', is(['ADMIN_CONGREGATION', 'ASSISTANCE_MANAGER', 'ASSISTANCE_VIEWER']), MeetingAssistanceController.getAssistance)
 
-routes.post('/talk', /*is(['ADMIN_CONGREGATION']),*/ TalkController.create)
-routes.post('/talks', /*is(['ADMIN_CONGREGATION']),*/ TalkController.importFromData)
-routes.patch('/talk/:talk_id', /*is(['ADMIN_CONGREGATION']),*/ TalkController.update)
-routes.delete('/talk/:talk_id', /*is(['ADMIN_CONGREGATION']),*/ TalkController.delete)
-routes.get('/talk/:talk_id', /*is(['ADMIN_CONGREGATION']),*/ TalkController.getTalk)
-routes.get('/talks', /*is(['ADMIN_CONGREGATION']),*/ TalkController.getTalks)
+routes.post('/talk', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkController.create)
+routes.post('/talks', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkController.importFromData)
+routes.patch('/talk/:talk_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkController.update)
+routes.delete('/talk/:talk_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkController.delete)
+routes.get('/talk/:talk_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkController.getTalk)
+routes.get('/talks', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkController.getTalks)
 
-routes.get('/congregation/:congregation_id/weekendSchedules', /*is(['ADMIN_CONGREGATION']),*/ WeekendScheduleController.getSchedules)
-routes.get('/weekendSchedule/:weekendSchedule_id', /*is(['ADMIN_CONGREGATION']),*/ WeekendScheduleController.getSchedule)
-routes.post('/congregation/:congregation_id/weekendSchedule', /*is(['ADMIN_CONGREGATION']),*/ WeekendScheduleController.create)
-routes.patch('/weekendSchedule', /*is(['ADMIN_CONGREGATION']),*/ WeekendScheduleController.update)
-routes.delete('/weekendSchedule/:weekendSchedule_id', /*is(['ADMIN_CONGREGATION']),*/ WeekendScheduleController.delete)
+routes.get('/congregation/:congregation_id/weekendSchedules', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.getSchedules)
+routes.get('/weekendSchedule/:weekendSchedule_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.getSchedule)
+routes.post('/congregation/:congregation_id/weekendSchedule', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.create)
+routes.patch('/weekendSchedule', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.update)
+routes.delete('/weekendSchedule/:weekendSchedule_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.delete)
 
-routes.post("/weekends", is(["ADMIN_CONGREGATION"]), HospitalityController.createWeekendsBatch);
-routes.put("/assignment/:assignment_id/status", is(["ADMIN_CONGREGATION"]),HospitalityController.updateAssignmentStatus)
-routes.put("/assignment/:assignment_id", is(["ADMIN"]), HospitalityController.updateAssignment);
-routes.delete("/assignment/:assignment_id", is(["ADMIN"]), HospitalityController.deleteAssignment);
-routes.delete("/weekend/:weekend_id", is(["ADMIN"]), HospitalityController.deleteWeekend);
-routes.get('/weekends', /*is(['ADMIN_CONGREGATION']),*/ HospitalityController.getWeekends)
+routes.post("/weekends", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]), HospitalityController.createWeekendsBatch);
+routes.put("/assignment/:assignment_id/status", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),HospitalityController.updateAssignmentStatus)
+routes.put("/assignment/:assignment_id", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]), HospitalityController.updateAssignment);
+routes.delete("/assignment/:assignment_id", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]), HospitalityController.deleteAssignment);
+routes.delete("/weekend/:weekend_id", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]), HospitalityController.deleteWeekend);
+routes.get('/weekends', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityController.getWeekends)
 
 
-routes.post('/congregation/:congregation_id/externalTalks', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.create)
-routes.get('/congregation/:congregation_id/externalTalks/', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.getExternalTalks)
-routes.get('/congregation/:congregation_id/externalTalks/period', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.getExternalTalksByPeriod)
-routes.patch('/externalTalk/:externalTalk_id', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.update)
-routes.patch('/externalTalk/:externalTalk_id/status', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.updateStatus)
-routes.delete('/externalTalk/:externalTalk_id', /*is(['ADMIN_CONGREGATION']),*/ ExternalTalkController.delete)
+routes.post('/congregation/:congregation_id/externalTalks', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), ExternalTalkController.create)
+routes.get('/congregation/:congregation_id/externalTalks/', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), ExternalTalkController.getExternalTalks)
+routes.get('/congregation/:congregation_id/externalTalks/period', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), ExternalTalkController.getExternalTalksByPeriod)
+routes.patch('/externalTalk/:externalTalk_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), ExternalTalkController.update)
+routes.patch('/externalTalk/:externalTalk_id/status', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), ExternalTalkController.updateStatus)
+routes.delete('/externalTalk/:externalTalk_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), ExternalTalkController.delete)
 
-routes.get('/speakers', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.getSpeakers)
-routes.get('/my-congregation/speakers', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.getPublishersSpeaker)
-routes.get('/speaker/:speaker_id', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.getSpeaker)
-routes.post('/speaker', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.create)
-routes.patch('/speaker/:speaker_id', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.update)
-routes.delete('/speaker/:speaker_id', /*is(['ADMIN_CONGREGATION']),*/ SpeakerController.delete)
+routes.get('/speakers', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.getSpeakers)
+routes.get('/my-congregation/speakers', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.getPublishersSpeaker)
+routes.get('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.getSpeaker)
+routes.post('/speaker', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.create)
+routes.patch('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.update)
+routes.delete('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.delete)
 
-routes.get('/form-data', /*is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']),*/ FormDataController.getFormData)
-
+routes.get('/form-data', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'TALK_MANAGER']), FormDataController.getFormData)
 
 routes.get('/deleteExpiredNotices', verifyCronSecret, CronJobController.deleteExpiredNotices)
 routes.get('/reportsCleanUp', verifyCronSecret, CronJobController.reportsCleanUp)

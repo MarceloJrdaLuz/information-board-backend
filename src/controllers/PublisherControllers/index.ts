@@ -235,7 +235,7 @@ class PublisherControler {
         congregation: {
           id: congregation_id
         }
-      }, relations: ['group', 'congregation']
+      }, relations: ['group', 'congregation', "emergencyContact" ]
     }).catch(err => console.log(err))
 
     return res.status(200).json(publishers)
@@ -274,7 +274,7 @@ class PublisherControler {
       where: {
         id: publisher_id
       },
-      relations: ["user"],
+      relations: ["user", "emergencyContact"],
     })
 
     if (!publisher) throw new NotFoundError(messageErrors.notFound.publisher)

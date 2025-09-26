@@ -1,9 +1,16 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
-
-export class SeedPrivileges1757259899998 implements MigrationInterface {
-    name = "SeedPrivileges1757259899998";
-
-    public async up(queryRunner: QueryRunner): Promise<void> {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SeedPrivileges1757259899998 = void 0;
+class SeedPrivileges1757259899998 {
+    constructor() {
+        this.name = "SeedPrivileges1757259899998";
+    }
+    async up(queryRunner) {
+        // Garantir que a extensão de UUID existe
+        await queryRunner.query(`
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+        `);
+        // Inserir registros sem duplicar
         await queryRunner.query(`
             INSERT INTO privileges (id, name, created_at, updated_at)
             VALUES 
@@ -20,10 +27,10 @@ export class SeedPrivileges1757259899998 implements MigrationInterface {
                 (uuid_generate_v4(), 'Microphone Attendant', NOW(), NOW()),
                 (uuid_generate_v4(), 'Special Pioneer', NOW(), NOW()),
                 (uuid_generate_v4(), 'Missionary Worldwide', NOW(), NOW())
+            ON CONFLICT (name) DO NOTHING;
         `);
     }
-
-    public async down(queryRunner: QueryRunner): Promise<void> {
+    async down(queryRunner) {
         await queryRunner.query(`
             DELETE FROM privileges
             WHERE name IN (
@@ -44,3 +51,4 @@ export class SeedPrivileges1757259899998 implements MigrationInterface {
         `);
     }
 }
+exports.SeedPrivileges1757259899998 = SeedPrivileges1757259899998;
