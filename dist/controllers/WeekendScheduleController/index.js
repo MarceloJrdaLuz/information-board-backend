@@ -158,7 +158,7 @@ class WeekendScheduleController {
         });
         const today = (0, moment_1.default)();
         const mapped = schedules.map(s => {
-            var _a, _b;
+            var _a;
             const date = (0, moment_1.default)(s.date, "YYYY-MM-DD");
             const month = months_1.monthNames[date.month()];
             return {
@@ -168,8 +168,8 @@ class WeekendScheduleController {
                 isCurrentWeek: today.isSame(date, "week"),
                 isSpecial: s.isSpecial,
                 specialName: s.specialName,
-                chairman: s.chairman ? { name: (_a = s.chairman.nickname) !== null && _a !== void 0 ? _a : s.chairman.fullName } : null,
-                reader: s.reader ? { name: (_b = s.reader.nickname) !== null && _b !== void 0 ? _b : s.reader.fullName } : null,
+                chairman: s.chairman ? { name: s.chairman.nickname ? (_a = s.chairman) === null || _a === void 0 ? void 0 : _a.nickname : s.chairman.fullName } : null,
+                reader: s.reader ? { name: s.reader.nickname ? s.reader.nickname : s.reader.fullName } : null,
                 speaker: s.speaker
                     ? {
                         name: s.speaker.fullName,

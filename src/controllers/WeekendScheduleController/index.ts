@@ -186,8 +186,8 @@ class WeekendScheduleController {
         isCurrentWeek: today.isSame(date, "week"),
         isSpecial: s.isSpecial,
         specialName: s.specialName,
-        chairman: s.chairman ? { name: s.chairman.nickname ?? s.chairman.fullName } : null,
-        reader: s.reader ? { name: s.reader.nickname ?? s.reader.fullName } : null,
+        chairman: s.chairman ? { name: s.chairman.nickname ? s.chairman?.nickname : s.chairman.fullName } : null,
+        reader: s.reader ? { name: s.reader.nickname ? s.reader.nickname : s.reader.fullName } : null,
         speaker: s.speaker
           ? {
             name: s.speaker.fullName,
