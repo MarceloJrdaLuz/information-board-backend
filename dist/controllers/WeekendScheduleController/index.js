@@ -10,6 +10,8 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const speakerRepository_1 = require("../../repositories/speakerRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
+const months_1 = require("../../helpers/months");
+const normalize_1 = require("../../functions/normalize");
 class WeekendScheduleController {
     async create(req, res) {
         var _a, _b, _c, _d, _e;
@@ -146,6 +148,52 @@ class WeekendScheduleController {
         if (!schedule)
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.weekendSchedule);
         return res.json(schedule);
+    }
+    async getPublicSchedules(req, res) {
+        const { congregation_id } = req.params;
+        const schedules = await weekendScheduleRepository_1.weekendScheduleRepository.find({
+            where: { congregation: { id: congregation_id } },
+            relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation"],
+            order: { date: "ASC" },
+        });
+        const today = (0, moment_1.default)();
+        const mapped = schedules.map(s => {
+            var _a, _b;
+            const date = (0, moment_1.default)(s.date, "YYYY-MM-DD");
+            const month = months_1.monthNames[date.month()];
+            return {
+                id: s.id,
+                date: s.date,
+                month,
+                isCurrentWeek: today.isSame(date, "week"),
+                isSpecial: s.isSpecial,
+                specialName: s.specialName,
+                chairman: s.chairman ? { name: (_a = s.chairman.nickname) !== null && _a !== void 0 ? _a : s.chairman.fullName } : null,
+                reader: s.reader ? { name: (_b = s.reader.nickname) !== null && _b !== void 0 ? _b : s.reader.fullName } : null,
+                speaker: s.speaker
+                    ? {
+                        name: s.speaker.fullName,
+                        congregation: s.speaker.originCongregation
+                            ? (0, normalize_1.normalize)(s.speaker.originCongregation.city) === (0, normalize_1.normalize)(s.speaker.originCongregation.name)
+                                ? `${(0, normalize_1.normalize)(s.speaker.originCongregation.city)}`
+                                : `${(0, normalize_1.normalize)(s.speaker.originCongregation.name)} - ${(0, normalize_1.normalize)(s.speaker.originCongregation.city)}`
+                            : null,
+                    }
+                    : (s.manualSpeaker ? { name: s.manualSpeaker } : null),
+                talk: s.talk
+                    ? { title: s.talk.title, number: s.talk.number }
+                    : (s.manualTalk ? { title: s.manualTalk } : null),
+                watchTowerStudyTitle: s.watchTowerStudyTitle,
+            };
+        });
+        // Agrupa por mês
+        const grouped = mapped.reduce((acc, item) => {
+            if (!acc[item.month])
+                acc[item.month] = [];
+            acc[item.month].push(item);
+            return acc;
+        }, {});
+        return res.json(grouped);
     }
 }
 exports.default = new WeekendScheduleController();

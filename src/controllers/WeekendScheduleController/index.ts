@@ -15,6 +15,8 @@ import {
   ParamsWeekendScheduleTypes
 } from "./types"
 import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupRepository"
+import { monthNames } from "../../helpers/months"
+import { normalize } from "../../functions/normalize"
 
 class WeekendScheduleController {
   async create(req: CustomRequestPT<ParamsWeekendScheduleCreateTypes, BodyWeekendScheduleCreateTypes>, res: Response) {
@@ -162,6 +164,57 @@ class WeekendScheduleController {
 
     return res.json(schedule)
   }
+
+  async getPublicSchedules(req: ParamsCustomRequest<ParamsGetWeekendScheduleTypes>, res: Response) {
+    const { congregation_id } = req.params
+    const schedules = await weekendScheduleRepository.find({
+      where: { congregation: { id: congregation_id } },
+      relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation"],
+      order: { date: "ASC" },
+    })
+
+    const today = moment()
+
+    const mapped = schedules.map(s => {
+      const date = moment(s.date, "YYYY-MM-DD")
+      const month = monthNames[date.month()]
+
+      return {
+        id: s.id,
+        date: s.date,
+        month,
+        isCurrentWeek: today.isSame(date, "week"),
+        isSpecial: s.isSpecial,
+        specialName: s.specialName,
+        chairman: s.chairman ? { name: s.chairman.nickname ?? s.chairman.fullName } : null,
+        reader: s.reader ? { name: s.reader.nickname ?? s.reader.fullName } : null,
+        speaker: s.speaker
+          ? {
+            name: s.speaker.fullName,
+            congregation: s.speaker.originCongregation
+              ? normalize(s.speaker.originCongregation.city) === normalize(s.speaker.originCongregation.name)
+                ? `${normalize(s.speaker.originCongregation.city)}`
+                : `${normalize(s.speaker.originCongregation.name)} - ${normalize(s.speaker.originCongregation.city)}`
+              : null,
+          }
+          : (s.manualSpeaker ? { name: s.manualSpeaker } : null),
+        talk: s.talk
+          ? { title: s.talk.title, number: s.talk.number }
+          : (s.manualTalk ? { title: s.manualTalk } : null),
+        watchTowerStudyTitle: s.watchTowerStudyTitle,
+      }
+    })
+
+    // Agrupa por mês
+    const grouped = mapped.reduce((acc, item) => {
+      if (!acc[item.month]) acc[item.month] = []
+      acc[item.month].push(item)
+      return acc
+    }, {} as Record<string, typeof mapped>)
+
+    return res.json(grouped)
+  }
+
 }
 
 export default new WeekendScheduleController()

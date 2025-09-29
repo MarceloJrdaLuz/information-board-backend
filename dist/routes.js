@@ -54,7 +54,7 @@ routes.get('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['ADM
 routes.post('/emergencyContact', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController_1.default.create);
 routes.put('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController_1.default.update);
 routes.delete('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController_1.default.delete);
-routes.post('/congregation', (0, permissions_1.is)(['ADMIN']), multer_1.uploadFile.single('image'), CongregationController_1.default.create); //
+routes.post('/congregation', (0, permissions_1.is)(['ADMIN']), multer_1.uploadFile.single('image'), CongregationController_1.default.create);
 routes.delete('/congregation/:id', (0, permissions_1.is)(['ADMIN']), CongregationController_1.default.delete);
 routes.get('/congregations', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.list);
 routes.get('/congregation/:number', CongregationController_1.default.getCongregation);
@@ -130,6 +130,7 @@ routes.delete('/talk/:talk_id', (0, permissions_1.is)(['ADMIN']), TalkController
 routes.get('/talk/:talk_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkController_1.default.getTalk);
 routes.get('/talks', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkController_1.default.getTalks);
 routes.get('/congregation/:congregation_id/weekendSchedules', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController_1.default.getSchedules);
+routes.get('/congregation/:congregation_id/weekendSchedules/public', WeekendScheduleController_1.default.getPublicSchedules);
 routes.get('/weekendSchedule/:weekendSchedule_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController_1.default.getSchedule);
 routes.post('/congregation/:congregation_id/weekendSchedule', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController_1.default.create);
 routes.patch('/weekendSchedule', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController_1.default.update);

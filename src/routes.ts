@@ -54,7 +54,7 @@ routes.post('/emergencyContact', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']
 routes.put('/emergencyContact/:emergencyContact_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController.update)
 routes.delete('/emergencyContact/:emergencyContact_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController.delete)
 
-routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), CongregationController.create) //
+routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), CongregationController.create) 
 routes.delete('/congregation/:id', is(['ADMIN']), CongregationController.delete)
 routes.get('/congregations', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.list)
 routes.get('/congregation/:number', CongregationController.getCongregation)
@@ -146,6 +146,7 @@ routes.get('/talk/:talk_id', is(['ADMIN', 'ADMIN_CONGREGATION', 'TALK_MANAGER'])
 routes.get('/talks', is(['ADMIN', 'ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkController.getTalks)
 
 routes.get('/congregation/:congregation_id/weekendSchedules', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.getSchedules)
+routes.get('/congregation/:congregation_id/weekendSchedules/public',  WeekendScheduleController.getPublicSchedules)
 routes.get('/weekendSchedule/:weekendSchedule_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.getSchedule)
 routes.post('/congregation/:congregation_id/weekendSchedule', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.create)
 routes.patch('/weekendSchedule', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.update)
