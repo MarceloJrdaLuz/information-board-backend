@@ -15,7 +15,6 @@ class ExternalTalkController {
     async create(req, res) {
         const { congregation_id } = req.params;
         const { destinationCongregation_id, speaker_id, talk_id, manualTalk, date } = req.body;
-        console.log(date);
         const originCongregation = await congregationRepository_1.congregationRepository.findOne({
             where: {
                 id: congregation_id
@@ -90,10 +89,8 @@ class ExternalTalkController {
     async getExternalTalksByPeriod(req, res) {
         const { congregation_id } = req.params;
         const { start, end } = req.query;
-        console.log(start, end);
         const startFormatted = (0, moment_timezone_1.default)(start, "YYYY-MM-DD").format("YYYY-MM-DD");
         const endFormatted = (0, moment_timezone_1.default)(end, "YYYY-MM-DD").format("YYYY-MM-DD");
-        console.log(start, startFormatted, end, endFormatted);
         const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
             where: {
                 originCongregation: { id: congregation_id },
@@ -102,7 +99,6 @@ class ExternalTalkController {
             relations: ["speaker", "talk", "destinationCongregation"],
             order: { date: "ASC" }
         });
-        console.log(externalTalks);
         return res.json(externalTalks);
     }
     async update(req, res) {
@@ -148,7 +144,6 @@ class ExternalTalkController {
     async updateStatus(req, res) {
         const { externalTalk_id: id } = req.params;
         const { status } = req.body;
-        console.log(id, status);
         const externalTalk = await externalTalkRepository_1.externalTalkRepository.findOneBy({ id });
         if (!externalTalk) {
             throw new api_errors_1.BadRequestError("External talk not found");

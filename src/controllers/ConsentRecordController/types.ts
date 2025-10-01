@@ -1,14 +1,12 @@
 import { IPublisherConsent } from "../../types/publisherConsent";
 
 export interface BodyConsentRecordCreateTypes {
-   publisher: IPublisherConsent
+   publisher_id: string
    deviceId?: string
 }
 
 export interface BodyCheckConsentRecordTypes {
-   fullName: string
-   nickname: string
-   congregation_id: string
+   publisher_id: string
    deviceId: string
    consentDate: Date
 }

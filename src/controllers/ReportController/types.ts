@@ -1,11 +1,7 @@
 export interface BodyReportCreateTypes {
     month: string
     year: string
-    publisher: {
-        fullName: string,
-        nickName: string,
-        congregation_id: string
-    }
+    publisher_id: string
     hours: number
     studies: number
     observations: string
@@ -14,9 +10,7 @@ export interface BodyReportCreateManuallyTypes {
     month: string
     year: string
     publisher: {
-        fullName: string,
-        nickName: string,
-        congregation_id: string
+        id: string
         privileges: string[]
     }
     hours: number
@@ -42,5 +36,5 @@ export type ParamsDeleteReportypes = {
 }
 
 export type ParamsGetMyReportstypes = {
-   user_id: string
+    user_id: string
 }

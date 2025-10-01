@@ -16,7 +16,7 @@ import { decoder } from "../../middlewares/permissions"
 
 class ReportController {
   async create(req: CustomRequest<BodyReportCreateTypes>, res: Response) {
-    const { month, year, publisher, hours, studies, observations } = req.body
+    const { month, year, publisher_id, hours, studies, observations } = req.body
 
     if (!Object.values(Months).some(enumMonth => enumMonth === month)) {
       return res.status(400).json({ message: 'Invalid month value' })
@@ -24,11 +24,7 @@ class ReportController {
 
     const publisherExists = await publisherRepository.findOne({
       where: {
-        fullName: publisher.fullName,
-        nickname: publisher.nickName,
-        congregation: {
-          id: publisher.congregation_id
-        }
+        id: publisher_id
       }
     })
 
@@ -39,7 +35,7 @@ class ReportController {
         month: month as Months,
         year,
         publisher: {
-          id: publisherExists.id // Assuming 'id' is the primary key property of the 'Publisher' entity
+          id: publisherExists.id
         }
       }
     })
@@ -210,11 +206,7 @@ class ReportController {
 
     const publisherExists = await publisherRepository.findOne({
       where: {
-        fullName: publisher.fullName,
-        nickname: publisher.nickName,
-        congregation: {
-          id: publisher.congregation_id
-        },
+        id: publisher.id
       }
     })
 
@@ -226,11 +218,10 @@ class ReportController {
         month: month as Months,
         year,
         publisher: {
-          id: publisherExists.id // Assuming 'id' is the primary key property of the 'Publisher' entity
+          id: publisherExists.id 
         }
       }
     })
-
 
     if (existingReport) {
       const privilegesExists = publisher.privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))

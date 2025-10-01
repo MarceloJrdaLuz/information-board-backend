@@ -254,10 +254,11 @@ class PublisherControler {
           id: congregation.id
         }
       },
-      select: ['fullName', 'nickname', "congregation"],
+      select: ['fullName', 'nickname', "congregation", "id"],
     })
 
     const publishersNames = publishers.map(publisher => ({
+      id: publisher.id,
       fullName: publisher.fullName,
       nickname: publisher.nickname,
       congregation_id: congregation.id,

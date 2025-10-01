@@ -26,6 +26,10 @@ __decorate([
     __metadata("design:type", String)
 ], ConsentRecord.prototype, "nickname", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    __metadata("design:type", String)
+], ConsentRecord.prototype, "publisher_id", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'text' }),
     __metadata("design:type", String)
 ], ConsentRecord.prototype, "congregation_id", void 0);

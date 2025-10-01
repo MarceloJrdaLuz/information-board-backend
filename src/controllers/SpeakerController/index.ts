@@ -155,7 +155,6 @@ class SpeakerController {
       relations: ["originCongregation", "talks"],
       order: { fullName: "ASC" },
     })
-    console.log(speakers)
     return res.json(speakers)
   }
 

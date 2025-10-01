@@ -152,12 +152,12 @@ routes.post('/congregation/:congregation_id/weekendSchedule', is(['ADMIN_CONGREG
 routes.patch('/weekendSchedule', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.update)
 routes.delete('/weekendSchedule/:weekendSchedule_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.delete)
 
-routes.post("/weekends", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]), HospitalityController.createWeekendsBatch);
-routes.put("/assignment/:assignment_id/status", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),HospitalityController.updateAssignmentStatus)
-routes.put("/assignment/:assignment_id", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]), HospitalityController.updateAssignment);
-routes.delete("/assignment/:assignment_id", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]), HospitalityController.deleteAssignment);
-routes.delete("/weekend/:weekend_id", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]), HospitalityController.deleteWeekend);
-routes.get('/weekends', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityController.getWeekends)
+routes.post("/weekends", /*is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),*/ HospitalityController.createWeekendsBatch);
+routes.patch("/assignment/:assignment_id/status", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),HospitalityController.updateAssignmentStatus)
+routes.patch("/assignment/:assignment_id", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]), HospitalityController.updateAssignment);
+routes.delete("/assignment/:assignment_id", /*is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),*/ HospitalityController.deleteAssignment);
+routes.delete("/weekend/:weekend_id", /*is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),*/ HospitalityController.deleteWeekend);
+routes.get('/weekends', /*is(['ADMIN_CONGREGATION', "TALK_MANAGER"]),*/ HospitalityController.getWeekends)
 
 
 routes.post('/congregation/:congregation_id/externalTalks', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), ExternalTalkController.create)

@@ -17,7 +17,6 @@ class TalkController {
     async update(req, res) {
         const { talk_id } = req.params;
         const { number, title } = req.body;
-        console.log(talk_id);
         const talk = await talkRepository_1.talkRepository.findOneBy({ id: talk_id });
         if (!talk)
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.talk);

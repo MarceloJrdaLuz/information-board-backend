@@ -12,6 +12,9 @@ export class ConsentRecord {
     @Column({ type: 'text' })
     nickname: string
 
+    @Column({ type: 'uuid', nullable: true })
+    publisher_id: string
+
     @Column({ type: 'text' })
     congregation_id: string
 

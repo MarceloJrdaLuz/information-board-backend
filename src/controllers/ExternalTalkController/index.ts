@@ -15,7 +15,6 @@ class ExternalTalkController {
     async create(req: CustomRequestPT<ParamsCreateExternalTalks, BodyCreateExternalTalk>, res: Response) {
         const { congregation_id } = req.params
         const { destinationCongregation_id, speaker_id, talk_id, manualTalk, date } = req.body
-        console.log(date)
 
         const originCongregation = await congregationRepository.findOne({
             where: {
@@ -108,12 +107,8 @@ class ExternalTalkController {
         const { congregation_id } = req.params
         const { start, end } = req.query
 
-        console.log(start, end)
-
         const startFormatted = moment(start, "YYYY-MM-DD").format("YYYY-MM-DD");
         const endFormatted = moment(end, "YYYY-MM-DD").format("YYYY-MM-DD");
-
-        console.log(start, startFormatted, end, endFormatted)
 
         const externalTalks = await externalTalkRepository.find({
             where: {
@@ -124,7 +119,6 @@ class ExternalTalkController {
             order: { date: "ASC" }
         })
 
-        console.log(externalTalks)
         return res.json(externalTalks)
     }
 
@@ -178,7 +172,7 @@ class ExternalTalkController {
     async updateStatus(req: CustomRequestPT<ParamsExternalTalk, BodyUpdateStatusExternalTalk>, res: Response) {
         const { externalTalk_id: id } = req.params
         const { status } = req.body
-        console.log(id, status)
+        
         const externalTalk = await externalTalkRepository.findOneBy({ id })
         if (!externalTalk) {
             throw new BadRequestError("External talk not found")

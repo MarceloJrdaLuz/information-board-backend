@@ -24,8 +24,6 @@ class TalkController {
     const { talk_id } = req.params
     const { number, title } = req.body
 
-    console.log(talk_id)
-
     const talk = await talkRepository.findOneBy({ id: talk_id })
     if (!talk) throw new NotFoundError(messageErrors.notFound.talk)
 

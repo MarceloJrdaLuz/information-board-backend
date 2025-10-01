@@ -182,8 +182,6 @@ class GroupController {
             }
         })
 
-        console.log(groupOverseerExists)
-
         if (groupOverseerExists) {
             group.groupOverseers = groupOverseerExists
             publisher.groupOverseers = groupOverseerExists

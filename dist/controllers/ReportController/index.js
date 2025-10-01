@@ -11,17 +11,13 @@ const messageErrors_1 = require("../../helpers/messageErrors");
 const permissions_1 = require("../../middlewares/permissions");
 class ReportController {
     async create(req, res) {
-        const { month, year, publisher, hours, studies, observations } = req.body;
+        const { month, year, publisher_id, hours, studies, observations } = req.body;
         if (!Object.values(enumWeekDays_1.Months).some(enumMonth => enumMonth === month)) {
             return res.status(400).json({ message: 'Invalid month value' });
         }
         const publisherExists = await publisherRepository_1.publisherRepository.findOne({
             where: {
-                fullName: publisher.fullName,
-                nickname: publisher.nickName,
-                congregation: {
-                    id: publisher.congregation_id
-                }
+                id: publisher_id
             }
         });
         if (!publisherExists)
@@ -31,7 +27,7 @@ class ReportController {
                 month: month,
                 year,
                 publisher: {
-                    id: publisherExists.id // Assuming 'id' is the primary key property of the 'Publisher' entity
+                    id: publisherExists.id
                 }
             }
         });
@@ -178,11 +174,7 @@ class ReportController {
         }
         const publisherExists = await publisherRepository_1.publisherRepository.findOne({
             where: {
-                fullName: publisher.fullName,
-                nickname: publisher.nickName,
-                congregation: {
-                    id: publisher.congregation_id
-                },
+                id: publisher.id
             }
         });
         if (!publisherExists)
@@ -192,7 +184,7 @@ class ReportController {
                 month: month,
                 year,
                 publisher: {
-                    id: publisherExists.id // Assuming 'id' is the primary key property of the 'Publisher' entity
+                    id: publisherExists.id
                 }
             }
         });
