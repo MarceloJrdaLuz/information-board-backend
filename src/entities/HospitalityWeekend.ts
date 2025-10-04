@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 import { HospitalityAssignment } from "./HospitalityAssignment"
+import { Congregation } from "./Congregation"
 
 @Entity("hospitality_weekend")
 export class HospitalityWeekend {
@@ -7,7 +8,14 @@ export class HospitalityWeekend {
   id: string
 
   @Column({ type: "date" })
-  date: string 
+  date: string
+
+  @ManyToOne(() => Congregation, congregation => congregation.hospitalityWeekends, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "congregation_id" })
+  congregation: Congregation
+
+  @Column()
+  congregation_id: string
 
   @OneToMany(() => HospitalityAssignment, assignment => assignment.weekend, { cascade: true })
   assignments: HospitalityAssignment[]

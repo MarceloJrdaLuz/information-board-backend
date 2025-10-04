@@ -197,7 +197,7 @@ class PublisherControler {
                 congregation: {
                     id: congregation_id
                 }
-            }, relations: ['group', 'congregation', "emergencyContact"]
+            }, relations: ['group', 'congregation', "emergencyContact", "hospitalityGroup"]
         }).catch(err => console.log(err));
         return res.status(200).json(publishers);
     }

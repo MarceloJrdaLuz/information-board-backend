@@ -1,6 +1,7 @@
 import { HospitalityEventType } from "../../types/hospitality"
 
 export type BodyAssignmentCreateTypes = {
+    id?: string
   eventType: HospitalityEventType
   group_id: string
 }

@@ -1,5 +1,5 @@
 import { Response, Request } from "express";
-import {  NotFoundError } from "../../helpers/api-errors";
+import { NotFoundError } from "../../helpers/api-errors";
 import { hospitalityWeekendRepository } from "../../repositories/hospitalityWeekendRepository";
 import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository";
 import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupRepository";
@@ -7,37 +7,118 @@ import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types
 import { BodyWeekendsBatchCreateTypes, ParamsWeekendTypes, ParamsAssignmentTypes, BodyAssignmentCreateTypes } from "./types";
 
 class HospitalityController {
-    async createWeekendsBatch(req: CustomRequest<BodyWeekendsBatchCreateTypes>, res: Response) {
+    async createOrUpdateBatch(
+        req: CustomRequestPT<{ congregation_id: string }, BodyWeekendsBatchCreateTypes>,
+        res: Response
+    ) {
+        const { congregation_id } = req.params;
         const { weekends } = req.body;
-        const createdWeekends = [];
 
-        for (const w of weekends) {
-            const existingWeekend = await hospitalityWeekendRepository.findOneBy({ date: w.date });
-            if (existingWeekend) continue;
+        if (!congregation_id) throw new NotFoundError("Congregation not found");
 
-            const weekend = hospitalityWeekendRepository.create({ date: w.date });
-            await hospitalityWeekendRepository.save(weekend);
+        const result: { created: number; updated: number; deleted: number; weekends: any[] } = {
+            created: 0,
+            updated: 0,
+            deleted: 0,
+            weekends: [],
+        };
 
-            if (w.assignments?.length) {
-                const assignments = [];
-                for (const a of w.assignments) {
-                    const group = await hospitalityGroupRepository.findOneBy({ id: a.group_id });
-                    if (!group) throw new NotFoundError(`Group not found for assignment`);
-                    const assignment = hospitalityAssignmentRepository.create({
-                        weekend,
-                        group,
-                        eventType: a.eventType,
-                    });
-                    await hospitalityAssignmentRepository.save(assignment);
-                    assignments.push(assignment);
+        try {
+            for (const w of weekends) {
+                let weekend = await hospitalityWeekendRepository.findOne({
+                    where: { date: w.date, congregation_id },
+                    relations: ["assignments", "assignments.group"],
+                });
+
+                if (!weekend) {
+                    // Weekend não existe → cria
+                    weekend = hospitalityWeekendRepository.create({ date: w.date, congregation_id });
+                    await hospitalityWeekendRepository.save(weekend);
+                    result.created++;
+                } else {
+                    result.updated++;
                 }
-                weekend.assignments = assignments;
+
+                // Se não houver assignments enviados, remove todos existentes
+                if (!w.assignments || w.assignments.length === 0) {
+                    if (weekend.assignments?.length) {
+                        await hospitalityAssignmentRepository.remove(weekend.assignments);
+                        weekend.assignments = [];
+                    }
+
+                    // Remove weekend vazio
+                    await hospitalityWeekendRepository.remove(weekend);
+                    result.deleted++;
+                    continue; // pula para o próximo loop
+                }
+
+                // Atualiza ou cria assignments
+                const assignmentsToKeep: typeof weekend.assignments = [];
+
+                for (const a of w.assignments) {
+                    let assignment;
+                    if (a.id) {
+                        // Assignment existente → atualiza
+                        assignment = await hospitalityAssignmentRepository.findOne({
+                            where: { id: a.id },
+                            relations: ["group"],
+                        });
+                        if (!assignment) throw new NotFoundError(`Assignment ${a.id} not found`);
+
+                        assignment.eventType = a.eventType;
+
+                        if (a.group_id) {
+                            const group = await hospitalityGroupRepository.findOneBy({ id: a.group_id });
+                            if (!group) throw new NotFoundError(`Group ${a.group_id} not found`);
+                            assignment.group = group;
+                        }
+
+                        await hospitalityAssignmentRepository.save(assignment);
+                    } else {
+                        // Assignment novo → cria
+                        const group = await hospitalityGroupRepository.findOneBy({ id: a.group_id });
+                        if (!group) throw new NotFoundError(`Group ${a.group_id} not found`);
+                        assignment = hospitalityAssignmentRepository.create({
+                            weekend,
+                            group,
+                            eventType: a.eventType,
+                        });
+                        await hospitalityAssignmentRepository.save(assignment);
+                    }
+
+                    assignmentsToKeep.push(assignment);
+                }
+
+                // Remove assignments que não estão mais no frontend
+                const assignmentsToRemove = weekend.assignments?.filter(
+                    existing => !assignmentsToKeep.find(a => a.id === existing.id)
+                );
+                if (assignmentsToRemove?.length) {
+                    await hospitalityAssignmentRepository.remove(assignmentsToRemove);
+                }
+
+                weekend.assignments = assignmentsToKeep;
+                result.weekends.push(weekend);
             }
 
-            createdWeekends.push(weekend);
+            return res.status(200).json(result);
+        } catch (err) {
+            console.error("Erro em createOrUpdateBatch:", err);
+            return res.status(500).json({ message: "Erro ao processar weekends", error: err });
         }
+    }
 
-        return res.status(201).json({ created: createdWeekends.length, weekends: createdWeekends });
+    async getWeekends(req: ParamsCustomRequest<{ congregation_id: string }>, res: Response) {
+        const { congregation_id } = req.params;
+        if (!congregation_id) throw new NotFoundError("Congregation not found");
+
+        const weekends = await hospitalityWeekendRepository.find({
+            where: { congregation_id },
+            relations: ["assignments", "assignments.group", "assignments.group.host"],
+            order: { date: "ASC" },
+        });
+
+        return res.json(weekends);
     }
 
     async updateAssignmentStatus(
@@ -51,37 +132,6 @@ class HospitalityController {
         if (!assignment) throw new NotFoundError("Assignment not found");
 
         assignment.completed = completed;
-
-        await hospitalityAssignmentRepository.save(assignment);
-        return res.json(assignment);
-    }
-
-    async getWeekends(req: Request, res: Response) {
-        const weekends = await hospitalityWeekendRepository.find({
-            relations: ["assignments", "assignments.group"],
-            order: { date: "ASC" },
-        });
-
-        return res.json(weekends);
-    }
-
-    async updateAssignment(
-        req: CustomRequestPT<ParamsAssignmentTypes, BodyAssignmentCreateTypes>,
-        res: Response
-    ) {
-        const { assignment_id } = req.params;
-        const { eventType, group_id } = req.body;
-
-        const assignment = await hospitalityAssignmentRepository.findOne({ where: { id: assignment_id }, relations: ["group"] });
-        if (!assignment) throw new NotFoundError("Assignment not found");
-
-        if (group_id) {
-            const group = await hospitalityGroupRepository.findOneBy({ id: group_id });
-            if (!group) throw new NotFoundError("Group not found");
-            assignment.group = group;
-        }
-
-        assignment.eventType = eventType ?? assignment.eventType;
 
         await hospitalityAssignmentRepository.save(assignment);
         return res.json(assignment);

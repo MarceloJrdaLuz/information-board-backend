@@ -6,6 +6,7 @@ import { EndweekDays, MidweekDays } from "../types/enumWeekDays"
 import { Group } from "./Group"
 import { Territory } from "./Territory"
 import { EmergencyContact } from "./EmergencyContact"
+import { HospitalityWeekend } from "./HospitalityWeekend"
 
 export enum CongregationType {
   SYSTEM = "system",   // congregações que usam o sistema normalmente
@@ -85,4 +86,8 @@ export class Congregation {
 
   @OneToMany(() => EmergencyContact, (emergencyContact) => emergencyContact.congregation)
   emergencyContacts: EmergencyContact[]
+
+  @OneToMany(() => HospitalityWeekend, weekend => weekend.congregation)
+  hospitalityWeekends: HospitalityWeekend[]
+
 }

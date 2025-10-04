@@ -19,6 +19,7 @@ const enumWeekDays_1 = require("../types/enumWeekDays");
 const Group_1 = require("./Group");
 const Territory_1 = require("./Territory");
 const EmergencyContact_1 = require("./EmergencyContact");
+const HospitalityWeekend_1 = require("./HospitalityWeekend");
 var CongregationType;
 (function (CongregationType) {
     CongregationType["SYSTEM"] = "system";
@@ -121,6 +122,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => EmergencyContact_1.EmergencyContact, (emergencyContact) => emergencyContact.congregation),
     __metadata("design:type", Array)
 ], Congregation.prototype, "emergencyContacts", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => HospitalityWeekend_1.HospitalityWeekend, weekend => weekend.congregation),
+    __metadata("design:type", Array)
+], Congregation.prototype, "hospitalityWeekends", void 0);
 Congregation = Congregation_1 = __decorate([
     (0, typeorm_1.Entity)('congregation')
 ], Congregation);

@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HospitalityWeekend = void 0;
 const typeorm_1 = require("typeorm");
 const HospitalityAssignment_1 = require("./HospitalityAssignment");
+const Congregation_1 = require("./Congregation");
 let HospitalityWeekend = class HospitalityWeekend {
 };
 __decorate([
@@ -22,6 +23,15 @@ __decorate([
     (0, typeorm_1.Column)({ type: "date" }),
     __metadata("design:type", String)
 ], HospitalityWeekend.prototype, "date", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Congregation_1.Congregation, congregation => congregation.hospitalityWeekends, { onDelete: "CASCADE" }),
+    (0, typeorm_1.JoinColumn)({ name: "congregation_id" }),
+    __metadata("design:type", Congregation_1.Congregation)
+], HospitalityWeekend.prototype, "congregation", void 0);
+__decorate([
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], HospitalityWeekend.prototype, "congregation_id", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => HospitalityAssignment_1.HospitalityAssignment, assignment => assignment.weekend, { cascade: true }),
     __metadata("design:type", Array)
