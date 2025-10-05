@@ -13,6 +13,7 @@ const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleR
 const months_1 = require("../../helpers/months");
 const normalize_1 = require("../../functions/normalize");
 const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
+const hospitalityAssignmentRepository_1 = require("../../repositories/hospitalityAssignmentRepository");
 class WeekendScheduleController {
     async create(req, res) {
         var _a, _b, _c, _d, _e;
@@ -165,13 +166,22 @@ class WeekendScheduleController {
             },
             relations: ["speaker", "talk", "destinationCongregation"]
         });
+        const hospitality = await hospitalityAssignmentRepository_1.hospitalityAssignmentRepository.find({
+            where: {
+                weekend: {
+                    congregation_id
+                }
+            },
+            relations: ["weekend", "group", "group.host", "group.members"]
+        });
         const today = (0, moment_1.default)();
         const mapped = schedules.map(s => {
             var _a;
             const date = (0, moment_1.default)(s.date, "YYYY-MM-DD");
             const month = months_1.monthNames[date.month()];
             const externals = externalTalks.filter(et => (0, moment_1.default)(et.date).isSame(date, "day"));
-            externals.map(e => console.log(e));
+            const assignments = hospitality.filter(assign => (0, moment_1.default)(assign.weekend.date).isSame(date, "day"));
+            const members = assignments.flatMap(assign => { var _a; return ((_a = assign.group) === null || _a === void 0 ? void 0 : _a.members.map(m => m.fullName)) || []; });
             return {
                 id: s.id,
                 date: s.date,
@@ -207,7 +217,17 @@ class WeekendScheduleController {
                     talk: ext.talk
                         ? { title: ext.talk.title, number: ext.talk.number }
                         : (ext.manualTalk ? { title: ext.manualTalk } : null),
-                }))
+                })),
+                hospitality: assignments.map(assign => {
+                    var _a, _b, _c, _d, _e, _f, _g;
+                    return ({
+                        eventType: assign.eventType,
+                        completed: assign.completed,
+                        group: (_a = assign.group) === null || _a === void 0 ? void 0 : _a.name,
+                        host: ((_c = (_b = assign.group) === null || _b === void 0 ? void 0 : _b.host) === null || _c === void 0 ? void 0 : _c.nickname) ? (_e = (_d = assign.group) === null || _d === void 0 ? void 0 : _d.host) === null || _e === void 0 ? void 0 : _e.nickname : (_g = (_f = assign.group) === null || _f === void 0 ? void 0 : _f.host) === null || _g === void 0 ? void 0 : _g.fullName,
+                        members
+                    });
+                })
             };
         });
         const grouped = mapped.reduce((acc, item) => {

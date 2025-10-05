@@ -2,8 +2,6 @@ import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Pri
 import { GroupOverseers } from "./GroupOverseers";
 import { Congregation } from "./Congregation";
 import { Publisher } from "./Publisher";
-
-
 @Entity('group')
 export class Group {
     @PrimaryGeneratedColumn('uuid')

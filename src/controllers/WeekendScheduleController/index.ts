@@ -18,6 +18,8 @@ import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupR
 import { monthNames } from "../../helpers/months"
 import { normalize } from "../../functions/normalize"
 import { externalTalkRepository } from "../../repositories/externalTalkRepository"
+import { hospitalityWeekendRepository } from "../../repositories/hospitalityWeekendRepository"
+import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
 
 class WeekendScheduleController {
   async create(req: CustomRequestPT<ParamsWeekendScheduleCreateTypes, BodyWeekendScheduleCreateTypes>, res: Response) {
@@ -181,6 +183,14 @@ class WeekendScheduleController {
       },
       relations: ["speaker", "talk", "destinationCongregation"]
     })
+    const hospitality = await hospitalityAssignmentRepository.find({
+      where: {
+        weekend: {
+          congregation_id
+        }
+      },
+      relations: ["weekend", "group", "group.host", "group.members"]
+    })
 
     const today = moment()
 
@@ -188,7 +198,8 @@ class WeekendScheduleController {
       const date = moment(s.date, "YYYY-MM-DD")
       const month = monthNames[date.month()]
       const externals = externalTalks.filter(et => moment(et.date).isSame(date, "day"))
-      externals.map(e => console.log(e))
+      const assignments = hospitality.filter(assign => moment(assign.weekend.date).isSame(date, "day"))
+      const members = assignments.flatMap(assign => assign.group?.members.map(m => m.fullName) || []);
       return {
         id: s.id,
         date: s.date,
@@ -224,10 +235,17 @@ class WeekendScheduleController {
           talk: ext.talk
             ? { title: ext.talk.title, number: ext.talk.number }
             : (ext.manualTalk ? { title: ext.manualTalk } : null),
+        })),
+        hospitality: assignments.map(assign => ({
+          eventType: assign.eventType,
+          completed: assign.completed,
+          group: assign.group?.name,
+          host: assign.group?.host?.nickname ? assign.group?.host?.nickname : assign.group?.host?.fullName,
+          members
         }))
       }
     })
-    
+
     const grouped = mapped.reduce((acc, item) => {
       if (!acc[item.month]) acc[item.month] = []
       acc[item.month].push(item)
