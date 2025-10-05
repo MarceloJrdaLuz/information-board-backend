@@ -7,10 +7,9 @@ import {
     PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from "typeorm"
-import { WeekendSchedule } from "./WeekendSchedule"
-import { Talk } from "./Talk"
 import { Congregation } from "./Congregation"
 import { Speaker } from "./Speaker"
+import { Talk } from "./Talk"
 
 export type ExternalTalkStatus = "pending" | "confirmed" | "canceled"
 

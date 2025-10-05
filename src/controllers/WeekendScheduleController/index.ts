@@ -17,6 +17,7 @@ import {
 import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupRepository"
 import { monthNames } from "../../helpers/months"
 import { normalize } from "../../functions/normalize"
+import { externalTalkRepository } from "../../repositories/externalTalkRepository"
 
 class WeekendScheduleController {
   async create(req: CustomRequestPT<ParamsWeekendScheduleCreateTypes, BodyWeekendScheduleCreateTypes>, res: Response) {
@@ -172,13 +173,22 @@ class WeekendScheduleController {
       relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation"],
       order: { date: "ASC" },
     })
+    const externalTalks = await externalTalkRepository.find({
+      where: {
+        originCongregation: {
+          id: congregation_id
+        }
+      },
+      relations: ["speaker", "talk", "destinationCongregation"]
+    })
 
     const today = moment()
 
     const mapped = schedules.map(s => {
       const date = moment(s.date, "YYYY-MM-DD")
       const month = monthNames[date.month()]
-
+      const externals = externalTalks.filter(et => moment(et.date).isSame(date, "day"))
+      externals.map(e => console.log(e))
       return {
         id: s.id,
         date: s.date,
@@ -202,19 +212,29 @@ class WeekendScheduleController {
           ? { title: s.talk.title, number: s.talk.number }
           : (s.manualTalk ? { title: s.manualTalk } : null),
         watchTowerStudyTitle: s.watchTowerStudyTitle,
+        externalTalks: externals.map(ext => ({
+          id: ext.id,
+          date: ext.date,
+          speaker: ext.speaker ? { name: ext.speaker.fullName } : null,
+          destinationCongregation: ext.destinationCongregation
+            ? normalize(ext.destinationCongregation.city) === normalize(ext.destinationCongregation.name)
+              ? `${normalize(ext.destinationCongregation.city)}`
+              : `${normalize(ext.destinationCongregation.name)} - ${normalize(ext.destinationCongregation.city)}`
+            : null,
+          talk: ext.talk
+            ? { title: ext.talk.title, number: ext.talk.number }
+            : (ext.manualTalk ? { title: ext.manualTalk } : null),
+        }))
       }
     })
-
-    // Agrupa por mês
+    
     const grouped = mapped.reduce((acc, item) => {
       if (!acc[item.month]) acc[item.month] = []
       acc[item.month].push(item)
       return acc
     }, {} as Record<string, typeof mapped>)
-
     return res.json(grouped)
   }
-
 }
 
 export default new WeekendScheduleController()

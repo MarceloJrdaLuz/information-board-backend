@@ -12,6 +12,7 @@ const talkRepository_1 = require("../../repositories/talkRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 const months_1 = require("../../helpers/months");
 const normalize_1 = require("../../functions/normalize");
+const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
 class WeekendScheduleController {
     async create(req, res) {
         var _a, _b, _c, _d, _e;
@@ -156,11 +157,21 @@ class WeekendScheduleController {
             relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation"],
             order: { date: "ASC" },
         });
+        const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
+            where: {
+                originCongregation: {
+                    id: congregation_id
+                }
+            },
+            relations: ["speaker", "talk", "destinationCongregation"]
+        });
         const today = (0, moment_1.default)();
         const mapped = schedules.map(s => {
             var _a;
             const date = (0, moment_1.default)(s.date, "YYYY-MM-DD");
             const month = months_1.monthNames[date.month()];
+            const externals = externalTalks.filter(et => (0, moment_1.default)(et.date).isSame(date, "day"));
+            externals.map(e => console.log(e));
             return {
                 id: s.id,
                 date: s.date,
@@ -184,9 +195,21 @@ class WeekendScheduleController {
                     ? { title: s.talk.title, number: s.talk.number }
                     : (s.manualTalk ? { title: s.manualTalk } : null),
                 watchTowerStudyTitle: s.watchTowerStudyTitle,
+                externalTalks: externals.map(ext => ({
+                    id: ext.id,
+                    date: ext.date,
+                    speaker: ext.speaker ? { name: ext.speaker.fullName } : null,
+                    destinationCongregation: ext.destinationCongregation
+                        ? (0, normalize_1.normalize)(ext.destinationCongregation.city) === (0, normalize_1.normalize)(ext.destinationCongregation.name)
+                            ? `${(0, normalize_1.normalize)(ext.destinationCongregation.city)}`
+                            : `${(0, normalize_1.normalize)(ext.destinationCongregation.name)} - ${(0, normalize_1.normalize)(ext.destinationCongregation.city)}`
+                        : null,
+                    talk: ext.talk
+                        ? { title: ext.talk.title, number: ext.talk.number }
+                        : (ext.manualTalk ? { title: ext.manualTalk } : null),
+                }))
             };
         });
-        // Agrupa por mês
         const grouped = mapped.reduce((acc, item) => {
             if (!acc[item.month])
                 acc[item.month] = [];

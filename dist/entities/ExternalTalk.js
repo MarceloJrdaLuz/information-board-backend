@@ -11,9 +11,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExternalTalk = void 0;
 const typeorm_1 = require("typeorm");
-const Talk_1 = require("./Talk");
 const Congregation_1 = require("./Congregation");
 const Speaker_1 = require("./Speaker");
+const Talk_1 = require("./Talk");
 let ExternalTalk = class ExternalTalk {
 };
 __decorate([

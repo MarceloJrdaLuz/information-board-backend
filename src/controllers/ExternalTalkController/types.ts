@@ -1,6 +1,5 @@
 export interface BodyCreateExternalTalk {
   date: string
-  weekendSchedule_id: string
   speaker_id: string
   destinationCongregation_id: string
   talk_id?: string          // opcional, mas se não vier precisa ter manualTalk
