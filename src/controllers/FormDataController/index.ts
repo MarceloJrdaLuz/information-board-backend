@@ -8,6 +8,7 @@ import { speakerRepository } from "../../repositories/speakerRepository"
 import { talkRepository } from "../../repositories/talkRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
+import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupRepository"
 
 class FormDataController {
     async getFormData(req: Request, res: Response) {
@@ -135,6 +136,27 @@ class FormDataController {
                     })
 
                     return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules })
+                }
+
+                case "hospitalityGroup": {
+                    const publishers = await publisherRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq?.congregation.id
+                            }
+                        }
+                    })
+
+                    const hospitalityGroups = await hospitalityGroupRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq?.congregation.id
+                            }
+                        }, 
+                        relations: ["host", "members"]
+                    })
+
+                    return res.json({ publishers, hospitalityGroups })
                 }
 
                 default:

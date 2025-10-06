@@ -9,6 +9,7 @@ const speakerRepository_1 = require("../../repositories/speakerRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
+const hospitalityGroupRepository_1 = require("../../repositories/hospitalityGroupRepository");
 class FormDataController {
     async getFormData(req, res) {
         const requestUser = await (0, permissions_1.decoder)(req);
@@ -112,6 +113,24 @@ class FormDataController {
                         }
                     });
                     return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules });
+                }
+                case "hospitalityGroup": {
+                    const publishers = await publisherRepository_1.publisherRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id
+                            }
+                        }
+                    });
+                    const hospitalityGroups = await hospitalityGroupRepository_1.hospitalityGroupRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id
+                            }
+                        },
+                        relations: ["host", "members"]
+                    });
+                    return res.json({ publishers, hospitalityGroups });
                 }
                 default:
                     return res.status(400).json({ message: "Unknown form" });
