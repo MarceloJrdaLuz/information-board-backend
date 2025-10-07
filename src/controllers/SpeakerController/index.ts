@@ -21,9 +21,6 @@ import { Request } from "express"
 class SpeakerController {
   async create(req: CustomRequest<BodySpeakerCreateTypes>, res: Response) {
     const { fullName, phone, address, originCongregation_id, publisher_id, talk_ids } = req.body
-
-    console.log(fullName, phone, address, originCongregation_id, publisher_id, talk_ids)
-
     const requestUser = await decoder(req)
     const userReq = await userRepository.findOne({
       where: {

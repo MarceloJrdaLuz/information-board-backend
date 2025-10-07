@@ -12,7 +12,6 @@ const userRepository_1 = require("../../repositories/userRepository");
 class SpeakerController {
     async create(req, res) {
         const { fullName, phone, address, originCongregation_id, publisher_id, talk_ids } = req.body;
-        console.log(fullName, phone, address, originCongregation_id, publisher_id, talk_ids);
         const requestUser = await (0, permissions_1.decoder)(req);
         const userReq = await userRepository_1.userRepository.findOne({
             where: {

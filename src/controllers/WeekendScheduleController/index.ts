@@ -199,7 +199,6 @@ class WeekendScheduleController {
       const month = monthNames[date.month()]
       const externals = externalTalks.filter(et => moment(et.date).isSame(date, "day"))
       const assignments = hospitality.filter(assign => moment(assign.weekend.date).isSame(date, "day"))
-      const members = assignments.flatMap(assign => assign.group?.members.map(m => m.fullName) || []);
       return {
         id: s.id,
         date: s.date,
@@ -241,7 +240,7 @@ class WeekendScheduleController {
           completed: assign.completed,
           group: assign.group?.name,
           host: assign.group?.host?.nickname ? assign.group?.host?.nickname : assign.group?.host?.fullName,
-          members
+          members: assign.group?.members.map(m => m.fullName) || []
         }))
       }
     })
