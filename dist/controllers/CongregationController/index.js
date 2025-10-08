@@ -13,6 +13,8 @@ const firebaseStorage_1 = require("../../provider/firebaseStorage");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const groupRepository_1 = require("../../repositories/groupRepository");
 const userRepository_1 = require("../../repositories/userRepository");
+const speakerRepository_1 = require("../../repositories/speakerRepository");
+const typeorm_1 = require("typeorm");
 class CongregationController {
     async create(req, res) {
         var _a, _b;
@@ -169,25 +171,6 @@ class CongregationController {
         }
         return res.status(200).json(congregationsResponse);
     }
-    async getAuxiliaryCongregations(req, res) {
-        const requestByUserId = await (0, permissions_1.decoder)(req);
-        const requestUser = await userRepository_1.userRepository.findOne({
-            where: {
-                id: requestByUserId.id
-            }
-        });
-        if (requestUser) {
-            const congregations = await congregationRepository_1.congregationRepository.find({
-                where: {
-                    type: Congregation_1.CongregationType.AUXILIARY,
-                    creatorCongregation: {
-                        id: requestUser.congregation.id
-                    }
-                }
-            });
-            return res.status(200).json(congregations);
-        }
-    }
     async getCongregation(req, res) {
         const { number } = req.params;
         const congExists = await congregationRepository_1.congregationRepository.findOne({
@@ -207,6 +190,40 @@ class CongregationController {
             }, select: ["id", "name", "number"]
         });
         return res.status(200).json({ ...congExists, groups });
+    }
+    async getAuxiliaryCongregations(req, res) {
+        const requestByUserId = await (0, permissions_1.decoder)(req);
+        const requestUser = await userRepository_1.userRepository.findOne({
+            where: {
+                id: requestByUserId.id
+            }
+        });
+        if (requestUser) {
+            const congregations = await congregationRepository_1.congregationRepository.find({
+                where: {
+                    type: Congregation_1.CongregationType.AUXILIARY,
+                    creatorCongregation: {
+                        id: requestUser.congregation.id
+                    }
+                }
+            });
+            let speakers = [];
+            const congregationIds = congregations.map(c => c.id);
+            if (congregationIds.length > 0) {
+                speakers = await speakerRepository_1.speakerRepository.find({
+                    where: {
+                        originCongregation: { id: (0, typeorm_1.In)(congregationIds) }
+                    },
+                    relations: ["originCongregation"]
+                });
+            }
+            //  Mapear os speakers para a congregação correspondente
+            const congregationsWithSpeakers = congregations.map(c => ({
+                ...c,
+                speakers: speakers.filter(s => s.originCongregation.id === c.id)
+            }));
+            return res.status(200).json(congregationsWithSpeakers);
+        }
     }
     async createAuxiliaryCongregation(req, res) {
         const { name, number, city, circuit, dayMeetingPublic, hourMeetingPublic } = req.body;

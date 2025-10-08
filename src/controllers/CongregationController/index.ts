@@ -12,6 +12,9 @@ import { userRepository } from "../../repositories/userRepository";
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest, QueryCustomRequest } from "../../types/customRequest";
 import { NormalizeFiles } from "../../types/normalizeFile";
 import { BodyAuxiliaryCongregationCreateTypes, BodyAuxiliaryCongregationUpdateTypes, BodyCongregationCreateTypes, BodyCongregationUpdateTypes, ParamsCongregationDeleteTypes, ParamsUpdateCongregationTypes, QueryCongregationDeleteTypes, QueryGetCongregationTypes } from "./types";
+import { speakerRepository } from "../../repositories/speakerRepository";
+import { In } from "typeorm";
+import { Speaker } from "../../entities/Speaker";
 
 
 class CongregationController {
@@ -208,27 +211,6 @@ class CongregationController {
         return res.status(200).json(congregationsResponse)
     }
 
-    async getAuxiliaryCongregations(req: Request, res: Response) {
-        const requestByUserId = await decoder(req)
-        const requestUser = await userRepository.findOne({
-            where: {
-                id: requestByUserId.id
-            }
-        })
-
-        if (requestUser) {
-            const congregations = await congregationRepository.find({
-                where: {
-                    type: CongregationType.AUXILIARY,
-                    creatorCongregation: {
-                        id: requestUser.congregation.id
-                    }
-                }
-            })
-            return res.status(200).json(congregations)
-        }
-    }
-
     async getCongregation(req: QueryCustomRequest<QueryGetCongregationTypes>, res: Response) {
 
         const { number } = req.params
@@ -254,6 +236,44 @@ class CongregationController {
         })
 
         return res.status(200).json({ ...congExists, groups })
+    }
+
+    async getAuxiliaryCongregations(req: Request, res: Response) {
+        const requestByUserId = await decoder(req)
+        const requestUser = await userRepository.findOne({
+            where: {
+                id: requestByUserId.id
+            }
+        })
+
+        if (requestUser) {
+            const congregations = await congregationRepository.find({
+                where: {
+                    type: CongregationType.AUXILIARY,
+                    creatorCongregation: {
+                        id: requestUser.congregation.id
+                    }
+                }
+            })
+            let speakers: Speaker[] = [];
+            const congregationIds = congregations.map(c => c.id);
+
+            if (congregationIds.length > 0) {
+                speakers = await speakerRepository.find({
+                    where: {
+                        originCongregation: { id: In(congregationIds) }
+                    }, 
+                    relations: ["originCongregation"]
+                })
+            }
+            //  Mapear os speakers para a congregação correspondente
+            const congregationsWithSpeakers = congregations.map(c => ({
+                ...c,
+                speakers: speakers.filter(s => s.originCongregation.id === c.id)
+            }));
+
+            return res.status(200).json(congregationsWithSpeakers);
+        }
     }
 
     async createAuxiliaryCongregation(req: CustomRequest<BodyAuxiliaryCongregationCreateTypes>, res: Response) {
