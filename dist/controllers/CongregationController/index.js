@@ -20,7 +20,20 @@ class CongregationController {
         var _a, _b;
         const { name, number, city, circuit, image_url } = req.body;
         const file = req.file;
-        const congExists = await congregationRepository_1.congregationRepository.findOneBy({ number });
+        const congExists = await congregationRepository_1.congregationRepository.findOne({
+            where: [
+                { number },
+                { name, city } // verifica se já existe name + city
+            ]
+        });
+        if (congExists) {
+            if (congExists.number === number) {
+                throw new api_errors_1.BadRequestError(`A congregation with number "${number}" already exists.`);
+            }
+            else {
+                throw new api_errors_1.BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
+            }
+        }
         if (congExists) {
             throw new api_errors_1.BadRequestError('Congregation already exists');
         }
@@ -82,6 +95,14 @@ class CongregationController {
         const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
         if (!congregation)
             new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.congregation);
+        const existingCongregation = await congregationRepository_1.congregationRepository.findOne({
+            where: {
+                name, city
+            }
+        });
+        if (existingCongregation) {
+            throw new api_errors_1.BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
+        }
         if (congregation) {
             congregation.name = name !== null && name !== void 0 ? name : congregation === null || congregation === void 0 ? void 0 : congregation.name;
             congregation.circuit = circuit !== null && circuit !== void 0 ? circuit : congregation === null || congregation === void 0 ? void 0 : congregation.circuit;
@@ -233,7 +254,20 @@ class CongregationController {
                 id: requestUser.id
             }
         });
-        const congExists = await congregationRepository_1.congregationRepository.findOneBy({ number });
+        const congExists = await congregationRepository_1.congregationRepository.findOne({
+            where: [
+                { number },
+                { name, city }
+            ]
+        });
+        if (congExists) {
+            if (congExists.number === number) {
+                throw new api_errors_1.BadRequestError(`A congregation with number "${number}" already exists.`);
+            }
+            else {
+                throw new api_errors_1.BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
+            }
+        }
         if (congExists) {
             throw new api_errors_1.BadRequestError('Congregation already exists');
         }
@@ -262,6 +296,15 @@ class CongregationController {
         const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
         if (!congregation) {
             throw new api_errors_1.BadRequestError(messageErrors_1.messageErrors.notFound.congregation);
+        }
+        const existingCongregation = await congregationRepository_1.congregationRepository.findOne({
+            where: [
+                { number },
+                { name, city }
+            ]
+        });
+        if (existingCongregation) {
+            throw new api_errors_1.BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
         }
         congregation.name = name !== null && name !== void 0 ? name : congregation.name;
         congregation.number = number !== null && number !== void 0 ? number : congregation.number;
