@@ -23,7 +23,20 @@ class CongregationController {
 
         const file = req.file as Express.Multer.File
 
-        const congExists = await congregationRepository.findOneBy({ number })
+        const congExists = await congregationRepository.findOne({
+            where: [
+                { number },                 // já verifica se o número existe
+                { name, city }              // verifica se já existe name + city
+            ]
+        });
+
+        if (congExists) {
+            if (congExists.number === number) {
+                throw new BadRequestError(`A congregation with number "${number}" already exists.`);
+            } else {
+                throw new BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
+            }
+        }
 
         if (congExists) {
             throw new BadRequestError('Congregation already exists')
@@ -104,6 +117,16 @@ class CongregationController {
         const congregation = await congregationRepository.findOneBy({ id: congregation_id })
 
         if (!congregation) new NotFoundError(messageErrors.notFound.congregation)
+
+        const existingCongregation = await congregationRepository.findOne({
+            where: {
+                name, city
+            }
+        });
+
+        if (existingCongregation) {
+            throw new BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
+        }
 
         if (congregation) {
 
@@ -262,7 +285,7 @@ class CongregationController {
                 speakers = await speakerRepository.find({
                     where: {
                         originCongregation: { id: In(congregationIds) }
-                    }, 
+                    },
                     relations: ["originCongregation"]
                 })
             }
@@ -286,7 +309,20 @@ class CongregationController {
             }
         })
 
-        const congExists = await congregationRepository.findOneBy({ number })
+        const congExists = await congregationRepository.findOne({
+            where: [
+                { number },
+                { name, city }
+            ]
+        });
+
+        if (congExists) {
+            if (congExists.number === number) {
+                throw new BadRequestError(`A congregation with number "${number}" already exists.`);
+            } else {
+                throw new BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
+            }
+        }
 
         if (congExists) {
             throw new BadRequestError('Congregation already exists')
@@ -322,6 +358,17 @@ class CongregationController {
 
         if (!congregation) {
             throw new BadRequestError(messageErrors.notFound.congregation)
+        }
+
+        const existingCongregation = await congregationRepository.findOne({
+            where: [
+                { number },
+                { name, city }
+            ]
+        });
+
+        if (existingCongregation) { 
+                throw new BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
         }
 
         congregation.name = name ?? congregation.name
