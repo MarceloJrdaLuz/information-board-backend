@@ -367,8 +367,12 @@ class CongregationController {
             ]
         });
 
-        if (existingCongregation) { 
+        if (existingCongregation && existingCongregation.id !== congregation_id) {
+            if (existingCongregation.number === number) {
+                throw new BadRequestError(`A congregation with number "${number}" already exists.`);
+            } else {
                 throw new BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
+            }
         }
 
         congregation.name = name ?? congregation.name
