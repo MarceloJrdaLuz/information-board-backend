@@ -303,8 +303,13 @@ class CongregationController {
                 { name, city }
             ]
         });
-        if (existingCongregation) {
-            throw new api_errors_1.BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
+        if (existingCongregation && existingCongregation.id !== congregation_id) {
+            if (existingCongregation.number === number) {
+                throw new api_errors_1.BadRequestError(`A congregation with number "${number}" already exists.`);
+            }
+            else {
+                throw new api_errors_1.BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
+            }
         }
         congregation.name = name !== null && name !== void 0 ? name : congregation.name;
         congregation.number = number !== null && number !== void 0 ? number : congregation.number;
