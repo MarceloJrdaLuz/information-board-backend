@@ -20,6 +20,7 @@ import { normalize } from "../../functions/normalize"
 import { externalTalkRepository } from "../../repositories/externalTalkRepository"
 import { hospitalityWeekendRepository } from "../../repositories/hospitalityWeekendRepository"
 import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
+import { MoreThanOrEqual } from "typeorm"
 
 class WeekendScheduleController {
   async create(req: CustomRequestPT<ParamsWeekendScheduleCreateTypes, BodyWeekendScheduleCreateTypes>, res: Response) {
@@ -171,7 +172,12 @@ class WeekendScheduleController {
   async getPublicSchedules(req: ParamsCustomRequest<ParamsGetWeekendScheduleTypes>, res: Response) {
     const { congregation_id } = req.params
     const schedules = await weekendScheduleRepository.find({
-      where: { congregation: { id: congregation_id } },
+      where: {
+        congregation: {
+          id: congregation_id
+        },
+        date: MoreThanOrEqual(moment().format("YYYY-MM-DD"))
+      },
       relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation"],
       order: { date: "ASC" },
     })

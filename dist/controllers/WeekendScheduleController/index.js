@@ -14,6 +14,7 @@ const months_1 = require("../../helpers/months");
 const normalize_1 = require("../../functions/normalize");
 const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
 const hospitalityAssignmentRepository_1 = require("../../repositories/hospitalityAssignmentRepository");
+const typeorm_1 = require("typeorm");
 class WeekendScheduleController {
     async create(req, res) {
         var _a, _b, _c, _d, _e;
@@ -154,7 +155,12 @@ class WeekendScheduleController {
     async getPublicSchedules(req, res) {
         const { congregation_id } = req.params;
         const schedules = await weekendScheduleRepository_1.weekendScheduleRepository.find({
-            where: { congregation: { id: congregation_id } },
+            where: {
+                congregation: {
+                    id: congregation_id
+                },
+                date: (0, typeorm_1.MoreThanOrEqual)((0, moment_1.default)().format("YYYY-MM-DD"))
+            },
             relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation"],
             order: { date: "ASC" },
         });
