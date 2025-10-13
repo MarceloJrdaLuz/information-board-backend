@@ -15,30 +15,23 @@ class ExternalTalkController {
     async create(req, res) {
         const { congregation_id } = req.params;
         const { destinationCongregation_id, speaker_id, talk_id, manualTalk, date } = req.body;
-        const originCongregation = await congregationRepository_1.congregationRepository.findOne({
-            where: {
-                id: congregation_id
-            }
-        });
         if (!date) {
             throw new api_errors_1.BadRequestError("Date is required");
         }
+        const originCongregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
         if (!originCongregation) {
             throw new api_errors_1.BadRequestError("Origin Congregation not found");
         }
-        if (!talk_id && !manualTalk) {
-            throw new api_errors_1.BadRequestError("Either talkId or manualTalk must be provided");
+        // orador é obrigatório
+        if (!speaker_id) {
+            throw new api_errors_1.BadRequestError("Speaker is required");
         }
         const speaker = await speakerRepository_1.speakerRepository.findOne({
             where: {
                 id: speaker_id,
-                creatorCongregation: {
-                    id: congregation_id
-                },
-                originCongregation: {
-                    id: congregation_id
-                }
-            },
+                creatorCongregation: { id: congregation_id },
+                originCongregation: { id: congregation_id }
+            }
         });
         if (!speaker) {
             throw new api_errors_1.BadRequestError(messageErrors_1.messageErrors.notFound.speaker);
@@ -54,6 +47,7 @@ class ExternalTalkController {
         if (!destinationCongregation) {
             throw new api_errors_1.BadRequestError("Destination Congregation not found");
         }
+        // Talk é totalmente opcional
         let talk = null;
         if (talk_id) {
             talk = await talkRepository_1.talkRepository.findOneBy({ id: talk_id });
@@ -63,12 +57,12 @@ class ExternalTalkController {
         }
         const externalTalk = externalTalkRepository_1.externalTalkRepository.create({
             speaker,
-            talk,
-            manualTalk: talk_id ? null : manualTalk,
+            talk: talk !== null && talk !== void 0 ? talk : null,
+            manualTalk: manualTalk !== null && manualTalk !== void 0 ? manualTalk : null,
             destinationCongregation,
             originCongregation,
             date: (0, moment_timezone_1.default)(date).format("YYYY-MM-DD"),
-            status: "pending",
+            status: "pending"
         });
         await externalTalkRepository_1.externalTalkRepository.save(externalTalk);
         return res.status(201).json(externalTalk);
@@ -76,11 +70,7 @@ class ExternalTalkController {
     async getExternalTalks(req, res) {
         const { congregation_id } = req.params;
         const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
-            where: {
-                originCongregation: {
-                    id: congregation_id
-                }
-            },
+            where: { originCongregation: { id: congregation_id } },
             relations: ["speaker", "talk", "destinationCongregation"],
             order: { date: "ASC" }
         });
@@ -89,6 +79,9 @@ class ExternalTalkController {
     async getExternalTalksByPeriod(req, res) {
         const { congregation_id } = req.params;
         const { start, end } = req.query;
+        if (!start || !end) {
+            throw new api_errors_1.BadRequestError("Start and end dates are required");
+        }
         const startFormatted = (0, moment_timezone_1.default)(start, "YYYY-MM-DD").format("YYYY-MM-DD");
         const endFormatted = (0, moment_timezone_1.default)(end, "YYYY-MM-DD").format("YYYY-MM-DD");
         const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
@@ -102,15 +95,16 @@ class ExternalTalkController {
         return res.json(externalTalks);
     }
     async update(req, res) {
-        var _a;
         const { externalTalk_id: id } = req.params;
         const { speaker_id, destinationCongregation_id, talk_id, manualTalk, status, date } = req.body;
         const externalTalk = await externalTalkRepository_1.externalTalkRepository.findOne({
-            where: { id }
+            where: { id },
+            relations: ["speaker", "talk", "destinationCongregation"]
         });
         if (!externalTalk) {
             throw new api_errors_1.BadRequestError(messageErrors_1.messageErrors.notFound.externalTalk);
         }
+        // Campos opcionais — só atualiza se enviado
         if (speaker_id) {
             const speaker = await speakerRepository_1.speakerRepository.findOneBy({ id: speaker_id });
             if (!speaker)
@@ -123,21 +117,24 @@ class ExternalTalkController {
                 throw new api_errors_1.BadRequestError(messageErrors_1.messageErrors.notFound.congregation);
             externalTalk.destinationCongregation = congregation;
         }
+        // talk é opcional — pode ser definido, removido ou substituído por manualTalk
         if (talk_id) {
             const talk = await talkRepository_1.talkRepository.findOneBy({ id: talk_id });
             if (!talk)
                 throw new api_errors_1.BadRequestError(messageErrors_1.messageErrors.notFound.talk);
             externalTalk.talk = talk;
-            externalTalk.manualTalk = null; // zera manual
+            externalTalk.manualTalk = null;
         }
-        else if (manualTalk) {
+        else if (manualTalk !== undefined) {
             externalTalk.manualTalk = manualTalk;
             externalTalk.talk = null;
         }
         if (status) {
             externalTalk.status = status;
         }
-        externalTalk.date = (_a = (0, moment_timezone_1.default)(date).format("YYYY-MM-DD")) !== null && _a !== void 0 ? _a : externalTalk.date;
+        if (date) {
+            externalTalk.date = (0, moment_timezone_1.default)(date).format("YYYY-MM-DD");
+        }
         await externalTalkRepository_1.externalTalkRepository.save(externalTalk);
         return res.json(externalTalk);
     }
@@ -148,7 +145,9 @@ class ExternalTalkController {
         if (!externalTalk) {
             throw new api_errors_1.BadRequestError("External talk not found");
         }
-        externalTalk.status = status !== null && status !== void 0 ? status : externalTalk.status;
+        if (status) {
+            externalTalk.status = status;
+        }
         await externalTalkRepository_1.externalTalkRepository.save(externalTalk);
         return res.json(externalTalk);
     }
