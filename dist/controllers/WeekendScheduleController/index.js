@@ -191,7 +191,7 @@ class WeekendScheduleController {
                 },
                 date: (0, typeorm_1.MoreThanOrEqual)((0, moment_1.default)().format("YYYY-MM-DD"))
             },
-            relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation", "visitingCongregation"],
+            relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation"],
             order: { date: "ASC" },
         });
         const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
