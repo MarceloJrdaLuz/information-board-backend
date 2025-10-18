@@ -226,7 +226,7 @@ class WeekendScheduleController {
         },
         date: MoreThanOrEqual(moment().format("YYYY-MM-DD"))
       },
-      relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation", "visitingCongregation"],
+      relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation"],
       order: { date: "ASC" },
     })
     const externalTalks = await externalTalkRepository.find({
