@@ -200,7 +200,7 @@ class WeekendScheduleController {
     const { congregation_id } = req.params
     const schedules = await weekendScheduleRepository.find({
       where: { congregation: { id: congregation_id } },
-      relations: ["speaker", "talk", "chairman", "reader", "congregation"],
+      relations: ["speaker", "talk", "chairman", "reader", "congregation", "visitingCongregation"],
       order: { date: "ASC" },
     })
     return res.json(schedules)
@@ -210,7 +210,7 @@ class WeekendScheduleController {
     const { weekendSchedule_id } = req.params
     const schedule = await weekendScheduleRepository.findOne({
       where: { id: weekendSchedule_id },
-      relations: ["speaker", "talk", "chairman", "reader"],
+      relations: ["speaker", "talk", "chairman", "reader", "visitingCongregation"],
     })
     if (!schedule) throw new NotFoundError(messageErrors.notFound.weekendSchedule)
 
@@ -226,7 +226,7 @@ class WeekendScheduleController {
         },
         date: MoreThanOrEqual(moment().format("YYYY-MM-DD"))
       },
-      relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation"],
+      relations: ["speaker", "talk", "chairman", "reader", "speaker.originCongregation", "visitingCongregation"],
       order: { date: "ASC" },
     })
     const externalTalks = await externalTalkRepository.find({

@@ -102,7 +102,7 @@ class FormDataController {
                                 id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id
                             }
                         },
-                        relations: ["talk", "speaker", "speaker.originCongregation", "chairman", "reader"]
+                        relations: ["talk", "speaker", "speaker.originCongregation", "chairman", "reader", "visitingCongregation"]
                     });
                     const congregations = await congregationRepository_1.congregationRepository.find({
                         where: {

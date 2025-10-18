@@ -123,7 +123,7 @@ class FormDataController {
                                 id: userReq?.congregation.id
                             }
                         },
-                        relations: ["talk", "speaker", "speaker.originCongregation", "chairman", "reader"]
+                        relations: ["talk", "speaker", "speaker.originCongregation", "chairman", "reader", "visitingCongregation"]
                     })
 
                     const congregations = await congregationRepository.find({
