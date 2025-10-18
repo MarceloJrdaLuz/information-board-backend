@@ -4,17 +4,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const moment_1 = __importDefault(require("moment"));
+const typeorm_1 = require("typeorm");
+const normalize_1 = require("../../functions/normalize");
 const api_errors_1 = require("../../helpers/api-errors");
 const messageErrors_1 = require("../../helpers/messageErrors");
+const months_1 = require("../../helpers/months");
+const congregationRepository_1 = require("../../repositories/congregationRepository");
+const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
+const hospitalityAssignmentRepository_1 = require("../../repositories/hospitalityAssignmentRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const speakerRepository_1 = require("../../repositories/speakerRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
-const months_1 = require("../../helpers/months");
-const normalize_1 = require("../../functions/normalize");
-const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
-const hospitalityAssignmentRepository_1 = require("../../repositories/hospitalityAssignmentRepository");
-const typeorm_1 = require("typeorm");
 class WeekendScheduleController {
     async create(req, res) {
         var _a, _b, _c, _d, _e;
@@ -33,14 +34,25 @@ class WeekendScheduleController {
             if (existing)
                 throw new api_errors_1.BadRequestError(`A schedule already exists for ${scheduleDate}`);
             // Busca relacionamentos em paralelo
-            const [speaker, talk, chairman, reader] = await Promise.all([
-                item.speaker_id ? speakerRepository_1.speakerRepository.findOneBy({ id: item.speaker_id }) : null,
+            const [speaker, talk, chairman, reader, visitingCongregation] = await Promise.all([
+                item.speaker_id
+                    ? speakerRepository_1.speakerRepository.findOne({
+                        where: { id: item.speaker_id },
+                        relations: ["originCongregation"],
+                    })
+                    : null,
                 item.talk_id ? talkRepository_1.talkRepository.findOneBy({ id: item.talk_id }) : null,
                 item.chairman_id ? publisherRepository_1.publisherRepository.findOneBy({ id: item.chairman_id }) : null,
                 item.reader_id ? publisherRepository_1.publisherRepository.findOneBy({ id: item.reader_id }) : null,
+                item.visitingCongregation_id
+                    ? congregationRepository_1.congregationRepository.findOneBy({ id: item.visitingCongregation_id })
+                    : null,
             ]);
             if (item.speaker_id && !speaker)
                 throw new api_errors_1.NotFoundError(`Speaker ${item.speaker_id} not found`);
+            if (speaker && visitingCongregation && speaker.originCongregation.id !== visitingCongregation.id) {
+                throw new api_errors_1.BadRequestError(`Speaker ${speaker.fullName} does not belong to the visiting congregation ${visitingCongregation.name}`);
+            }
             if (item.talk_id && !talk)
                 throw new api_errors_1.NotFoundError(`Talk ${item.talk_id} not found`);
             if (item.chairman_id && !chairman)
@@ -50,6 +62,7 @@ class WeekendScheduleController {
             const newSchedule = weekendScheduleRepository_1.weekendScheduleRepository.create({
                 date: scheduleDate,
                 speaker,
+                visitingCongregation,
                 talk,
                 chairman,
                 reader,
@@ -89,14 +102,28 @@ class WeekendScheduleController {
                 schedule.date = newDate;
             }
             // Busca relacionamentos em paralelo
-            const [speaker, talk, chairman, reader] = await Promise.all([
-                item.speaker_id !== undefined ? (item.speaker_id ? speakerRepository_1.speakerRepository.findOneBy({ id: item.speaker_id }) : null) : schedule.speaker,
-                item.talk_id !== undefined ? (item.talk_id ? talkRepository_1.talkRepository.findOneBy({ id: item.talk_id }) : null) : schedule.talk,
-                item.chairman_id !== undefined ? (item.chairman_id ? publisherRepository_1.publisherRepository.findOneBy({ id: item.chairman_id }) : null) : schedule.chairman,
-                item.reader_id !== undefined ? (item.reader_id ? publisherRepository_1.publisherRepository.findOneBy({ id: item.reader_id }) : null) : schedule.reader,
+            const [speaker, talk, chairman, reader, visitingCongregation] = await Promise.all([
+                item.speaker_id
+                    ? speakerRepository_1.speakerRepository.findOne({
+                        where: { id: item.speaker_id },
+                        relations: ["originCongregation"],
+                    })
+                    : null,
+                item.talk_id ? talkRepository_1.talkRepository.findOneBy({ id: item.talk_id }) : null,
+                item.chairman_id ? publisherRepository_1.publisherRepository.findOneBy({ id: item.chairman_id }) : null,
+                item.reader_id ? publisherRepository_1.publisherRepository.findOneBy({ id: item.reader_id }) : null,
+                item.visitingCongregation_id
+                    ? congregationRepository_1.congregationRepository.findOneBy({ id: item.visitingCongregation_id })
+                    : null,
             ]);
             if (item.speaker_id && !speaker)
                 throw new api_errors_1.NotFoundError(`Speaker ${item.speaker_id} not found`);
+            if (speaker) {
+                const visitingCong = visitingCongregation !== null && visitingCongregation !== void 0 ? visitingCongregation : schedule.visitingCongregation;
+                if (visitingCong && speaker.originCongregation.id !== visitingCong.id) {
+                    throw new api_errors_1.BadRequestError(`Speaker ${speaker.fullName} does not belong to the visiting congregation ${visitingCong.name}`);
+                }
+            }
             if (item.talk_id && !talk)
                 throw new api_errors_1.NotFoundError(`Talk ${item.talk_id} not found`);
             if (item.chairman_id && !chairman)
@@ -104,6 +131,9 @@ class WeekendScheduleController {
             if (item.reader_id && !reader)
                 throw new api_errors_1.NotFoundError(`Reader ${item.reader_id} not found`);
             schedule.speaker = speaker;
+            if (item.visitingCongregation_id !== undefined) {
+                schedule.visitingCongregation = visitingCongregation;
+            }
             schedule.talk = talk;
             schedule.chairman = chairman;
             schedule.reader = reader;

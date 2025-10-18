@@ -148,7 +148,7 @@ routes.get('/talks', is(['ADMIN', 'ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkCo
 routes.get('/congregation/:congregation_id/weekendSchedules', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.getSchedules)
 routes.get('/congregation/:congregation_id/weekendSchedules/public',  WeekendScheduleController.getPublicSchedules)
 routes.get('/weekendSchedule/:weekendSchedule_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.getSchedule)
-routes.post('/congregation/:congregation_id/weekendSchedule', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.create)
+routes.post('/congregation/:congregation_id/weekendSchedule', /*is(['ADMIN_CONGREGATION', 'TALK_MANAGER']),*/ WeekendScheduleController.create)
 routes.patch('/weekendSchedule', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.update)
 routes.delete('/weekendSchedule/:weekendSchedule_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.delete)
 

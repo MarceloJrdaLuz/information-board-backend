@@ -13,6 +13,7 @@ export interface WeekendSchedule {
     id: string
     date: string
     speaker_id?: string
+    visitingCongregation_id?: string
     talk_id?: string
     chairman_id?: string
     reader_id?: string

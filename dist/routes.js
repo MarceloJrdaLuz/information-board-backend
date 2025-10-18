@@ -132,7 +132,7 @@ routes.get('/talks', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'TALK
 routes.get('/congregation/:congregation_id/weekendSchedules', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController_1.default.getSchedules);
 routes.get('/congregation/:congregation_id/weekendSchedules/public', WeekendScheduleController_1.default.getPublicSchedules);
 routes.get('/weekendSchedule/:weekendSchedule_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController_1.default.getSchedule);
-routes.post('/congregation/:congregation_id/weekendSchedule', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController_1.default.create);
+routes.post('/congregation/:congregation_id/weekendSchedule', /*is(['ADMIN_CONGREGATION', 'TALK_MANAGER']),*/ WeekendScheduleController_1.default.create);
 routes.patch('/weekendSchedule', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController_1.default.update);
 routes.delete('/weekendSchedule/:weekendSchedule_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController_1.default.delete);
 routes.post("/congregation/:congregation_id/hospitality/weekends", /*is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),*/ HospitalityController_1.default.createOrUpdateBatch);

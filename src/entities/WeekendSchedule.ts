@@ -21,6 +21,10 @@ export class WeekendSchedule {
     @JoinColumn({ name: "reader_id" })
     reader: Publisher | null
 
+    @ManyToOne(() => Congregation, { nullable: true, onDelete: "SET NULL" })
+    @JoinColumn({ name: "visiting_congregation_id" })
+    visitingCongregation: Congregation | null
+
     @ManyToOne(() => Speaker, { nullable: true, onDelete: "SET NULL" })
     @JoinColumn({ name: "speaker_id" })
     speaker: Speaker | null

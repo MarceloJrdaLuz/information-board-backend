@@ -1,7 +1,13 @@
 import { Response } from "express-serve-static-core"
 import moment from "moment"
+import { MoreThanOrEqual } from "typeorm"
+import { normalize } from "../../functions/normalize"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
+import { monthNames } from "../../helpers/months"
+import { congregationRepository } from "../../repositories/congregationRepository"
+import { externalTalkRepository } from "../../repositories/externalTalkRepository"
+import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { speakerRepository } from "../../repositories/speakerRepository"
 import { talkRepository } from "../../repositories/talkRepository"
@@ -14,13 +20,6 @@ import {
   ParamsWeekendScheduleCreateTypes,
   ParamsWeekendScheduleTypes
 } from "./types"
-import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupRepository"
-import { monthNames } from "../../helpers/months"
-import { normalize } from "../../functions/normalize"
-import { externalTalkRepository } from "../../repositories/externalTalkRepository"
-import { hospitalityWeekendRepository } from "../../repositories/hospitalityWeekendRepository"
-import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
-import { MoreThanOrEqual } from "typeorm"
 
 class WeekendScheduleController {
   async create(req: CustomRequestPT<ParamsWeekendScheduleCreateTypes, BodyWeekendScheduleCreateTypes>, res: Response) {
@@ -43,14 +42,35 @@ class WeekendScheduleController {
       if (existing) throw new BadRequestError(`A schedule already exists for ${scheduleDate}`)
 
       // Busca relacionamentos em paralelo
-      const [speaker, talk, chairman, reader] = await Promise.all([
-        item.speaker_id ? speakerRepository.findOneBy({ id: item.speaker_id }) : null,
+      const [
+        speaker,
+        talk,
+        chairman,
+        reader,
+        visitingCongregation
+      ] = await Promise.all([
+        item.speaker_id
+          ? speakerRepository.findOne({
+            where: { id: item.speaker_id },
+            relations: ["originCongregation"],
+          })
+          : null,
         item.talk_id ? talkRepository.findOneBy({ id: item.talk_id }) : null,
         item.chairman_id ? publisherRepository.findOneBy({ id: item.chairman_id }) : null,
         item.reader_id ? publisherRepository.findOneBy({ id: item.reader_id }) : null,
+        item.visitingCongregation_id
+          ? congregationRepository.findOneBy({ id: item.visitingCongregation_id })
+          : null,
       ])
 
+
       if (item.speaker_id && !speaker) throw new NotFoundError(`Speaker ${item.speaker_id} not found`)
+      if (speaker && visitingCongregation && speaker.originCongregation.id !== visitingCongregation.id) {
+        throw new BadRequestError(
+          `Speaker ${speaker.fullName} does not belong to the visiting congregation ${visitingCongregation.name}`
+        )
+      }
+
       if (item.talk_id && !talk) throw new NotFoundError(`Talk ${item.talk_id} not found`)
       if (item.chairman_id && !chairman) throw new NotFoundError(`Chairman ${item.chairman_id} not found`)
       if (item.reader_id && !reader) throw new NotFoundError(`Reader ${item.reader_id} not found`)
@@ -58,6 +78,7 @@ class WeekendScheduleController {
       const newSchedule = weekendScheduleRepository.create({
         date: scheduleDate,
         speaker,
+        visitingCongregation,
         talk,
         chairman,
         reader,
@@ -101,19 +122,46 @@ class WeekendScheduleController {
       }
 
       // Busca relacionamentos em paralelo
-      const [speaker, talk, chairman, reader] = await Promise.all([
-        item.speaker_id !== undefined ? (item.speaker_id ? speakerRepository.findOneBy({ id: item.speaker_id }) : null) : schedule.speaker,
-        item.talk_id !== undefined ? (item.talk_id ? talkRepository.findOneBy({ id: item.talk_id }) : null) : schedule.talk,
-        item.chairman_id !== undefined ? (item.chairman_id ? publisherRepository.findOneBy({ id: item.chairman_id }) : null) : schedule.chairman,
-        item.reader_id !== undefined ? (item.reader_id ? publisherRepository.findOneBy({ id: item.reader_id }) : null) : schedule.reader,
+      const [
+        speaker,
+        talk,
+        chairman,
+        reader,
+        visitingCongregation
+      ] = await Promise.all([
+        item.speaker_id
+          ? speakerRepository.findOne({
+            where: { id: item.speaker_id },
+            relations: ["originCongregation"],
+          })
+          : null,
+        item.talk_id ? talkRepository.findOneBy({ id: item.talk_id }) : null,
+        item.chairman_id ? publisherRepository.findOneBy({ id: item.chairman_id }) : null,
+        item.reader_id ? publisherRepository.findOneBy({ id: item.reader_id }) : null,
+        item.visitingCongregation_id
+          ? congregationRepository.findOneBy({ id: item.visitingCongregation_id })
+          : null,
       ])
 
+
       if (item.speaker_id && !speaker) throw new NotFoundError(`Speaker ${item.speaker_id} not found`)
+
+      if (speaker) {
+        const visitingCong = visitingCongregation ?? schedule.visitingCongregation
+        if (visitingCong && speaker.originCongregation.id !== visitingCong.id) {
+          throw new BadRequestError(
+            `Speaker ${speaker.fullName} does not belong to the visiting congregation ${visitingCong.name}`
+          )
+        }
+      }
       if (item.talk_id && !talk) throw new NotFoundError(`Talk ${item.talk_id} not found`)
       if (item.chairman_id && !chairman) throw new NotFoundError(`Chairman ${item.chairman_id} not found`)
       if (item.reader_id && !reader) throw new NotFoundError(`Reader ${item.reader_id} not found`)
 
       schedule.speaker = speaker
+      if (item.visitingCongregation_id !== undefined) {
+        schedule.visitingCongregation = visitingCongregation
+      }
       schedule.talk = talk
       schedule.chairman = chairman
       schedule.reader = reader

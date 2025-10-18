@@ -37,6 +37,11 @@ __decorate([
     __metadata("design:type", Object)
 ], WeekendSchedule.prototype, "reader", void 0);
 __decorate([
+    (0, typeorm_1.ManyToOne)(() => Congregation_1.Congregation, { nullable: true, onDelete: "SET NULL" }),
+    (0, typeorm_1.JoinColumn)({ name: "visiting_congregation_id" }),
+    __metadata("design:type", Object)
+], WeekendSchedule.prototype, "visitingCongregation", void 0);
+__decorate([
     (0, typeorm_1.ManyToOne)(() => Speaker_1.Speaker, { nullable: true, onDelete: "SET NULL" }),
     (0, typeorm_1.JoinColumn)({ name: "speaker_id" }),
     __metadata("design:type", Object)
