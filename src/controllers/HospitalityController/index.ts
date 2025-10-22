@@ -67,15 +67,29 @@ class HospitalityController {
 
                         assignment.eventType = a.eventType;
 
-                        if (a.group_id) {
-                            const group = await hospitalityGroupRepository.findOneBy({ id: a.group_id });
-                            if (!group) throw new NotFoundError(`Group ${a.group_id} not found`);
-                            assignment.group = group;
+                        // Se o group_id vier vazio, significa que o evento deve ser removido
+                        if (!a.group_id) {
+                            // Se o assignment já existia, remove do banco
+                            if (a.id) {
+                                await hospitalityAssignmentRepository.remove(assignment);
+                            }
+                            continue; // pula para o próximo assignment
                         }
+
+                        // Caso contrário, mantém ou cria com o grupo informado
+                        const group = await hospitalityGroupRepository.findOneBy({ id: a.group_id });
+                        if (!group) throw new NotFoundError(`Group ${a.group_id} not found`);
+
+                        assignment.group = group;
+
 
                         await hospitalityAssignmentRepository.save(assignment);
                     } else {
                         // Assignment novo → cria
+                        if (!a.group_id) {
+                            // Não cria assignments sem grupo
+                            continue;
+                        }
                         const group = await hospitalityGroupRepository.findOneBy({ id: a.group_id });
                         if (!group) throw new NotFoundError(`Group ${a.group_id} not found`);
                         assignment = hospitalityAssignmentRepository.create({
