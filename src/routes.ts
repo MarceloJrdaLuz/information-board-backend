@@ -178,7 +178,7 @@ routes.delete('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"])
 // Termos de uso
 routes.post("/terms", is(['ADMIN']), TermsOfUseController.create)
 routes.get("/terms", is(['ADMIN']), TermsOfUseController.list)
-routes.get("/terms/active/:type", is(['ADMIN_CONGREGATION']), TermsOfUseController.getActive)
+routes.get("/terms/active/:type", TermsOfUseController.getActive)
 routes.delete("/terms/:term_id", is(['ADMIN']), TermsOfUseController.delete)
 
 // Consentimentos

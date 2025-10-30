@@ -157,7 +157,7 @@ routes.delete('/speaker/:speaker_id', (0, permissions_1.is)(['ADMIN_CONGREGATION
 // Termos de uso
 routes.post("/terms", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.create);
 routes.get("/terms", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.list);
-routes.get("/terms/active/:type", (0, permissions_1.is)(['ADMIN_CONGREGATION']), TermsOfUseController_1.default.getActive);
+routes.get("/terms/active/:type", TermsOfUseController_1.default.getActive);
 routes.delete("/terms/:term_id", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.delete);
 // Consentimentos
 routes.post("/consent/accept", DataProcessingAgreement_1.default.accept);
