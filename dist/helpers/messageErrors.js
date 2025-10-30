@@ -24,6 +24,7 @@ exports.messageErrors = {
         speaker: "Speaker not found",
         reader: "Reader not found",
         chairman: "Chairman not found",
+        term: "Term is not found",
     },
     dataBase: {
         save: "Error saving to database"

@@ -26,6 +26,8 @@ import WeekendScheduleController from "./controllers/WeekendScheduleController"
 import { is, verifyCronSecret } from "./middlewares/permissions"
 import ExternalTalkController from "./controllers/ExternalTalkController"
 import HospitalityController from "./controllers/HospitalityController"
+import TermsOfUseController from "./controllers/TermsOfUseController"
+import DataProcessingAgreementController from "./controllers/DataProcessingAgreement"
 
 const routes = Router()
 
@@ -54,7 +56,7 @@ routes.post('/emergencyContact', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']
 routes.put('/emergencyContact/:emergencyContact_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController.update)
 routes.delete('/emergencyContact/:emergencyContact_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), EmergencyContactController.delete)
 
-routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), CongregationController.create) 
+routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), CongregationController.create)
 routes.delete('/congregation/:id', is(['ADMIN']), CongregationController.delete)
 routes.get('/congregations', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.list)
 routes.get('/congregation/:number', CongregationController.getCongregation)
@@ -146,16 +148,16 @@ routes.get('/talk/:talk_id', is(['ADMIN', 'ADMIN_CONGREGATION', 'TALK_MANAGER'])
 routes.get('/talks', is(['ADMIN', 'ADMIN_CONGREGATION', 'TALK_MANAGER']), TalkController.getTalks)
 
 routes.get('/congregation/:congregation_id/weekendSchedules', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.getSchedules)
-routes.get('/congregation/:congregation_id/weekendSchedules/public',  WeekendScheduleController.getPublicSchedules)
+routes.get('/congregation/:congregation_id/weekendSchedules/public', WeekendScheduleController.getPublicSchedules)
 routes.get('/weekendSchedule/:weekendSchedule_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.getSchedule)
 routes.post('/congregation/:congregation_id/weekendSchedule', /*is(['ADMIN_CONGREGATION', 'TALK_MANAGER']),*/ WeekendScheduleController.create)
 routes.patch('/weekendSchedule', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.update)
 routes.delete('/weekendSchedule/:weekendSchedule_id', is(['ADMIN_CONGREGATION', 'TALK_MANAGER']), WeekendScheduleController.delete)
 
-routes.post("/congregation/:congregation_id/hospitality/weekends", /*is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),*/ HospitalityController.createOrUpdateBatch);
-routes.patch("/assignment/:assignment_id/status", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),HospitalityController.updateAssignmentStatus)
-routes.delete("/assignment/:assignment_id", /*is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),*/ HospitalityController.deleteAssignment);
-routes.delete("/weekend/:weekend_id", /*is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),*/ HospitalityController.deleteWeekend);
+routes.post("/congregation/:congregation_id/hospitality/weekends", /*is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),*/ HospitalityController.createOrUpdateBatch)
+routes.patch("/assignment/:assignment_id/status", is(["ADMIN_CONGREGATION", "TALK_MANAGER"]), HospitalityController.updateAssignmentStatus)
+routes.delete("/assignment/:assignment_id", /*is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),*/ HospitalityController.deleteAssignment)
+routes.delete("/weekend/:weekend_id", /*is(["ADMIN_CONGREGATION", "TALK_MANAGER"]),*/ HospitalityController.deleteWeekend)
 routes.get('/congregation/:congregation_id/hospitality/weekends', /*is(['ADMIN_CONGREGATION', "TALK_MANAGER"]),*/ HospitalityController.getWeekends)
 
 
@@ -172,6 +174,19 @@ routes.get('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), S
 routes.post('/speaker', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.create)
 routes.patch('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.update)
 routes.delete('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.delete)
+
+// Termos de uso
+routes.post("/terms", is(['ADMIN']), TermsOfUseController.create)
+routes.get("/terms", is(['ADMIN']), TermsOfUseController.list)
+routes.get("/terms/active/:type", is(['ADMIN_CONGREGATION']), TermsOfUseController.getActive)
+routes.delete("/terms/:term_id", is(['ADMIN']), TermsOfUseController.delete)
+
+// Consentimentos
+routes.post("/consent/accept", DataProcessingAgreementController.accept)
+routes.get("/consent", DataProcessingAgreementController.list)
+routes.get("/consent/publisher/:publisher_id", DataProcessingAgreementController.getByPublisher)
+routes.get("/consent/congregation/:congregation_id", is(['ADMIN_CONGREGATION']), DataProcessingAgreementController.getByCongregation)
+routes.get("/consent/check", DataProcessingAgreementController.check)
 
 routes.get('/form-data', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'TALK_MANAGER']), FormDataController.getFormData)
 

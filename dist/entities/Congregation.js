@@ -126,6 +126,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => HospitalityWeekend_1.HospitalityWeekend, weekend => weekend.congregation),
     __metadata("design:type", Array)
 ], Congregation.prototype, "hospitalityWeekends", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "boolean", default: false }),
+    __metadata("design:type", Boolean)
+], Congregation.prototype, "has_active_consent", void 0);
 Congregation = Congregation_1 = __decorate([
     (0, typeorm_1.Entity)('congregation')
 ], Congregation);

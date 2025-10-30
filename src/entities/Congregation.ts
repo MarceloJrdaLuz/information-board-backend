@@ -90,4 +90,6 @@ export class Congregation {
   @OneToMany(() => HospitalityWeekend, weekend => weekend.congregation)
   hospitalityWeekends: HospitalityWeekend[]
 
+  @Column({ type: "boolean", default: false })
+  has_active_consent: boolean
 }

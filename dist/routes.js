@@ -31,6 +31,8 @@ const WeekendScheduleController_1 = __importDefault(require("./controllers/Weeke
 const permissions_1 = require("./middlewares/permissions");
 const ExternalTalkController_1 = __importDefault(require("./controllers/ExternalTalkController"));
 const HospitalityController_1 = __importDefault(require("./controllers/HospitalityController"));
+const TermsOfUseController_1 = __importDefault(require("./controllers/TermsOfUseController"));
+const DataProcessingAgreement_1 = __importDefault(require("./controllers/DataProcessingAgreement"));
 const routes = (0, express_1.Router)();
 routes.post('/user', UserController_1.default.create); //
 routes.post('/login', UserController_1.default.login); //
@@ -152,6 +154,17 @@ routes.get('/speaker/:speaker_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 
 routes.post('/speaker', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController_1.default.create);
 routes.patch('/speaker/:speaker_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController_1.default.update);
 routes.delete('/speaker/:speaker_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController_1.default.delete);
+// Termos de uso
+routes.post("/terms", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.create);
+routes.get("/terms", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.list);
+routes.get("/terms/active/:type", (0, permissions_1.is)(['ADMIN_CONGREGATION']), TermsOfUseController_1.default.getActive);
+routes.delete("/terms/:term_id", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.delete);
+// Consentimentos
+routes.post("/consent/accept", DataProcessingAgreement_1.default.accept);
+routes.get("/consent", DataProcessingAgreement_1.default.list);
+routes.get("/consent/publisher/:publisher_id", DataProcessingAgreement_1.default.getByPublisher);
+routes.get("/consent/congregation/:congregation_id", (0, permissions_1.is)(['ADMIN_CONGREGATION']), DataProcessingAgreement_1.default.getByCongregation);
+routes.get("/consent/check", DataProcessingAgreement_1.default.check);
 routes.get('/form-data', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'TALK_MANAGER']), FormDataController_1.default.getFormData);
 routes.get('/deleteExpiredNotices', permissions_1.verifyCronSecret, CronJobController_1.default.deleteExpiredNotices);
 routes.get('/reportsCleanUp', permissions_1.verifyCronSecret, CronJobController_1.default.reportsCleanUp);
