@@ -2,7 +2,6 @@ export interface Talk {
   number: number;
   title: string;
 }
-
 export const allTalks: Talk[] = [
   { number: 1, title: "Você conhece bem a Deus?" },
   { number: 2, title: "Você vai sobreviver aos últimos dias?" },
