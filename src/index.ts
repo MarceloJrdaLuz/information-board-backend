@@ -15,8 +15,8 @@ AppDataSource.initialize().then(() => {
     const app = express()
     app.use(express.json())
     app.use(cors())
-    app.use(routes)
     app.use(cookieParser())
+    app.use(routes)
 
     app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal'])
 

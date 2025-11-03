@@ -35,7 +35,7 @@ __decorate([
     __metadata("design:type", Date)
 ], Profile.prototype, "updated_at", void 0);
 __decorate([
-    (0, typeorm_1.OneToOne)(() => User_1.User, { eager: true, nullable: false, onDelete: "CASCADE" }),
+    (0, typeorm_1.OneToOne)(() => User_1.User, { onDelete: "CASCADE" }),
     (0, typeorm_1.JoinColumn)({ name: 'user_id' }),
     __metadata("design:type", User_1.User)
 ], Profile.prototype, "user", void 0);
