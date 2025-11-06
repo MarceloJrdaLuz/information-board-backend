@@ -15,7 +15,6 @@ AppDataSource.initialize().then(() => {
     const app = express()
     app.use(express.json())
     app.use(cors(corsOptions))
-    console.log(corsOptions)
     app.use(cookieParser())
     app.use(routes)
 
