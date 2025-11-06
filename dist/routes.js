@@ -41,6 +41,7 @@ const routes = (0, express_1.Router)();
 routes.post('/user', UserController_1.default.create);
 routes.post('/login', UserController_1.default.login);
 routes.post('/recover-user-information', UserController_1.default.recoverUserInformation);
+routes.get('/recover-user-information', UserController_1.default.recoverUserInformation);
 routes.post('/forgot_password', UserController_1.default.forgot_password);
 routes.post('/reset_password', UserController_1.default.reset_password);
 // Congregações (dados públicos)
