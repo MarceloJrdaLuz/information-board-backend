@@ -183,7 +183,11 @@ class CongregationController {
             }
         }
         if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN') {
-            const congExists = await congregationRepository_1.congregationRepository.find({});
+            const congExists = await congregationRepository_1.congregationRepository.find({
+                where: {
+                    type: Congregation_1.CongregationType.SYSTEM
+                }
+            });
             if (congExists)
                 congregationsResponse.push(...congExists);
         }
