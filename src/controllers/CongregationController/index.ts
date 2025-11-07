@@ -221,7 +221,11 @@ class CongregationController {
         }
 
         if (requestByUserId && requestByUserId.roles && requestByUserId.roles[0] && requestByUserId.roles[0].name === 'ADMIN') {
-            const congExists = await congregationRepository.find({})
+            const congExists = await congregationRepository.find({
+                where: {
+                    type: CongregationType.SYSTEM
+                }
+            })
 
             if (congExists) congregationsResponse.push(...congExists)
         }

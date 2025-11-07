@@ -40,6 +40,7 @@ const routes = Router()
 routes.post('/user', UserController.create)
 routes.post('/login', UserController.login)
 routes.post('/recover-user-information', UserController.recoverUserInformation)
+routes.get('/recover-user-information', UserController.recoverUserInformation)
 routes.post('/forgot_password', UserController.forgot_password)
 routes.post('/reset_password', UserController.reset_password)
 
