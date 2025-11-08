@@ -85,6 +85,7 @@ routes.patch('/users/:user_id/link-publisher', is(['ADMIN_CONGREGATION']), UserC
 
 /* === Publicadores === */
 routes.get('/publishers/congregationId/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers.getPublishers)
+routes.get('/publisher/:publisher_id/assignment', PublisherControllers.getAssignmentPublisher)
 routes.get('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.getPublisher)
 routes.post('/publisher', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.create)
 routes.delete('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.delete)

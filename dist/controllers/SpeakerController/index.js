@@ -27,7 +27,7 @@ class SpeakerController {
         let speakerPhone = phone;
         let speakerAddress = address;
         if (publisher_id) {
-            const publisher = await (0, publisherRepository_1.findPublisherWithPrivilege)(publisher_id, "Speaker");
+            publisher = await (0, publisherRepository_1.findPublisherWithPrivilege)(publisher_id, "Speaker");
             if (!publisher)
                 throw new api_errors_1.BadRequestError("Publisher not found or does not have 'Speaker'");
             if (publisher.congregation.id !== originCongregation_id) {

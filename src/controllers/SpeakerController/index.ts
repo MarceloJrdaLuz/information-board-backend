@@ -38,7 +38,7 @@ class SpeakerController {
     let speakerAddress = address
 
     if (publisher_id) {
-      const publisher = await findPublisherWithPrivilege(publisher_id, "Speaker")
+      publisher = await findPublisherWithPrivilege(publisher_id, "Speaker")
 
       if (!publisher) throw new BadRequestError("Publisher not found or does not have 'Speaker'")
 
