@@ -1,16 +1,23 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const moment_timezone_1 = __importDefault(require("moment-timezone"));
 const typeorm_1 = require("typeorm");
 const api_errors_1 = require("../../helpers/api-errors");
 const messageErrors_1 = require("../../helpers/messageErrors");
 const privilegesTranslations_1 = require("../../helpers/privilegesTranslations");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const emergencyContact_1 = require("../../repositories/emergencyContact");
+const hospitalityAssignmentRepository_1 = require("../../repositories/hospitalityAssignmentRepository");
 const privilegeRepository_1 = require("../../repositories/privilegeRepository");
 const publisherPrivilegeRepository_1 = require("../../repositories/publisherPrivilegeRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const userRepository_1 = require("../../repositories/userRepository");
+const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 const privileges_1 = require("../../types/privileges");
+const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
 class PublisherControler {
     async create(req, res) {
         const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContact_id } = req.body;
@@ -234,6 +241,102 @@ class PublisherControler {
         if (!publisher)
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.publisher);
         return res.status(200).json(publisher);
+    }
+    async getAssignmentPublisher(req, res) {
+        const { publisher_id } = req.params;
+        const assignmentsMeeting = await weekendScheduleRepository_1.weekendScheduleRepository.find({
+            where: [
+                { chairman: { id: publisher_id }, date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD")) },
+                { reader: { id: publisher_id }, date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD")) },
+                { speaker: { publisher: { id: publisher_id } }, date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD")) },
+            ],
+            relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk",],
+            order: { date: "ASC" }
+        });
+        const hospitality = await hospitalityAssignmentRepository_1.hospitalityAssignmentRepository.find({
+            where: {
+                weekend: {
+                    date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD"))
+                }
+            },
+            relations: ['group', 'group.members', 'group.host', 'weekend']
+        });
+        const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
+            where: {
+                speaker: {
+                    publisher: {
+                        id: publisher_id
+                    }
+                },
+                date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD"))
+            },
+            relations: ['destinationCongregation', 'talk']
+        });
+        const filteredHospitality = hospitality.filter(h => {
+            var _a, _b, _c, _d;
+            // Verifica se o publisher é host OU membro do grupo
+            return ((_b = (_a = h.group) === null || _a === void 0 ? void 0 : _a.host) === null || _b === void 0 ? void 0 : _b.id) === publisher_id ||
+                ((_d = (_c = h.group) === null || _c === void 0 ? void 0 : _c.members) === null || _d === void 0 ? void 0 : _d.some(member => member.id === publisher_id));
+        });
+        // 4️⃣ Mapeia as designações de hospitalidade
+        const hospitalityAssignments = filteredHospitality.map((h) => {
+            var _a, _b, _c, _d;
+            return ({
+                role: ((_b = (_a = h.group) === null || _a === void 0 ? void 0 : _a.host) === null || _b === void 0 ? void 0 : _b.id) === publisher_id ? "Anfitrião" : "Hospitalidade",
+                eventType: h.eventType,
+                date: h.weekend.date,
+                group: {
+                    id: (_c = h.group) === null || _c === void 0 ? void 0 : _c.id,
+                    name: (_d = h.group) === null || _d === void 0 ? void 0 : _d.name,
+                },
+            });
+        });
+        const assignments = assignmentsMeeting.map((s) => {
+            var _a, _b, _c, _d;
+            if (((_a = s.chairman) === null || _a === void 0 ? void 0 : _a.id) === publisher_id) {
+                return {
+                    role: "Presidente",
+                    date: s.date,
+                };
+            }
+            if (((_b = s.reader) === null || _b === void 0 ? void 0 : _b.id) === publisher_id) {
+                return {
+                    role: "Leitor",
+                    date: s.date,
+                };
+            }
+            if (((_d = (_c = s.speaker) === null || _c === void 0 ? void 0 : _c.publisher) === null || _d === void 0 ? void 0 : _d.id) === publisher_id) {
+                return {
+                    role: "Orador",
+                    date: s.date,
+                    talk: s.talk ? { number: s.talk.number, title: s.talk.title } : null,
+                };
+            }
+        });
+        // 🔹 Mapeia designações externas
+        const externalAssignments = externalTalks.map(e => {
+            var _a, _b, _c, _d;
+            return ({
+                role: "Discurso Externo",
+                date: e.date,
+                status: e.status,
+                talk: e.talk ? e.talk : e.manualTalk,
+                destinationCongregation: {
+                    name: (_a = e.destinationCongregation) === null || _a === void 0 ? void 0 : _a.name,
+                    city: (_b = e.destinationCongregation) === null || _b === void 0 ? void 0 : _b.city,
+                    dayMeetingPublic: (_c = e.destinationCongregation) === null || _c === void 0 ? void 0 : _c.dayMeetingPublic,
+                    hourMeetingPublic: (_d = e.destinationCongregation) === null || _d === void 0 ? void 0 : _d.hourMeetingPublic,
+                }
+            });
+        });
+        const allAssignments = [
+            ...assignments,
+            ...hospitalityAssignments,
+            ...externalAssignments,
+        ];
+        // 🔹 Ordena por data
+        allAssignments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        return res.status(200).json(allAssignments);
     }
     async unlinkPublisherFromUser(req, res) {
         const { publisher_id } = req.params;

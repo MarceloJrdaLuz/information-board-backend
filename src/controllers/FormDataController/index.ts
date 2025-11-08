@@ -126,14 +126,22 @@ class FormDataController {
                         relations: ["talk", "speaker", "speaker.originCongregation", "chairman", "reader", "visitingCongregation"]
                     })
 
-                    const congregations = await congregationRepository.find({
+                    const auxiliaryCongregations = await congregationRepository.find({
                         where: {
                             type: CongregationType.AUXILIARY,
-                            creatorCongregation: {
-                                id: userReq?.congregation.id
-                            }
+                            creatorCongregation: { id: userReq?.congregation.id }
                         }
                     })
+
+                    const mainCongregation = await congregationRepository.findOne({
+                        where: { id: userReq?.congregation.id }
+                    })
+
+                    const congregations = [
+                        ...(mainCongregation ? [mainCongregation] : []),
+                        ...auxiliaryCongregations
+                    ]
+
 
                     return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules })
                 }
@@ -152,7 +160,7 @@ class FormDataController {
                             congregation: {
                                 id: userReq?.congregation.id
                             }
-                        }, 
+                        },
                         relations: ["host", "members"]
                     })
 

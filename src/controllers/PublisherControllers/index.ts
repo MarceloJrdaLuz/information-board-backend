@@ -1,17 +1,39 @@
 import { Response } from "express-serve-static-core"
-import { In, Not } from "typeorm"
+import moment from "moment-timezone"
+import { In, MoreThanOrEqual, Not } from "typeorm"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
 import { privilegePTtoEN, translatePrivilegesPTToEN } from "../../helpers/privilegesTranslations"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { emergencyContactRepository } from "../../repositories/emergencyContact"
+import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
 import { privilegeRepository } from "../../repositories/privilegeRepository"
 import { publisherPrivilegeRepository } from "../../repositories/publisherPrivilegeRepository"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { userRepository } from "../../repositories/userRepository"
+import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
 import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 import { Privileges } from "../../types/privileges"
 import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
+import { externalTalkRepository } from "../../repositories/externalTalkRepository"
+
+interface UnifiedAssignment {
+  role: string
+  date: string
+  eventType?: string
+  talk?: {
+    number: number
+    title: string
+  } | null
+  group?: {
+    id?: string
+    name?: string
+  },
+  destinationCongregation?: {
+    name?: string
+    city?: string
+  }
+}
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
@@ -235,7 +257,7 @@ class PublisherControler {
         congregation: {
           id: congregation_id
         }
-      }, relations: ['group', 'congregation', "emergencyContact", "hospitalityGroup" ]
+      }, relations: ['group', 'congregation', "emergencyContact", "hospitalityGroup"]
     }).catch(err => console.log(err))
 
     return res.status(200).json(publishers)
@@ -283,6 +305,105 @@ class PublisherControler {
     return res.status(200).json(publisher)
   }
 
+  async getAssignmentPublisher(req: ParamsCustomRequest<ParamsGetPublisherTypes>, res: Response) {
+    const { publisher_id } = req.params
+
+    const assignmentsMeeting = await weekendScheduleRepository.find({
+      where: [
+        { chairman: { id: publisher_id }, date: MoreThanOrEqual(moment().format("YYYY-MM-DD")) },
+        { reader: { id: publisher_id }, date: MoreThanOrEqual(moment().format("YYYY-MM-DD")) },
+        { speaker: { publisher: { id: publisher_id } }, date: MoreThanOrEqual(moment().format("YYYY-MM-DD")) },
+      ],
+      relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk",],
+      order: { date: "ASC" }
+    })
+
+    const hospitality = await hospitalityAssignmentRepository.find({
+      where: {
+        weekend: {
+          date: MoreThanOrEqual(moment().format("YYYY-MM-DD"))
+        }
+      },
+      relations: ['group', 'group.members', 'group.host', 'weekend']
+    })
+
+    const externalTalks = await externalTalkRepository.find({
+      where: {
+        speaker: {
+          publisher: {
+            id: publisher_id
+          }
+        },
+        date: MoreThanOrEqual(moment().format("YYYY-MM-DD"))
+      },
+      relations: ['destinationCongregation', 'talk']
+    })
+
+    const filteredHospitality = hospitality.filter(h =>
+      // Verifica se o publisher é host OU membro do grupo
+      h.group?.host?.id === publisher_id ||
+      h.group?.members?.some(member => member.id === publisher_id)
+    )
+
+    // 4️⃣ Mapeia as designações de hospitalidade
+    const hospitalityAssignments = filteredHospitality.map((h) => ({
+      role: h.group?.host?.id === publisher_id ? "Anfitrião" : "Hospitalidade",
+      eventType: h.eventType,
+      date: h.weekend.date,
+      group: {
+        id: h.group?.id,
+        name: h.group?.name,
+      },
+    }))
+
+    const assignments = assignmentsMeeting.map((s) => {
+      if (s.chairman?.id === publisher_id) {
+        return {
+          role: "Presidente",
+          date: s.date,
+        }
+      }
+      if (s.reader?.id === publisher_id) {
+        return {
+          role: "Leitor",
+          date: s.date,
+        }
+      }
+      if (s.speaker?.publisher?.id === publisher_id) {
+        return {
+          role: "Orador",
+          date: s.date,
+          talk: s.talk ? { number: s.talk.number, title: s.talk.title } : null,
+        }
+      }
+    })
+
+    // 🔹 Mapeia designações externas
+    const externalAssignments = externalTalks.map(e => ({
+      role: "Discurso Externo",
+      date: e.date,
+      status: e.status,
+      talk: e.talk ? e.talk : e.manualTalk,
+      destinationCongregation: {
+        name: e.destinationCongregation?.name,
+        city: e.destinationCongregation?.city,
+        dayMeetingPublic: e.destinationCongregation?.dayMeetingPublic,
+        hourMeetingPublic: e.destinationCongregation?.hourMeetingPublic,
+      }
+    }))
+
+    const allAssignments: UnifiedAssignment[] = [
+      ...assignments as UnifiedAssignment[],
+      ...hospitalityAssignments as UnifiedAssignment[],
+      ...externalAssignments as UnifiedAssignment[],
+    ]
+
+    // 🔹 Ordena por data
+    allAssignments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+    return res.status(200).json(allAssignments)
+  }
+
   async unlinkPublisherFromUser(req: ParamsCustomRequest<ParamsUnLinkPublisherToUserTypes>, res: Response) {
     const { publisher_id } = req.params
 
@@ -310,6 +431,7 @@ class PublisherControler {
 
     return res.json({ message: "Publisher unlinked successfully" })
   }
+
 
 }
 

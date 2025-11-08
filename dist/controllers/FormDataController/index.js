@@ -104,14 +104,19 @@ class FormDataController {
                         },
                         relations: ["talk", "speaker", "speaker.originCongregation", "chairman", "reader", "visitingCongregation"]
                     });
-                    const congregations = await congregationRepository_1.congregationRepository.find({
+                    const auxiliaryCongregations = await congregationRepository_1.congregationRepository.find({
                         where: {
                             type: Congregation_1.CongregationType.AUXILIARY,
-                            creatorCongregation: {
-                                id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id
-                            }
+                            creatorCongregation: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id }
                         }
                     });
+                    const mainCongregation = await congregationRepository_1.congregationRepository.findOne({
+                        where: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id }
+                    });
+                    const congregations = [
+                        ...(mainCongregation ? [mainCongregation] : []),
+                        ...auxiliaryCongregations
+                    ];
                     return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules });
                 }
                 case "hospitalityGroup": {

@@ -140,7 +140,7 @@ class UserController {
         });
         const user = await userRepository_1.userRepository.findOne({
             where: { id: userId },
-            relations: ['congregation', 'profile']
+            relations: ['congregation', 'profile', 'publisher']
         });
         if (!user) {
             throw new api_errors_1.BadRequestError('E-mail não cadastrado');
