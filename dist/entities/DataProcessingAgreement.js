@@ -42,12 +42,13 @@ __decorate([
     __metadata("design:type", Date)
 ], DataProcessingAgreement.prototype, "accepted_at", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => Publisher_1.Publisher, { nullable: true }),
+    (0, typeorm_1.ManyToOne)(() => Publisher_1.Publisher, { nullable: true, onDelete: "CASCADE" }),
     (0, typeorm_1.JoinColumn)({ name: "publisher_id" }),
     __metadata("design:type", Object)
 ], DataProcessingAgreement.prototype, "publisher", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => Congregation_1.Congregation, { nullable: true }),
+    (0, typeorm_1.ManyToOne)(() => Congregation_1.Congregation, { nullable: true, }),
+    (0, typeorm_1.ManyToOne)(() => Congregation_1.Congregation, { nullable: true, onDelete: "CASCADE" }),
     (0, typeorm_1.JoinColumn)({ name: "congregation_id" }),
     __metadata("design:type", Object)
 ], DataProcessingAgreement.prototype, "congregation", void 0);
@@ -56,12 +57,12 @@ __decorate([
     __metadata("design:type", Object)
 ], DataProcessingAgreement.prototype, "accepted_by_user_id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true }),
+    (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true, onDelete: "SET NULL" }),
     (0, typeorm_1.JoinColumn)({ name: "accepted_by_user_id" }),
     __metadata("design:type", Object)
 ], DataProcessingAgreement.prototype, "accepted_by_user", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => TermsOfUse_1.TermsOfUse, { nullable: true }),
+    (0, typeorm_1.ManyToOne)(() => TermsOfUse_1.TermsOfUse, { nullable: true, onDelete: "SET NULL" }),
     (0, typeorm_1.JoinColumn)({ name: "terms_id" }),
     __metadata("design:type", Object)
 ], DataProcessingAgreement.prototype, "terms", void 0);
