@@ -24,22 +24,23 @@ export class DataProcessingAgreement {
   @Column({ type: "timestamp" })
   accepted_at: Date
 
-  @ManyToOne(() => Publisher, { nullable: true })
+  @ManyToOne(() => Publisher, { nullable: true, onDelete: "CASCADE" })
   @JoinColumn({ name: "publisher_id" })
   publisher: Publisher | null
 
-  @ManyToOne(() => Congregation, { nullable: true })
+  @ManyToOne(() => Congregation, { nullable: true,  })
+  @ManyToOne(() => Congregation, { nullable: true, onDelete: "CASCADE" })
   @JoinColumn({ name: "congregation_id" })
   congregation: Congregation | null
 
   @Column({ type: "uuid", nullable: true })
   accepted_by_user_id: string | null
 
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, { nullable: true , onDelete: "SET NULL" })
   @JoinColumn({ name: "accepted_by_user_id" })
   accepted_by_user: User | null
 
-  @ManyToOne(() => TermsOfUse, { nullable: true })
+  @ManyToOne(() => TermsOfUse, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "terms_id" })
   terms: TermsOfUse | null
 

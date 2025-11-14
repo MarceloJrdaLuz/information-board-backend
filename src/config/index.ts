@@ -22,6 +22,7 @@ export const config: {
     db_name: string, 
     db_pass: string, 
     email_backup: string
+    vercel_token: string
 } = {
     app_url: process.env.APP_URL ?? "",
     storage_type: process.env.STORAGE_TYPE ?? "",
@@ -38,5 +39,6 @@ export const config: {
     db_port: process.env.DB_PORT ?? "", 
     db_name: process.env.DB_NAME ?? "", 
     db_pass: process.env.DB_PASS ?? "", 
-    email_backup: process.env.EMAIL_BACKUP ?? ""
+    email_backup: process.env.EMAIL_BACKUP ?? "",
+    vercel_token: process.env.VERCEL_TOKEN ?? ""
 }

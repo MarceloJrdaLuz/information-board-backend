@@ -22,7 +22,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.config = void 0;
 const dotenv = __importStar(require("dotenv"));
@@ -46,5 +46,6 @@ exports.config = {
     db_port: (_o = process.env.DB_PORT) !== null && _o !== void 0 ? _o : "",
     db_name: (_p = process.env.DB_NAME) !== null && _p !== void 0 ? _p : "",
     db_pass: (_q = process.env.DB_PASS) !== null && _q !== void 0 ? _q : "",
-    email_backup: (_r = process.env.EMAIL_BACKUP) !== null && _r !== void 0 ? _r : ""
+    email_backup: (_r = process.env.EMAIL_BACKUP) !== null && _r !== void 0 ? _r : "",
+    vercel_token: (_s = process.env.VERCEL_TOKEN) !== null && _s !== void 0 ? _s : ""
 };
