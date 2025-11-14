@@ -29,6 +29,7 @@ import TermsOfUseController from "./controllers/TermsOfUseController"
 import DataProcessingAgreementController from "./controllers/DataProcessingAgreement"
 import FormDataController from "./controllers/FormDataController"
 import CronJobController from "./controllers/CronJobController"
+import VercelUsageController from "./controllers/VercelUsageController"
 
 const routes = Router()
 
@@ -241,5 +242,6 @@ routes.get('/form-data', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'TALK_M
 routes.get('/deleteExpiredNotices', verifyCronSecret, CronJobController.deleteExpiredNotices)
 routes.get('/reportsCleanUp', verifyCronSecret, CronJobController.reportsCleanUp)
 routes.get('/backup', verifyCronSecret, CronJobController.backup)
+routes.get("/usage", is(["ADMIN"]), VercelUsageController.getUsage);
 
 export default routes

@@ -33,6 +33,7 @@ const TermsOfUseController_1 = __importDefault(require("./controllers/TermsOfUse
 const DataProcessingAgreement_1 = __importDefault(require("./controllers/DataProcessingAgreement"));
 const FormDataController_1 = __importDefault(require("./controllers/FormDataController"));
 const CronJobController_1 = __importDefault(require("./controllers/CronJobController"));
+const VercelUsageController_1 = __importDefault(require("./controllers/VercelUsageController"));
 const routes = (0, express_1.Router)();
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
@@ -207,4 +208,5 @@ routes.get('/form-data', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHER
 routes.get('/deleteExpiredNotices', permissions_1.verifyCronSecret, CronJobController_1.default.deleteExpiredNotices);
 routes.get('/reportsCleanUp', permissions_1.verifyCronSecret, CronJobController_1.default.reportsCleanUp);
 routes.get('/backup', permissions_1.verifyCronSecret, CronJobController_1.default.backup);
+routes.get("/usage", (0, permissions_1.is)(["ADMIN"]), VercelUsageController_1.default.getUsage);
 exports.default = routes;
