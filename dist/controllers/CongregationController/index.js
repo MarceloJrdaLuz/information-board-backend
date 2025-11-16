@@ -196,6 +196,15 @@ class CongregationController {
         }
         return res.status(200).json(congregationsResponse);
     }
+    async getCongregationSystemToTransferPublisher(req, res) {
+        const congregations = await congregationRepository_1.congregationRepository.find({
+            where: {
+                type: Congregation_1.CongregationType.SYSTEM
+            },
+            select: ["name", "city", "circuit", "id"]
+        });
+        res.status(200).json(congregations);
+    }
     async getCongregation(req, res) {
         const { number } = req.params;
         const congExists = await congregationRepository_1.congregationRepository.findOne({

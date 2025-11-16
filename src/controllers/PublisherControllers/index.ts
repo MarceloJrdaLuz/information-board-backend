@@ -1,21 +1,27 @@
 import { Response } from "express-serve-static-core"
 import moment from "moment-timezone"
 import { In, MoreThanOrEqual, Not } from "typeorm"
+import { CongregationType } from "../../entities/Congregation"
+import { GroupOverseers } from "../../entities/GroupOverseers"
+import { HospitalityGroup } from "../../entities/HospitalityGroup."
+import { Publisher } from "../../entities/Publisher"
+import { Speaker } from "../../entities/Speaker"
+import { User } from "../../entities/User"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
 import { privilegePTtoEN, translatePrivilegesPTToEN } from "../../helpers/privilegesTranslations"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { emergencyContactRepository } from "../../repositories/emergencyContact"
+import { externalTalkRepository } from "../../repositories/externalTalkRepository"
 import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
 import { privilegeRepository } from "../../repositories/privilegeRepository"
 import { publisherPrivilegeRepository } from "../../repositories/publisherPrivilegeRepository"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
-import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
+import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import { Privileges } from "../../types/privileges"
 import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
-import { externalTalkRepository } from "../../repositories/externalTalkRepository"
 
 interface UnifiedAssignment {
   role: string
@@ -308,13 +314,24 @@ class PublisherControler {
   async getAssignmentPublisher(req: ParamsCustomRequest<ParamsGetPublisherTypes>, res: Response) {
     const { publisher_id } = req.params
 
+    const publisher = await publisherRepository.findOne({
+      where: {
+        id: publisher_id
+      },
+      relations: ["congregation"]
+    })
+
+    if (!publisher) {
+      throw new BadRequestError(messageErrors.notFound.publisher)
+    }
+
     const assignmentsMeeting = await weekendScheduleRepository.find({
       where: [
         { chairman: { id: publisher_id }, date: MoreThanOrEqual(moment().format("YYYY-MM-DD")) },
         { reader: { id: publisher_id }, date: MoreThanOrEqual(moment().format("YYYY-MM-DD")) },
         { speaker: { publisher: { id: publisher_id } }, date: MoreThanOrEqual(moment().format("YYYY-MM-DD")) },
       ],
-      relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk",],
+      relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
       order: { date: "ASC" }
     })
 
@@ -357,13 +374,13 @@ class PublisherControler {
     }))
 
     const assignments = assignmentsMeeting.map((s) => {
-      if (s.chairman?.id === publisher_id) {
+      if (s.chairman?.id === publisher_id && s.congregation.id === publisher.congregation.id) {
         return {
           role: "Presidente",
           date: s.date,
         }
       }
-      if (s.reader?.id === publisher_id) {
+      if (s.reader?.id === publisher_id && s.congregation.id === publisher.congregation.id) {
         return {
           role: "Leitor",
           date: s.date,
@@ -373,10 +390,13 @@ class PublisherControler {
         return {
           role: "Orador",
           date: s.date,
+          destinationCongregation: s.congregation,
           talk: s.talk ? { number: s.talk.number, title: s.talk.title } : null,
         }
       }
-    })
+
+      return undefined
+    }).filter(Boolean)
 
     // 🔹 Mapeia designações externas
     const externalAssignments = externalTalks.map(e => ({
@@ -432,7 +452,146 @@ class PublisherControler {
     return res.json({ message: "Publisher unlinked successfully" })
   }
 
+  async transferPublishers(
+  req: CustomRequestPT<{}, { publisherIds: string[]; newCongregationId: string }>,
+  res: Response
+) {
+  const { publisherIds, newCongregationId } = req.body
 
+  if (!Array.isArray(publisherIds) || publisherIds.length === 0) {
+    throw new BadRequestError("You must send at least one publisherId")
+  }
+
+  if (!newCongregationId) {
+    throw new BadRequestError("New congregation is required")
+  }
+
+  const newCongregation = await congregationRepository.findOne({
+    where: {
+      id: newCongregationId,
+      type: CongregationType.SYSTEM,
+    },
+  })
+
+  if (!newCongregation) {
+    throw new BadRequestError("New congregation does not exist or is not type SYSTEM")
+  }
+
+  const results: any[] = []
+
+  await publisherRepository.manager.transaction(async (manager) => {
+    const txPublisherRepo = manager.getRepository(Publisher)
+    const txSpeakerRepo = manager.getRepository(Speaker)
+    const txGroupOverseersRepo = manager.getRepository(GroupOverseers)
+    const txHospitalityGroupRepo = manager.getRepository(HospitalityGroup)
+    const txUserRepo = manager.getRepository(User)
+
+    for (const publisher_id of publisherIds) {
+      const txPublisher = await txPublisherRepo.findOne({
+        where: { id: publisher_id },
+        relations: [
+          "group",
+          "hospitalityGroup",
+          "user",
+          "emergencyContact",
+          "congregation",
+        ],
+      })
+
+      if (!txPublisher) {
+        results.push({
+          publisherId: publisher_id,
+          status: "not_found",
+        })
+        continue
+      }
+
+      // Já pertence à mesma congregação
+      if (txPublisher.congregation?.id === newCongregationId) {
+        results.push({
+          publisherId: publisher_id,
+          status: "already_in_congregation",
+        })
+        continue
+      }
+
+      // === LIMPEZA DAS RELAÇÕES ===
+
+      // 1 — Grupo
+      txPublisher.group = null
+
+      // 2 — Hospitality Group como host
+      const hostGroups = await txHospitalityGroupRepo.find({
+        where: { host: { id: txPublisher.id } },
+      })
+
+      for (const hg of hostGroups) {
+        hg.host = null
+        await txHospitalityGroupRepo.save(hg)
+      }
+
+      if (txPublisher.hospitality_group_id) {
+        txPublisher.hospitality_group_id = null
+      }
+      txPublisher.hospitalityGroup = null
+
+      // 3 — Emergency contact
+      if (txPublisher.emergencyContact) {
+        txPublisher.emergencyContact = null
+      }
+
+      // 4 — Remove group overseers
+      const overseersDeleted = await txGroupOverseersRepo.delete({
+        publisher: { id: txPublisher.id } as any,
+      })
+
+      // 5 — Update user congregation
+      let userUpdated = false
+      if (txPublisher.user) {
+        const txUser = await txUserRepo.findOne({
+          where: { id: txPublisher.user.id },
+        })
+        if (txUser) {
+          txUser.congregation = { id: newCongregationId } as any
+          await txUserRepo.save(txUser)
+          userUpdated = true
+        }
+      }
+
+      // 6 — Speakers
+      const speakers = await txSpeakerRepo.find({
+        where: { publisher: { id: txPublisher.id } },
+      })
+
+      let speakerUpdatedCount = 0
+      for (const sp of speakers) {
+        sp.originCongregation = { id: newCongregationId } as any
+        sp.publisher = null
+        await txSpeakerRepo.save(sp)
+        speakerUpdatedCount++
+      }
+
+      // 7 — Define nova congregation
+      txPublisher.congregation = { id: newCongregationId } as any
+      txPublisher.groupOverseers = null
+
+      await txPublisherRepo.save(txPublisher)
+
+      results.push({
+        publisherId: txPublisher.id,
+        status: "transferred",
+        overseersRemoved: overseersDeleted.affected ?? 0,
+        userUpdated,
+        speakersUpdated: speakerUpdatedCount,
+      })
+    }
+  })
+
+  return res.json({
+    message: "Publishers processed.",
+    results,
+  })
+}
 }
 
 export default new PublisherControler()

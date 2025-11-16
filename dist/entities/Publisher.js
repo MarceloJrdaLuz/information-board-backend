@@ -117,7 +117,7 @@ __decorate([
     (0, typeorm_1.ManyToOne)(() => GroupOverseers_1.GroupOverseers, { nullable: true, onDelete: "SET NULL" }) // Relacionamento Many-to-One opcional com GroupOverseers
     ,
     (0, typeorm_1.JoinColumn)({ name: 'group_overseers_id' }),
-    __metadata("design:type", GroupOverseers_1.GroupOverseers)
+    __metadata("design:type", Object)
 ], Publisher.prototype, "groupOverseers", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => EmergencyContact_1.EmergencyContact, emergencyContact => emergencyContact.publishers, {

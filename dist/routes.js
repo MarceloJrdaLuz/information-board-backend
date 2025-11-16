@@ -82,6 +82,7 @@ routes.post('/publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHE
 routes.delete('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.delete);
 routes.put('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.update);
 routes.patch('/publisher/:publisher_id/unlink-publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION']), PublisherControllers_1.default.unlinkPublisherFromUser);
+routes.put('/publishers/transfer-congregation', (0, permissions_1.is)(['ADMIN_CONGREGATION']), PublisherControllers_1.default.transferPublishers);
 /* === Contatos de emergência === */
 routes.get('/emergencyContacts/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController_1.default.listByCongregation);
 routes.get('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController_1.default.getEmergencyContact);
@@ -92,6 +93,7 @@ routes.delete('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['
 routes.post('/congregation', (0, permissions_1.is)(['ADMIN']), multer_1.uploadFile.single('image'), CongregationController_1.default.create);
 routes.delete('/congregation/:id', (0, permissions_1.is)(['ADMIN']), CongregationController_1.default.delete);
 routes.get('/congregations', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.list);
+routes.get('/congregations/toTransfer', (0, permissions_1.is)(['ADMIN_CONGREGATION']), CongregationController_1.default.getCongregationSystemToTransferPublisher);
 routes.put('/congregation/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.update);
 routes.put('/congregation/:congregation_id/photo', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), multer_1.uploadFile.single('image'), CongregationController_1.default.uploadCongregationPhoto);
 /* === Congregações auxiliares === */
