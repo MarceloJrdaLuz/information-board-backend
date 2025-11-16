@@ -92,6 +92,7 @@ routes.post('/publisher', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), Publ
 routes.delete('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.delete)
 routes.put('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.update)
 routes.patch('/publisher/:publisher_id/unlink-publisher', is(['ADMIN_CONGREGATION']), PublisherControllers.unlinkPublisherFromUser)
+routes.put('/publishers/transfer-congregation', is(['ADMIN_CONGREGATION']), PublisherControllers.transferPublishers)
 
 /* === Contatos de emergência === */
 routes.get('/emergencyContacts/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController.listByCongregation)
@@ -104,6 +105,7 @@ routes.delete('/emergencyContact/:emergencyContact_id', is(['ADMIN_CONGREGATION'
 routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), CongregationController.create)
 routes.delete('/congregation/:id', is(['ADMIN']), CongregationController.delete)
 routes.get('/congregations', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.list)
+routes.get('/congregations/toTransfer', is(['ADMIN_CONGREGATION']), CongregationController.getCongregationSystemToTransferPublisher)
 routes.put('/congregation/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.update)
 routes.put('/congregation/:congregation_id/photo', is(['ADMIN', 'ADMIN_CONGREGATION']), uploadFile.single('image'), CongregationController.uploadCongregationPhoto)
 

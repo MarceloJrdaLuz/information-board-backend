@@ -87,7 +87,7 @@ export class Publisher {
 
     @ManyToOne(() => GroupOverseers, { nullable: true, onDelete: "SET NULL" }) // Relacionamento Many-to-One opcional com GroupOverseers
     @JoinColumn({ name: 'group_overseers_id' })
-    groupOverseers: GroupOverseers
+    groupOverseers: GroupOverseers | null
 
     @ManyToOne(() => EmergencyContact, emergencyContact => emergencyContact.publishers, {
         nullable: true,

@@ -238,6 +238,17 @@ class CongregationController {
         return res.status(200).json(congregationsResponse)
     }
 
+    async getCongregationSystemToTransferPublisher(req: Request, res: Response) {
+        const congregations = await congregationRepository.find({
+            where: {
+                type: CongregationType.SYSTEM
+            },
+            select: ["name", "city", "circuit", "id"]
+        })
+
+        res.status(200).json(congregations)
+    }
+
     async getCongregation(req: QueryCustomRequest<QueryGetCongregationTypes>, res: Response) {
 
         const { number } = req.params
