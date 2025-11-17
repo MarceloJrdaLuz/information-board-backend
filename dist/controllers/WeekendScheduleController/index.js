@@ -16,6 +16,7 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const speakerRepository_1 = require("../../repositories/speakerRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
+const handleWeekend_1 = require("../../helpers/handleWeekend");
 class WeekendScheduleController {
     async create(req, res) {
         var _a, _b, _c, _d, _e;
@@ -215,13 +216,13 @@ class WeekendScheduleController {
             var _a;
             const date = (0, moment_1.default)(s.date, "YYYY-MM-DD");
             const month = months_1.monthNames[date.month()];
-            const externals = externalTalks.filter(et => (0, moment_1.default)(et.date).isSame(date, "day"));
+            const externals = (0, handleWeekend_1.filterExternalTalksForWeekend)(externalTalks, s.date);
             const assignments = hospitality.filter(assign => (0, moment_1.default)(assign.weekend.date).isSame(date, "day"));
             return {
                 id: s.id,
                 date: s.date,
                 month,
-                isCurrentWeek: today.isSame(date, "week"),
+                isCurrentWeek: (0, handleWeekend_1.isCurrentWeekend)(s.date),
                 isSpecial: s.isSpecial,
                 specialName: s.specialName,
                 chairman: s.chairman ? { name: s.chairman.nickname ? (_a = s.chairman) === null || _a === void 0 ? void 0 : _a.nickname : s.chairman.fullName } : null,
@@ -245,9 +246,13 @@ class WeekendScheduleController {
                     date: ext.date,
                     speaker: ext.speaker ? { name: ext.speaker.fullName } : null,
                     destinationCongregation: ext.destinationCongregation
-                        ? (0, normalize_1.normalize)(ext.destinationCongregation.city) === (0, normalize_1.normalize)(ext.destinationCongregation.name)
-                            ? `${(0, normalize_1.normalize)(ext.destinationCongregation.city)}`
-                            : `${(0, normalize_1.normalize)(ext.destinationCongregation.name)} - ${(0, normalize_1.normalize)(ext.destinationCongregation.city)}`
+                        ? {
+                            id: ext.destinationCongregation.id,
+                            name: ext.destinationCongregation.name,
+                            city: ext.destinationCongregation.city,
+                            dayMeetingPublic: ext.destinationCongregation.dayMeetingPublic,
+                            hourMeetingPublic: ext.destinationCongregation.hourMeetingPublic
+                        }
                         : null,
                     talk: ext.talk
                         ? { title: ext.talk.title, number: ext.talk.number }
@@ -260,7 +265,9 @@ class WeekendScheduleController {
                         completed: assign.completed,
                         group: (_a = assign.group) === null || _a === void 0 ? void 0 : _a.name,
                         host: ((_c = (_b = assign.group) === null || _b === void 0 ? void 0 : _b.host) === null || _c === void 0 ? void 0 : _c.nickname) ? (_e = (_d = assign.group) === null || _d === void 0 ? void 0 : _d.host) === null || _e === void 0 ? void 0 : _e.nickname : (_g = (_f = assign.group) === null || _f === void 0 ? void 0 : _f.host) === null || _g === void 0 ? void 0 : _g.fullName,
-                        members: ((_h = assign.group) === null || _h === void 0 ? void 0 : _h.members.map(m => m.fullName)) || []
+                        members: ((_h = assign.group) === null || _h === void 0 ? void 0 : _h.members)
+                            ? assign.group.members.map(m => m.nickname ? m.nickname : m.fullName)
+                            : []
                     });
                 })
             };
