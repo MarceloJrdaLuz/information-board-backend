@@ -16,6 +16,7 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const speakerRepository_1 = require("../../repositories/speakerRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
+const handleWeekend_1 = require("../../helpers/handleWeekend");
 class WeekendScheduleController {
     async create(req, res) {
         var _a, _b, _c, _d, _e;
@@ -215,13 +216,13 @@ class WeekendScheduleController {
             var _a;
             const date = (0, moment_1.default)(s.date, "YYYY-MM-DD");
             const month = months_1.monthNames[date.month()];
-            const externals = externalTalks.filter(et => (0, moment_1.default)(et.date).isSame(date, "day"));
+            const externals = (0, handleWeekend_1.filterExternalTalksForWeekend)(externalTalks, s.date);
             const assignments = hospitality.filter(assign => (0, moment_1.default)(assign.weekend.date).isSame(date, "day"));
             return {
                 id: s.id,
                 date: s.date,
                 month,
-                isCurrentWeek: today.isSame(date, "week"),
+                isCurrentWeek: (0, handleWeekend_1.isCurrentWeekend)(s.date),
                 isSpecial: s.isSpecial,
                 specialName: s.specialName,
                 chairman: s.chairman ? { name: s.chairman.nickname ? (_a = s.chairman) === null || _a === void 0 ? void 0 : _a.nickname : s.chairman.fullName } : null,
@@ -245,9 +246,13 @@ class WeekendScheduleController {
                     date: ext.date,
                     speaker: ext.speaker ? { name: ext.speaker.fullName } : null,
                     destinationCongregation: ext.destinationCongregation
-                        ? (0, normalize_1.normalize)(ext.destinationCongregation.city) === (0, normalize_1.normalize)(ext.destinationCongregation.name)
-                            ? `${(0, normalize_1.normalize)(ext.destinationCongregation.city)}`
-                            : `${(0, normalize_1.normalize)(ext.destinationCongregation.name)} - ${(0, normalize_1.normalize)(ext.destinationCongregation.city)}`
+                        ? {
+                            id: ext.destinationCongregation.id,
+                            name: ext.destinationCongregation.name,
+                            city: ext.destinationCongregation.city,
+                            dayMeetingPublic: ext.destinationCongregation.dayMeetingPublic,
+                            hourMeetingPublic: ext.destinationCongregation.hourMeetingPublic
+                        }
                         : null,
                     talk: ext.talk
                         ? { title: ext.talk.title, number: ext.talk.number }

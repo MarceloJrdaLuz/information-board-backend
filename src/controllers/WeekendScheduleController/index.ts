@@ -20,6 +20,7 @@ import {
   ParamsWeekendScheduleCreateTypes,
   ParamsWeekendScheduleTypes
 } from "./types"
+import { filterExternalTalksForWeekend, isCurrentWeekend } from "../../helpers/handleWeekend"
 
 class WeekendScheduleController {
   async create(req: CustomRequestPT<ParamsWeekendScheduleCreateTypes, BodyWeekendScheduleCreateTypes>, res: Response) {
@@ -251,13 +252,13 @@ class WeekendScheduleController {
     const mapped = schedules.map(s => {
       const date = moment(s.date, "YYYY-MM-DD")
       const month = monthNames[date.month()]
-      const externals = externalTalks.filter(et => moment(et.date).isSame(date, "day"))
+      const externals = filterExternalTalksForWeekend(externalTalks, s.date);
       const assignments = hospitality.filter(assign => moment(assign.weekend.date).isSame(date, "day"))
       return {
         id: s.id,
         date: s.date,
         month,
-        isCurrentWeek: today.isSame(date, "week"),
+        isCurrentWeek: isCurrentWeekend(s.date),
         isSpecial: s.isSpecial,
         specialName: s.specialName,
         chairman: s.chairman ? { name: s.chairman.nickname ? s.chairman?.nickname : s.chairman.fullName } : null,
@@ -281,9 +282,13 @@ class WeekendScheduleController {
           date: ext.date,
           speaker: ext.speaker ? { name: ext.speaker.fullName } : null,
           destinationCongregation: ext.destinationCongregation
-            ? normalize(ext.destinationCongregation.city) === normalize(ext.destinationCongregation.name)
-              ? `${normalize(ext.destinationCongregation.city)}`
-              : `${normalize(ext.destinationCongregation.name)} - ${normalize(ext.destinationCongregation.city)}`
+            ? {
+              id: ext.destinationCongregation.id,
+              name: ext.destinationCongregation.name,
+              city: ext.destinationCongregation.city,
+              dayMeetingPublic: ext.destinationCongregation.dayMeetingPublic,
+              hourMeetingPublic: ext.destinationCongregation.hourMeetingPublic
+            }
             : null,
           talk: ext.talk
             ? { title: ext.talk.title, number: ext.talk.number }
