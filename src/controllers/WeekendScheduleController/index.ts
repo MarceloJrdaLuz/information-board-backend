@@ -299,7 +299,9 @@ class WeekendScheduleController {
           completed: assign.completed,
           group: assign.group?.name,
           host: assign.group?.host?.nickname ? assign.group?.host?.nickname : assign.group?.host?.fullName,
-          members: assign.group?.members.map(m => m.fullName) || []
+          members: assign.group?.members
+            ? assign.group.members.map(m => m.nickname ? m.nickname : m.fullName)
+            : []
         }))
       }
     })
