@@ -84,12 +84,13 @@ class GroupController {
                     id: congregation_id
                 }
             },
+            relations: ["publishers"]
         })
 
         if (!groups) throw new NotFoundError(messageErrors.notFound.group)
 
         const groupWith = groups.map(group => {
-            const { id, name, number, groupOverseers } = group;
+            const { id, name, number, groupOverseers, publishers } = group;
 
             if (!groupOverseers) {
                 // Handle the case where groupOverseers is null
@@ -98,6 +99,7 @@ class GroupController {
                     name,
                     number,
                     groupOverseers: null,
+                    publishers
                 };
             }
 
@@ -113,6 +115,7 @@ class GroupController {
                         id: groupOverseersId ?? null,
                         congregation: null, // Set congregation to null if publisher is null
                     },
+                    publishers
                 };
             }
 
@@ -126,6 +129,7 @@ class GroupController {
                     id: groupOverseersId ?? null,
                     ...rest
                 },
+                publishers
             };
         });
 

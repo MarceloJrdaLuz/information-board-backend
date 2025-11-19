@@ -65,11 +65,12 @@ class GroupController {
                     id: congregation_id
                 }
             },
+            relations: ["publishers"]
         });
         if (!groups)
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.group);
         const groupWith = groups.map(group => {
-            const { id, name, number, groupOverseers } = group;
+            const { id, name, number, groupOverseers, publishers } = group;
             if (!groupOverseers) {
                 // Handle the case where groupOverseers is null
                 return {
@@ -77,6 +78,7 @@ class GroupController {
                     name,
                     number,
                     groupOverseers: null,
+                    publishers
                 };
             }
             const { id: groupOverseersId, publisher } = groupOverseers;
@@ -90,6 +92,7 @@ class GroupController {
                         id: groupOverseersId !== null && groupOverseersId !== void 0 ? groupOverseersId : null,
                         congregation: null, // Set congregation to null if publisher is null
                     },
+                    publishers
                 };
             }
             const { congregation: _, id: __, ...rest } = publisher;
@@ -101,6 +104,7 @@ class GroupController {
                     id: groupOverseersId !== null && groupOverseersId !== void 0 ? groupOverseersId : null,
                     ...rest
                 },
+                publishers
             };
         });
         res.status(200).json(groupWith);
