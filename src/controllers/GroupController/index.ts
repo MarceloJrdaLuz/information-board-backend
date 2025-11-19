@@ -119,7 +119,7 @@ class GroupController {
                 };
             }
 
-            const { congregation: _, id: __, ...rest } = publisher;
+            const { congregation: _, id: publisherId, ...rest } = publisher;
 
             return {
                 id,
@@ -127,6 +127,7 @@ class GroupController {
                 number,
                 groupOverseers: {
                     id: groupOverseersId ?? null,
+                    publisherId,
                     ...rest
                 },
                 publishers

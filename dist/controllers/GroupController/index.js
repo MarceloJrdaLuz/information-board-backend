@@ -95,13 +95,14 @@ class GroupController {
                     publishers
                 };
             }
-            const { congregation: _, id: __, ...rest } = publisher;
+            const { congregation: _, id: publisherId, ...rest } = publisher;
             return {
                 id,
                 name,
                 number,
                 groupOverseers: {
                     id: groupOverseersId !== null && groupOverseersId !== void 0 ? groupOverseersId : null,
+                    publisherId,
                     ...rest
                 },
                 publishers
