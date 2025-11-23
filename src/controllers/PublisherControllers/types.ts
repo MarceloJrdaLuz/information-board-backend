@@ -20,9 +20,9 @@ export interface BodyPublisherCreateTypes {
     fullName: string
     nickname?: string
     hope: Hope
-    dateImmersed?: Date
-    birthDate?: Date
-    startPioneer?: Date
+    dateImmersed?: string
+    birthDate?: string
+    startPioneer?: string
     gender: Gender
     privileges?: Privileges[]
     pioneerMonths: string[]
@@ -35,9 +35,9 @@ export interface BodyPublisherCreateTypes {
 export interface BodyPublisherUpdateTypes {
     fullName?: string
     nickname?: string
-    dateImmersed?: Date
-    startPioneer?: Date
-    birthDate?: Date
+    dateImmersed?: string
+    startPioneer?: string
+    birthDate?: string
     privileges?: Privileges[]
     pioneerMonths: string[]
     hope: Hope
