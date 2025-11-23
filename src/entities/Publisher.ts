@@ -57,14 +57,14 @@ export class Publisher {
     @Column({ type: 'text', nullable: true })
     address: string
 
-    @Column({ type: "timestamp", nullable: true })
-    dateImmersed: Date
+    @Column({ type: "date", nullable: true })
+    dateImmersed: string
 
-    @Column({ type: "timestamp", nullable: true })
-    birthDate: Date
+    @Column({ type: "date", nullable: true })
+    birthDate: string
 
-    @Column({ type: "timestamp", nullable: true })
-    startPioneer: Date
+    @Column({ type: "date", nullable: true })
+    startPioneer: string
 
     @Column({ type: 'simple-array', nullable: true })
     privileges: string[]

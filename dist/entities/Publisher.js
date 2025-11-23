@@ -78,16 +78,16 @@ __decorate([
     __metadata("design:type", String)
 ], Publisher.prototype, "address", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
-    __metadata("design:type", Date)
+    (0, typeorm_1.Column)({ type: "date", nullable: true }),
+    __metadata("design:type", String)
 ], Publisher.prototype, "dateImmersed", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
-    __metadata("design:type", Date)
+    (0, typeorm_1.Column)({ type: "date", nullable: true }),
+    __metadata("design:type", String)
 ], Publisher.prototype, "birthDate", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
-    __metadata("design:type", Date)
+    (0, typeorm_1.Column)({ type: "date", nullable: true }),
+    __metadata("design:type", String)
 ], Publisher.prototype, "startPioneer", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'simple-array', nullable: true }),
