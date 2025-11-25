@@ -41,6 +41,15 @@ class FormDataController {
                     });
                     return res.json({ publishers: speakers, talks, congregations });
                 }
+                case 'territoryHistory': {
+                    const publishers = await publisherRepository_1.publisherRepository.find({
+                        where: { congregation: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id } },
+                        relations: ["privilegesRelation", "privilegesRelation.privilege"],
+                        order: { fullName: "ASC" },
+                    });
+                    const fieldConductors = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Field Conductor"));
+                    return res.json(fieldConductors);
+                }
                 case 'externalTalks': {
                     const speakers = await speakerRepository_1.speakerRepository.find({
                         where: {
