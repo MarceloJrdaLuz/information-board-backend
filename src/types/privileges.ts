@@ -9,5 +9,6 @@ export enum Privileges{
     AUXILIARINDETERMINADO = 'Auxiliar Indeterminado', 
     ORADOR = "Orador", 
     PRESIDENTE = 'Presidente', 
-    LEITOR = 'Leitor'
+    LEITOR = 'Leitor', 
+    DIRIGENTECAMPO = 'Dirigente de Campo'
 }
