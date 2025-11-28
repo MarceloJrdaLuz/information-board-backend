@@ -250,14 +250,12 @@ class PublisherControler {
     }
     async getAssignmentPublisher(req, res) {
         const { publisher_id } = req.params;
-        console.log(publisher_id);
         const publisher = await publisherRepository_1.publisherRepository.findOne({
             where: {
                 id: publisher_id
             },
             relations: ["congregation"]
         });
-        console.log(publisher);
         if (!publisher) {
             throw new api_errors_1.BadRequestError(messageErrors_1.messageErrors.notFound.publisher);
         }
@@ -270,7 +268,6 @@ class PublisherControler {
             relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
             order: { date: "ASC" }
         });
-        console.log(assignmentsMeeting);
         const hospitality = await hospitalityAssignmentRepository_1.hospitalityAssignmentRepository.find({
             where: {
                 weekend: {
@@ -279,7 +276,6 @@ class PublisherControler {
             },
             relations: ['group', 'group.members', 'group.host', 'weekend']
         });
-        console.log(hospitality);
         const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
             where: {
                 speaker: {
@@ -291,7 +287,6 @@ class PublisherControler {
             },
             relations: ['destinationCongregation', 'talk']
         });
-        console.log(externalTalks);
         const filteredHospitality = hospitality.filter(h => {
             var _a, _b, _c, _d;
             // Verifica se o publisher é host OU membro do grupo

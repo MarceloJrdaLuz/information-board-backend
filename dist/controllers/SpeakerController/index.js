@@ -76,32 +76,34 @@ class SpeakerController {
         speaker.fullName = fullName !== null && fullName !== void 0 ? fullName : speaker.fullName;
         speaker.phone = phone !== null && phone !== void 0 ? phone : speaker.phone;
         speaker.address = address !== null && address !== void 0 ? address : speaker.address;
-        if (publisher_id) {
-            // Novo publisher enviado → atualizar dados e congregação do Speaker
-            const newPublisher = await publisherRepository_1.publisherRepository.findOne({
-                where: { id: publisher_id },
-                relations: ["congregation"],
-            });
-            if (!newPublisher)
-                throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.publisher);
-            // Atualiza dados do Speaker com o Publisher
-            speaker.fullName = newPublisher.fullName;
-            speaker.phone = newPublisher.phone;
-            speaker.address = newPublisher.address;
-            speaker.originCongregation = newPublisher.congregation;
-            speaker.publisher = newPublisher;
-        }
-        else {
-            // Sem publisher_id → desvincula publisher
-            speaker.publisher = null;
-            speaker.fullName = fullName !== null && fullName !== void 0 ? fullName : speaker.fullName;
-            speaker.phone = phone !== null && phone !== void 0 ? phone : speaker.phone;
-            speaker.address = address !== null && address !== void 0 ? address : speaker.address;
-            if (originCongregation_id) {
-                const newCongregation = await congregationRepository_1.congregationRepository.findOneBy({ id: originCongregation_id });
-                if (!newCongregation)
-                    throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.congregation);
-                speaker.originCongregation = newCongregation;
+        if (publisher_id !== undefined) {
+            if (publisher_id) {
+                // Novo publisher enviado → atualizar dados e congregação do Speaker
+                const newPublisher = await publisherRepository_1.publisherRepository.findOne({
+                    where: { id: publisher_id },
+                    relations: ["congregation"],
+                });
+                if (!newPublisher)
+                    throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.publisher);
+                // Atualiza dados do Speaker com o Publisher
+                speaker.fullName = newPublisher.fullName;
+                speaker.phone = newPublisher.phone;
+                speaker.address = newPublisher.address;
+                speaker.originCongregation = newPublisher.congregation;
+                speaker.publisher = newPublisher;
+            }
+            else {
+                // Sem publisher_id → desvincula publisher
+                speaker.publisher = null;
+                speaker.fullName = fullName !== null && fullName !== void 0 ? fullName : speaker.fullName;
+                speaker.phone = phone !== null && phone !== void 0 ? phone : speaker.phone;
+                speaker.address = address !== null && address !== void 0 ? address : speaker.address;
+                if (originCongregation_id) {
+                    const newCongregation = await congregationRepository_1.congregationRepository.findOneBy({ id: originCongregation_id });
+                    if (!newCongregation)
+                        throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.congregation);
+                    speaker.originCongregation = newCongregation;
+                }
             }
         }
         if (talk_ids !== undefined) {
