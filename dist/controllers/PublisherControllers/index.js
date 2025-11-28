@@ -250,12 +250,14 @@ class PublisherControler {
     }
     async getAssignmentPublisher(req, res) {
         const { publisher_id } = req.params;
+        console.log(publisher_id);
         const publisher = await publisherRepository_1.publisherRepository.findOne({
             where: {
                 id: publisher_id
             },
             relations: ["congregation"]
         });
+        console.log(publisher);
         if (!publisher) {
             throw new api_errors_1.BadRequestError(messageErrors_1.messageErrors.notFound.publisher);
         }
@@ -268,6 +270,7 @@ class PublisherControler {
             relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
             order: { date: "ASC" }
         });
+        console.log(assignmentsMeeting);
         const hospitality = await hospitalityAssignmentRepository_1.hospitalityAssignmentRepository.find({
             where: {
                 weekend: {
@@ -276,6 +279,7 @@ class PublisherControler {
             },
             relations: ['group', 'group.members', 'group.host', 'weekend']
         });
+        console.log(hospitality);
         const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
             where: {
                 speaker: {
@@ -287,6 +291,7 @@ class PublisherControler {
             },
             relations: ['destinationCongregation', 'talk']
         });
+        console.log(externalTalks);
         const filteredHospitality = hospitality.filter(h => {
             var _a, _b, _c, _d;
             // Verifica se o publisher é host OU membro do grupo
@@ -332,7 +337,7 @@ class PublisherControler {
         }).filter(Boolean);
         // 🔹 Mapeia designações externas
         const externalAssignments = externalTalks.map(e => {
-            var _a, _b, _c, _d;
+            var _a, _b, _c, _d, _e, _f;
             return ({
                 role: "Discurso Externo",
                 date: e.date,
@@ -341,8 +346,11 @@ class PublisherControler {
                 destinationCongregation: {
                     name: (_a = e.destinationCongregation) === null || _a === void 0 ? void 0 : _a.name,
                     city: (_b = e.destinationCongregation) === null || _b === void 0 ? void 0 : _b.city,
-                    dayMeetingPublic: (_c = e.destinationCongregation) === null || _c === void 0 ? void 0 : _c.dayMeetingPublic,
-                    hourMeetingPublic: (_d = e.destinationCongregation) === null || _d === void 0 ? void 0 : _d.hourMeetingPublic,
+                    address: e.destinationCongregation.address,
+                    latitude: (_c = e.destinationCongregation) === null || _c === void 0 ? void 0 : _c.latitude,
+                    longitude: (_d = e.destinationCongregation) === null || _d === void 0 ? void 0 : _d.longitude,
+                    dayMeetingPublic: (_e = e.destinationCongregation) === null || _e === void 0 ? void 0 : _e.dayMeetingPublic,
+                    hourMeetingPublic: (_f = e.destinationCongregation) === null || _f === void 0 ? void 0 : _f.hourMeetingPublic,
                 }
             });
         });

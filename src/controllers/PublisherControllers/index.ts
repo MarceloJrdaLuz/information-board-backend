@@ -313,6 +313,7 @@ class PublisherControler {
 
   async getAssignmentPublisher(req: ParamsCustomRequest<ParamsGetPublisherTypes>, res: Response) {
     const { publisher_id } = req.params
+    console.log(publisher_id)
 
     const publisher = await publisherRepository.findOne({
       where: {
@@ -320,7 +321,7 @@ class PublisherControler {
       },
       relations: ["congregation"]
     })
-
+    console.log(publisher)
     if (!publisher) {
       throw new BadRequestError(messageErrors.notFound.publisher)
     }
@@ -334,6 +335,7 @@ class PublisherControler {
       relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
       order: { date: "ASC" }
     })
+    console.log(assignmentsMeeting)
 
     const hospitality = await hospitalityAssignmentRepository.find({
       where: {
@@ -343,6 +345,7 @@ class PublisherControler {
       },
       relations: ['group', 'group.members', 'group.host', 'weekend']
     })
+    console.log(hospitality)
 
     const externalTalks = await externalTalkRepository.find({
       where: {
@@ -355,6 +358,7 @@ class PublisherControler {
       },
       relations: ['destinationCongregation', 'talk']
     })
+    console.log(externalTalks)
 
     const filteredHospitality = hospitality.filter(h =>
       // Verifica se o publisher é host OU membro do grupo
@@ -407,6 +411,9 @@ class PublisherControler {
       destinationCongregation: {
         name: e.destinationCongregation?.name,
         city: e.destinationCongregation?.city,
+        address: e.destinationCongregation.address,
+        latitude: e.destinationCongregation?.latitude,
+        longitude: e.destinationCongregation?.longitude,
         dayMeetingPublic: e.destinationCongregation?.dayMeetingPublic,
         hourMeetingPublic: e.destinationCongregation?.hourMeetingPublic,
       }
