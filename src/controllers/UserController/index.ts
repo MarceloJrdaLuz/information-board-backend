@@ -187,7 +187,7 @@ class UserController {
 
         const user = await userRepository.findOne({
             where: { id: userId },
-            relations: ['congregation', 'profile', 'publisher']
+            relations: ['congregation', 'congregation.speakerCoordinator', 'profile', 'publisher']
         })
 
         if (!user) {

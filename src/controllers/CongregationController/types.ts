@@ -6,6 +6,9 @@ export interface BodyCongregationCreateTypes {
     number: string
     city: string
     circuit: string
+    address?: string
+    latitude?: string
+    longitude?: string
     image_url?: string
 }
 export interface BodyAuxiliaryCongregationCreateTypes {
@@ -13,6 +16,9 @@ export interface BodyAuxiliaryCongregationCreateTypes {
     number: string
     city: string
     circuit: string
+    address?: string
+    latitude?: string
+    longitude?: string
     dayMeetingPublic: EndweekDays
     hourMeetingPublic: string
 }
@@ -21,6 +27,9 @@ export interface BodyCongregationUpdateTypes {
     name?: string
     city?: string
     circuit?: string
+    address?: string
+    latitude?: string
+    longitude?: string
     dayMeetingLifeAndMinistary?: MidweekDays
     dayMeetingPublic?: EndweekDays
     hourMeetingLifeAndMinistary?: string
@@ -38,6 +47,11 @@ export type QueryCongregationDeleteTypes = {
 
 export type ParamsCongregationDeleteTypes = {
     congregation_id: string
+}
+
+export type ParamsAddSpeakerCoordinatorTypes = {
+    congregation_id: string
+    publisher_id: string
 }
 
 export type QueryGetCongregationTypes = {

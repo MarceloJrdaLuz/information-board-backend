@@ -20,6 +20,7 @@ const Group_1 = require("./Group");
 const Territory_1 = require("./Territory");
 const EmergencyContact_1 = require("./EmergencyContact");
 const HospitalityWeekend_1 = require("./HospitalityWeekend");
+const Publisher_1 = require("./Publisher");
 var CongregationType;
 (function (CongregationType) {
     CongregationType["SYSTEM"] = "system";
@@ -47,6 +48,23 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'text' }),
     __metadata("design:type", String)
 ], Congregation.prototype, "circuit", void 0);
+__decorate([
+    (0, typeorm_1.Column)("decimal", { precision: 10, scale: 7, nullable: true }),
+    __metadata("design:type", Number)
+], Congregation.prototype, "latitude", void 0);
+__decorate([
+    (0, typeorm_1.Column)("decimal", { precision: 10, scale: 7, nullable: true }),
+    __metadata("design:type", Number)
+], Congregation.prototype, "longitude", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], Congregation.prototype, "address", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Publisher_1.Publisher, { nullable: true, onDelete: "SET NULL" }),
+    (0, typeorm_1.JoinColumn)({ name: "speaker_coordinator_id" }),
+    __metadata("design:type", Object)
+], Congregation.prototype, "speakerCoordinator", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: "enum",

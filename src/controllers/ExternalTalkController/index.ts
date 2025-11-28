@@ -110,7 +110,6 @@ class ExternalTalkController {
     ) {
         const { congregation_id } = req.params
         const { start, end } = req.query
-        console.log(start)
 
         if (!start || !end) {
             throw new BadRequestError("Start and end dates are required")
