@@ -332,7 +332,7 @@ class PublisherControler {
         }).filter(Boolean);
         // 🔹 Mapeia designações externas
         const externalAssignments = externalTalks.map(e => {
-            var _a, _b, _c, _d;
+            var _a, _b, _c, _d, _e, _f;
             return ({
                 role: "Discurso Externo",
                 date: e.date,
@@ -341,8 +341,11 @@ class PublisherControler {
                 destinationCongregation: {
                     name: (_a = e.destinationCongregation) === null || _a === void 0 ? void 0 : _a.name,
                     city: (_b = e.destinationCongregation) === null || _b === void 0 ? void 0 : _b.city,
-                    dayMeetingPublic: (_c = e.destinationCongregation) === null || _c === void 0 ? void 0 : _c.dayMeetingPublic,
-                    hourMeetingPublic: (_d = e.destinationCongregation) === null || _d === void 0 ? void 0 : _d.hourMeetingPublic,
+                    address: e.destinationCongregation.address,
+                    latitude: (_c = e.destinationCongregation) === null || _c === void 0 ? void 0 : _c.latitude,
+                    longitude: (_d = e.destinationCongregation) === null || _d === void 0 ? void 0 : _d.longitude,
+                    dayMeetingPublic: (_e = e.destinationCongregation) === null || _e === void 0 ? void 0 : _e.dayMeetingPublic,
+                    hourMeetingPublic: (_f = e.destinationCongregation) === null || _f === void 0 ? void 0 : _f.hourMeetingPublic,
                 }
             });
         });

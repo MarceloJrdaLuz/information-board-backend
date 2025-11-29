@@ -1,25 +1,53 @@
 import { Request, Response } from "express";
 import fs from 'fs-extra';
+import { In } from "typeorm";
 import { config } from "../../config";
 import { Congregation, CongregationType } from "../../entities/Congregation";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
+import { Speaker } from "../../entities/Speaker";
+import { validateCoordinates } from "../../functions/validateCoordinates";
+import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { messageErrors } from "../../helpers/messageErrors";
 import { decoder } from "../../middlewares/permissions";
 import { deleteFirebase, firebaseUpload } from "../../provider/firebaseStorage";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { groupRepository } from "../../repositories/groupRepository";
+import { publisherRepository } from "../../repositories/publisherRepository";
+import { speakerRepository } from "../../repositories/speakerRepository";
 import { userRepository } from "../../repositories/userRepository";
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest, QueryCustomRequest } from "../../types/customRequest";
 import { NormalizeFiles } from "../../types/normalizeFile";
-import { BodyAuxiliaryCongregationCreateTypes, BodyAuxiliaryCongregationUpdateTypes, BodyCongregationCreateTypes, BodyCongregationUpdateTypes, ParamsCongregationDeleteTypes, ParamsUpdateCongregationTypes, QueryCongregationDeleteTypes, QueryGetCongregationTypes } from "./types";
-import { speakerRepository } from "../../repositories/speakerRepository";
-import { In } from "typeorm";
-import { Speaker } from "../../entities/Speaker";
+import { BodyAuxiliaryCongregationCreateTypes, BodyAuxiliaryCongregationUpdateTypes, BodyCongregationCreateTypes, BodyCongregationUpdateTypes, ParamsAddSpeakerCoordinatorTypes, ParamsCongregationDeleteTypes, ParamsUpdateCongregationTypes, QueryCongregationDeleteTypes, QueryGetCongregationTypes } from "./types";
 
 
 class CongregationController {
     async create(req: CustomRequest<BodyCongregationCreateTypes>, res: Response) {
-        const { name, number, city, circuit, image_url } = req.body
+        const { name, number, city, circuit, image_url, address, latitude, longitude } = req.body
+
+        let latNum: number | undefined = undefined
+        let lngNum: number | undefined = undefined
+
+        if (latitude !== undefined) {
+            latNum = parseFloat(latitude)
+            if (isNaN(latNum)) {
+                throw new BadRequestError("Invalid latitude format")
+            }
+        }
+
+        if (longitude !== undefined) {
+            lngNum = parseFloat(longitude)
+            if (isNaN(lngNum)) {
+                throw new BadRequestError("Invalid longitude format")
+            }
+        }
+
+        if ((latitude != null && longitude == null) ||
+            (longitude != null && latitude == null)) {
+            throw new BadRequestError("Both latitude and longitude must be provided together")
+        }
+
+        if (latNum !== undefined && lngNum !== undefined) {
+            validateCoordinates(latNum, lngNum)
+        }
 
         const file = req.file as Express.Multer.File
 
@@ -36,10 +64,6 @@ class CongregationController {
             } else {
                 throw new BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
             }
-        }
-
-        if (congExists) {
-            throw new BadRequestError('Congregation already exists')
         }
 
         if (!file) {
@@ -72,6 +96,9 @@ class CongregationController {
                 number,
                 city,
                 circuit,
+                address,
+                latitude: latNum,
+                longitude: lngNum,
                 type: CongregationType.SYSTEM,
                 image_url: file?.url ?? "",
                 imageKey: file?.key
@@ -105,6 +132,9 @@ class CongregationController {
             name,
             circuit,
             city,
+            address,
+            latitude,
+            longitude,
             dayMeetingLifeAndMinistary,
             dayMeetingPublic,
             hourMeetingLifeAndMinistary,
@@ -124,8 +154,36 @@ class CongregationController {
             }
         });
 
-        if (existingCongregation) {
-            throw new BadRequestError(`A congregation with name "${name}" already exists in city "${city}".`);
+        if (existingCongregation && existingCongregation.id !== congregation_id) {
+            throw new BadRequestError(
+                `A congregation with name "${name}" already exists in city "${city}".`
+            );
+        }
+
+        let latNum: number | undefined = undefined
+        let lngNum: number | undefined = undefined
+
+        if (latitude !== undefined) {
+            latNum = parseFloat(latitude)
+            if (isNaN(latNum)) {
+                throw new BadRequestError("Invalid latitude format")
+            }
+        }
+
+        if (longitude !== undefined) {
+            lngNum = parseFloat(longitude)
+            if (isNaN(lngNum)) {
+                throw new BadRequestError("Invalid longitude format")
+            }
+        }
+
+        if ((latitude != null && longitude == null) ||
+            (longitude != null && latitude == null)) {
+            throw new BadRequestError("Both latitude and longitude must be provided together")
+        }
+
+        if (latNum !== undefined && lngNum !== undefined) {
+            validateCoordinates(latNum, lngNum)
         }
 
         if (congregation) {
@@ -133,6 +191,9 @@ class CongregationController {
             congregation.name = name ?? congregation?.name
             congregation.circuit = circuit ?? congregation?.circuit
             congregation.city = city ?? congregation?.city
+            congregation.address = address ?? congregation?.address
+            congregation.latitude = latNum ?? congregation?.latitude
+            congregation.longitude = lngNum ?? congregation?.longitude
             congregation.dayMeetingLifeAndMinistary = dayMeetingLifeAndMinistary ?? congregation?.dayMeetingLifeAndMinistary
             congregation.hourMeetingLifeAndMinistary = hourMeetingLifeAndMinistary ?? congregation?.hourMeetingLifeAndMinistary
             congregation.dayMeetingPublic = dayMeetingPublic ?? congregation?.dayMeetingPublic
@@ -315,7 +376,7 @@ class CongregationController {
     }
 
     async createAuxiliaryCongregation(req: CustomRequest<BodyAuxiliaryCongregationCreateTypes>, res: Response) {
-        const { name, number, city, circuit, dayMeetingPublic, hourMeetingPublic } = req.body
+        const { name, number, city, circuit, dayMeetingPublic, hourMeetingPublic, address, latitude, longitude } = req.body
 
         const requestUser = await decoder(req)
         const userReq = await userRepository.findOne({
@@ -339,8 +400,30 @@ class CongregationController {
             }
         }
 
-        if (congExists) {
-            throw new BadRequestError('Congregation already exists')
+        let latNum: number | undefined = undefined
+        let lngNum: number | undefined = undefined
+
+        if (latitude !== undefined) {
+            latNum = parseFloat(latitude)
+            if (isNaN(latNum)) {
+                throw new BadRequestError("Invalid latitude format")
+            }
+        }
+
+        if (longitude !== undefined) {
+            lngNum = parseFloat(longitude)
+            if (isNaN(lngNum)) {
+                throw new BadRequestError("Invalid longitude format")
+            }
+        }
+
+        if ((latitude != null && longitude == null) ||
+            (longitude != null && latitude == null)) {
+            throw new BadRequestError("Both latitude and longitude must be provided together")
+        }
+
+        if (latNum !== undefined && lngNum !== undefined) {
+            validateCoordinates(latNum, lngNum)
         }
 
         const newCongregation = congregationRepository.create({
@@ -348,6 +431,9 @@ class CongregationController {
             number,
             city,
             circuit,
+            address,
+            latitude: latNum,
+            longitude: lngNum,
             type: CongregationType.AUXILIARY,
             dayMeetingPublic,
             hourMeetingPublic,
@@ -360,7 +446,7 @@ class CongregationController {
 
     async updateAuxiliaryCongregation(req: CustomRequestPT<ParamsUpdateCongregationTypes, BodyAuxiliaryCongregationUpdateTypes>, res: Response) {
         const { congregation_id } = req.params
-        const { name, number, city, circuit, dayMeetingPublic, hourMeetingPublic } = req.body
+        const { name, number, city, circuit, dayMeetingPublic, hourMeetingPublic, address, latitude, longitude } = req.body
 
         const requestUser = await decoder(req)
         const userReq = await userRepository.findOne({
@@ -382,6 +468,32 @@ class CongregationController {
             ]
         });
 
+        let latNum: number | undefined = undefined
+        let lngNum: number | undefined = undefined
+
+        if (latitude !== undefined) {
+            latNum = parseFloat(latitude)
+            if (isNaN(latNum)) {
+                throw new BadRequestError("Invalid latitude format")
+            }
+        }
+
+        if (longitude !== undefined) {
+            lngNum = parseFloat(longitude)
+            if (isNaN(lngNum)) {
+                throw new BadRequestError("Invalid longitude format")
+            }
+        }
+
+        if ((latitude != null && longitude == null) ||
+            (longitude != null && latitude == null)) {
+            throw new BadRequestError("Both latitude and longitude must be provided together")
+        }
+
+        if (latNum !== undefined && lngNum !== undefined) {
+            validateCoordinates(latNum, lngNum)
+        }
+
         if (existingCongregation && existingCongregation.id !== congregation_id) {
             if (existingCongregation.number === number) {
                 throw new BadRequestError(`A congregation with number "${number}" already exists.`);
@@ -394,6 +506,9 @@ class CongregationController {
         congregation.number = number ?? congregation.number
         congregation.city = city ?? congregation.city
         congregation.circuit = circuit ?? congregation.circuit
+        congregation.address = address ?? congregation.address
+        congregation.latitude = latNum ?? congregation.latitude
+        congregation.longitude = lngNum ?? congregation.longitude
         congregation.type = congregation.type
         congregation.dayMeetingPublic = dayMeetingPublic ?? congregation.dayMeetingPublic
         congregation.hourMeetingPublic = hourMeetingPublic ?? congregation.hourMeetingPublic
@@ -427,6 +542,33 @@ class CongregationController {
             }
             await congregationRepository.remove(congregation)
         }
+        return res.status(200).end()
+    }
+
+    async addAndUpdateSpeakerCoordinator(req: ParamsCustomRequest<ParamsAddSpeakerCoordinatorTypes>, res: Response) {
+        const { congregation_id, publisher_id } = req.params
+
+        const congregation = await congregationRepository.findOne({
+            where: {
+                id: congregation_id,
+                type: CongregationType.SYSTEM
+            }
+        })
+
+        if (!congregation) {
+            throw new NotFoundError(messageErrors.notFound.congregation)
+        }
+
+        const publisher = await publisherRepository.findOneBy({ id: publisher_id })
+
+        if (!publisher) {
+            throw new NotFoundError(messageErrors.notFound.publisher)
+        }
+
+        congregation.speakerCoordinator = publisher
+
+        await congregationRepository.save(congregation)
+       
         return res.status(200).end()
     }
 }

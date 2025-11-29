@@ -7,6 +7,7 @@ import { Group } from "./Group"
 import { Territory } from "./Territory"
 import { EmergencyContact } from "./EmergencyContact"
 import { HospitalityWeekend } from "./HospitalityWeekend"
+import { Publisher } from "./Publisher"
 
 export enum CongregationType {
   SYSTEM = "system",   // congregações que usam o sistema normalmente
@@ -29,6 +30,19 @@ export class Congregation {
 
   @Column({ type: 'text' })
   circuit: string
+
+  @Column("decimal", { precision: 10, scale: 7, nullable: true })
+  latitude: number
+
+  @Column("decimal", { precision: 10, scale: 7, nullable: true })
+  longitude: number
+
+  @Column({ type: 'text', nullable: true })
+  address: string
+
+  @ManyToOne(() => Publisher, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "speaker_coordinator_id" })
+  speakerCoordinator?: Publisher | null;
 
   @Column({
     type: "enum",

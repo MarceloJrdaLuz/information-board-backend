@@ -91,31 +91,33 @@ class SpeakerController {
     speaker.phone = phone ?? speaker.phone
     speaker.address = address ?? speaker.address
 
-    if (publisher_id) {
-      // Novo publisher enviado → atualizar dados e congregação do Speaker
-      const newPublisher = await publisherRepository.findOne({
-        where: { id: publisher_id },
-        relations: ["congregation"],
-      })
-      if (!newPublisher) throw new NotFoundError(messageErrors.notFound.publisher)
+    if (publisher_id !== undefined) {
+      if (publisher_id) {
+        // Novo publisher enviado → atualizar dados e congregação do Speaker
+        const newPublisher = await publisherRepository.findOne({
+          where: { id: publisher_id },
+          relations: ["congregation"],
+        })
+        if (!newPublisher) throw new NotFoundError(messageErrors.notFound.publisher)
 
-      // Atualiza dados do Speaker com o Publisher
-      speaker.fullName = newPublisher.fullName
-      speaker.phone = newPublisher.phone
-      speaker.address = newPublisher.address
-      speaker.originCongregation = newPublisher.congregation
-      speaker.publisher = newPublisher
-    } else {
-      // Sem publisher_id → desvincula publisher
-      speaker.publisher = null
-      speaker.fullName = fullName ?? speaker.fullName
-      speaker.phone = phone ?? speaker.phone
-      speaker.address = address ?? speaker.address
+        // Atualiza dados do Speaker com o Publisher
+        speaker.fullName = newPublisher.fullName
+        speaker.phone = newPublisher.phone
+        speaker.address = newPublisher.address
+        speaker.originCongregation = newPublisher.congregation
+        speaker.publisher = newPublisher
+      } else {
+        // Sem publisher_id → desvincula publisher
+        speaker.publisher = null
+        speaker.fullName = fullName ?? speaker.fullName
+        speaker.phone = phone ?? speaker.phone
+        speaker.address = address ?? speaker.address
 
-      if (originCongregation_id) {
-        const newCongregation = await congregationRepository.findOneBy({ id: originCongregation_id })
-        if (!newCongregation) throw new NotFoundError(messageErrors.notFound.congregation)
-        speaker.originCongregation = newCongregation
+        if (originCongregation_id) {
+          const newCongregation = await congregationRepository.findOneBy({ id: originCongregation_id })
+          if (!newCongregation) throw new NotFoundError(messageErrors.notFound.congregation)
+          speaker.originCongregation = newCongregation
+        }
       }
     }
 

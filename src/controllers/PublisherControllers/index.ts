@@ -407,6 +407,9 @@ class PublisherControler {
       destinationCongregation: {
         name: e.destinationCongregation?.name,
         city: e.destinationCongregation?.city,
+        address: e.destinationCongregation.address,
+        latitude: e.destinationCongregation?.latitude,
+        longitude: e.destinationCongregation?.longitude,
         dayMeetingPublic: e.destinationCongregation?.dayMeetingPublic,
         hourMeetingPublic: e.destinationCongregation?.hourMeetingPublic,
       }

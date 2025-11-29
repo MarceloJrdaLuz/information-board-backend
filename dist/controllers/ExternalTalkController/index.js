@@ -79,7 +79,6 @@ class ExternalTalkController {
     async getExternalTalksByPeriod(req, res) {
         const { congregation_id } = req.params;
         const { start, end } = req.query;
-        console.log(start);
         if (!start || !end) {
             throw new api_errors_1.BadRequestError("Start and end dates are required");
         }
