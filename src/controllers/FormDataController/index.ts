@@ -9,6 +9,8 @@ import { talkRepository } from "../../repositories/talkRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
 import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupRepository"
+import { cleaningGroupRepository } from "../../repositories/cleaningGroupRepository"
+import { familyRepository } from "../../repositories/familyRepository"
 
 class FormDataController {
     async getFormData(req: Request, res: Response) {
@@ -179,6 +181,47 @@ class FormDataController {
                     })
 
                     return res.json({ publishers, hospitalityGroups })
+                }
+
+                case "cleaningGroup": {
+                    const publishers = await publisherRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq?.congregation.id
+                            }
+                        }
+                    })
+
+                    const cleaningGroups = await cleaningGroupRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq?.congregation.id
+                            }
+                        },
+                        relations: ["publishers"]
+                    })
+
+                    return res.json({ publishers, cleaningGroups })
+                }
+                case "family": {
+                    const publishers = await publisherRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq?.congregation.id
+                            }
+                        }
+                    })
+
+                    const families = await familyRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq?.congregation.id
+                            }
+                        },
+                        relations: ["responsible", "members"]
+                    })
+
+                    return res.json({ publishers, families })
                 }
 
                 default:

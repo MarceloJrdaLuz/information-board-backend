@@ -30,6 +30,11 @@ import DataProcessingAgreementController from "./controllers/DataProcessingAgree
 import FormDataController from "./controllers/FormDataController"
 import CronJobController from "./controllers/CronJobController"
 import VercelUsageController from "./controllers/VercelUsageController"
+import CleaningScheduleConfigController from "./controllers/CleaningScheduleConfigController"
+import CleaningGroupController from "./controllers/CleaningGroupController"
+import CleaningExceptionController from "./controllers/CleaningExceptionController"
+import CleaningScheduleController from "./controllers/CleaningScheduleController"
+import FamilyController from "./controllers/FamilyController"
 
 const routes = Router()
 
@@ -127,6 +132,39 @@ routes.delete('/hospitalityGroup/:hospitalityGroup_id', is(['ADMIN_CONGREGATION'
 /* === Categorias === */
 routes.post('/category', is(['ADMIN']), CategoryController.create)
 routes.put('/category/:category_id', is(['ADMIN']), CategoryController.update)
+
+/* === Limpeza configurações === */
+routes.post("/cleaning/schedule-config/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleConfigController.create);
+routes.get("/cleaning/schedule-config/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleConfigController.getByCongregation);
+routes.patch("/cleaning/schedule-config/:config_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleConfigController.update);
+routes.get("/cleaning/schedule-config/:config_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleConfigController.getOne);
+routes.delete("/cleaning/schedule-config/:config_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleConfigController.delete);
+
+/* === Grupos de Limpeza === */
+routes.post("/cleaning/groups/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.create);
+routes.get("/cleaning/groups/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.getGroups);
+routes.get("/cleaning/groups/:group_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.getGroup);
+routes.patch("/cleaning/groups/:group_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.update);
+routes.delete("/cleaning/groups/:groupId", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.delete);
+
+/* === Exceções de Limpeza === */
+routes.post("/cleaning-exception/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningExceptionController.create);
+routes.get("/cleaning-exception/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningExceptionController.getByCongregation);
+routes.get("/cleaning-exception/:group_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningExceptionController.getOne);
+routes.patch("/cleaning-exception/:group_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningExceptionController.update);
+routes.delete("/cleaning-exception/:groupId", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningExceptionController.delete);
+
+/* === Gerar programação de limpeza === */
+routes.post("/cleaning/generate-schedule/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController.generate);
+routes.get("/cleaning/schedule/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController.getFutureSchedules);
+
+/* === Famílias === */
+
+routes.post("/families/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'PUBLISHER_MANAGER']), FamilyController.create);
+routes.get("/families/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'PUBLISHER_MANAGER']), FamilyController.getFamilies);
+routes.get("/families/:family_id", is(['ADMIN_CONGREGATION', 'PUBLISHER_MANAGER']), FamilyController.getFamily);
+routes.patch("/families/:family_id", is(['ADMIN_CONGREGATION', 'PUBLISHER_MANAGER']), FamilyController.update);
+routes.delete("/families/:family_id", is(['ADMIN_CONGREGATION', 'PUBLISHER_MANAGER']), FamilyController.delete);
 
 /* === Documentos === */
 routes.post('/new-document', is(['ADMIN_CONGREGATION', 'DOCUMENTS_MANAGER']), uploadFile.single('file'), DocumentController.create)
