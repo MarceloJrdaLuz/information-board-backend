@@ -116,8 +116,11 @@ class CleaningScheduleController {
         });
         const schedulesProcessed = schedules.map(schedule => {
             const orderedPublishers = (0, organizePublishersByFamily_1.organizePublishersByFamily)(schedule.group.publishers);
+            const date = (0, dayjs_1.default)(schedule.date);
             return {
                 ...schedule,
+                weekdayNumber: date.isoWeekday(),
+                weekdayName: date.format("dddd"),
                 group: {
                     ...schedule.group,
                     publishers: orderedPublishers

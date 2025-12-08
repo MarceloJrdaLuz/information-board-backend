@@ -22,6 +22,7 @@ import { weekendScheduleRepository } from "../../repositories/weekendScheduleRep
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import { Privileges } from "../../types/privileges"
 import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
+import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository"
 
 interface UnifiedAssignment {
   role: string
@@ -335,6 +336,24 @@ class PublisherControler {
       order: { date: "ASC" }
     })
 
+    const cleaningSchedules = await cleaningScheduleRepository.find({
+      where: {
+        date: MoreThanOrEqual(moment().format("YYYY-MM-DD")),
+        group: {
+          publishers: {
+            id: publisher_id
+          }
+        }
+      },
+      relations: [
+        "group",
+        "group.publishers"
+      ],
+      order: {
+        date: "ASC"
+      }
+    });
+
     const hospitality = await hospitalityAssignmentRepository.find({
       where: {
         weekend: {
@@ -398,6 +417,12 @@ class PublisherControler {
       return undefined
     }).filter(Boolean)
 
+    // 🔹 Mapeia designações de limpeza
+    const cleaningAssignments = cleaningSchedules.map((c) => ({
+      role: "Limpeza do Salão",
+      date: c.date
+    }));
+
     // 🔹 Mapeia designações externas
     const externalAssignments = externalTalks.map(e => ({
       role: "Discurso Externo",
@@ -419,6 +444,7 @@ class PublisherControler {
       ...assignments as UnifiedAssignment[],
       ...hospitalityAssignments as UnifiedAssignment[],
       ...externalAssignments as UnifiedAssignment[],
+      ...cleaningAssignments as UnifiedAssignment[]
     ]
 
     // 🔹 Ordena por data
@@ -456,145 +482,145 @@ class PublisherControler {
   }
 
   async transferPublishers(
-  req: CustomRequestPT<{}, { publisherIds: string[]; newCongregationId: string }>,
-  res: Response
-) {
-  const { publisherIds, newCongregationId } = req.body
+    req: CustomRequestPT<{}, { publisherIds: string[]; newCongregationId: string }>,
+    res: Response
+  ) {
+    const { publisherIds, newCongregationId } = req.body
 
-  if (!Array.isArray(publisherIds) || publisherIds.length === 0) {
-    throw new BadRequestError("You must send at least one publisherId")
-  }
-
-  if (!newCongregationId) {
-    throw new BadRequestError("New congregation is required")
-  }
-
-  const newCongregation = await congregationRepository.findOne({
-    where: {
-      id: newCongregationId,
-      type: CongregationType.SYSTEM,
-    },
-  })
-
-  if (!newCongregation) {
-    throw new BadRequestError("New congregation does not exist or is not type SYSTEM")
-  }
-
-  const results: any[] = []
-
-  await publisherRepository.manager.transaction(async (manager) => {
-    const txPublisherRepo = manager.getRepository(Publisher)
-    const txSpeakerRepo = manager.getRepository(Speaker)
-    const txGroupOverseersRepo = manager.getRepository(GroupOverseers)
-    const txHospitalityGroupRepo = manager.getRepository(HospitalityGroup)
-    const txUserRepo = manager.getRepository(User)
-
-    for (const publisher_id of publisherIds) {
-      const txPublisher = await txPublisherRepo.findOne({
-        where: { id: publisher_id },
-        relations: [
-          "group",
-          "hospitalityGroup",
-          "user",
-          "emergencyContact",
-          "congregation",
-        ],
-      })
-
-      if (!txPublisher) {
-        results.push({
-          publisherId: publisher_id,
-          status: "not_found",
-        })
-        continue
-      }
-
-      // Já pertence à mesma congregação
-      if (txPublisher.congregation?.id === newCongregationId) {
-        results.push({
-          publisherId: publisher_id,
-          status: "already_in_congregation",
-        })
-        continue
-      }
-
-      // === LIMPEZA DAS RELAÇÕES ===
-
-      // 1 — Grupo
-      txPublisher.group = null
-
-      // 2 — Hospitality Group como host
-      const hostGroups = await txHospitalityGroupRepo.find({
-        where: { host: { id: txPublisher.id } },
-      })
-
-      for (const hg of hostGroups) {
-        hg.host = null
-        await txHospitalityGroupRepo.save(hg)
-      }
-
-      if (txPublisher.hospitality_group_id) {
-        txPublisher.hospitality_group_id = null
-      }
-      txPublisher.hospitalityGroup = null
-
-      // 3 — Emergency contact
-      if (txPublisher.emergencyContact) {
-        txPublisher.emergencyContact = null
-      }
-
-      // 4 — Remove group overseers
-      const overseersDeleted = await txGroupOverseersRepo.delete({
-        publisher: { id: txPublisher.id } as any,
-      })
-
-      // 5 — Update user congregation
-      let userUpdated = false
-      if (txPublisher.user) {
-        const txUser = await txUserRepo.findOne({
-          where: { id: txPublisher.user.id },
-        })
-        if (txUser) {
-          txUser.congregation = { id: newCongregationId } as any
-          await txUserRepo.save(txUser)
-          userUpdated = true
-        }
-      }
-
-      // 6 — Speakers
-      const speakers = await txSpeakerRepo.find({
-        where: { publisher: { id: txPublisher.id } },
-      })
-
-      let speakerUpdatedCount = 0
-      for (const sp of speakers) {
-        sp.originCongregation = { id: newCongregationId } as any
-        sp.publisher = null
-        await txSpeakerRepo.save(sp)
-        speakerUpdatedCount++
-      }
-
-      // 7 — Define nova congregation
-      txPublisher.congregation = { id: newCongregationId } as any
-      txPublisher.groupOverseers = null
-
-      await txPublisherRepo.save(txPublisher)
-
-      results.push({
-        publisherId: txPublisher.id,
-        status: "transferred",
-        overseersRemoved: overseersDeleted.affected ?? 0,
-        userUpdated,
-        speakersUpdated: speakerUpdatedCount,
-      })
+    if (!Array.isArray(publisherIds) || publisherIds.length === 0) {
+      throw new BadRequestError("You must send at least one publisherId")
     }
-  })
 
-  return res.json({
-    message: "Publishers processed.",
-    results,
-  })
-}
+    if (!newCongregationId) {
+      throw new BadRequestError("New congregation is required")
+    }
+
+    const newCongregation = await congregationRepository.findOne({
+      where: {
+        id: newCongregationId,
+        type: CongregationType.SYSTEM,
+      },
+    })
+
+    if (!newCongregation) {
+      throw new BadRequestError("New congregation does not exist or is not type SYSTEM")
+    }
+
+    const results: any[] = []
+
+    await publisherRepository.manager.transaction(async (manager) => {
+      const txPublisherRepo = manager.getRepository(Publisher)
+      const txSpeakerRepo = manager.getRepository(Speaker)
+      const txGroupOverseersRepo = manager.getRepository(GroupOverseers)
+      const txHospitalityGroupRepo = manager.getRepository(HospitalityGroup)
+      const txUserRepo = manager.getRepository(User)
+
+      for (const publisher_id of publisherIds) {
+        const txPublisher = await txPublisherRepo.findOne({
+          where: { id: publisher_id },
+          relations: [
+            "group",
+            "hospitalityGroup",
+            "user",
+            "emergencyContact",
+            "congregation",
+          ],
+        })
+
+        if (!txPublisher) {
+          results.push({
+            publisherId: publisher_id,
+            status: "not_found",
+          })
+          continue
+        }
+
+        // Já pertence à mesma congregação
+        if (txPublisher.congregation?.id === newCongregationId) {
+          results.push({
+            publisherId: publisher_id,
+            status: "already_in_congregation",
+          })
+          continue
+        }
+
+        // === LIMPEZA DAS RELAÇÕES ===
+
+        // 1 — Grupo
+        txPublisher.group = null
+
+        // 2 — Hospitality Group como host
+        const hostGroups = await txHospitalityGroupRepo.find({
+          where: { host: { id: txPublisher.id } },
+        })
+
+        for (const hg of hostGroups) {
+          hg.host = null
+          await txHospitalityGroupRepo.save(hg)
+        }
+
+        if (txPublisher.hospitality_group_id) {
+          txPublisher.hospitality_group_id = null
+        }
+        txPublisher.hospitalityGroup = null
+
+        // 3 — Emergency contact
+        if (txPublisher.emergencyContact) {
+          txPublisher.emergencyContact = null
+        }
+
+        // 4 — Remove group overseers
+        const overseersDeleted = await txGroupOverseersRepo.delete({
+          publisher: { id: txPublisher.id } as any,
+        })
+
+        // 5 — Update user congregation
+        let userUpdated = false
+        if (txPublisher.user) {
+          const txUser = await txUserRepo.findOne({
+            where: { id: txPublisher.user.id },
+          })
+          if (txUser) {
+            txUser.congregation = { id: newCongregationId } as any
+            await txUserRepo.save(txUser)
+            userUpdated = true
+          }
+        }
+
+        // 6 — Speakers
+        const speakers = await txSpeakerRepo.find({
+          where: { publisher: { id: txPublisher.id } },
+        })
+
+        let speakerUpdatedCount = 0
+        for (const sp of speakers) {
+          sp.originCongregation = { id: newCongregationId } as any
+          sp.publisher = null
+          await txSpeakerRepo.save(sp)
+          speakerUpdatedCount++
+        }
+
+        // 7 — Define nova congregation
+        txPublisher.congregation = { id: newCongregationId } as any
+        txPublisher.groupOverseers = null
+
+        await txPublisherRepo.save(txPublisher)
+
+        results.push({
+          publisherId: txPublisher.id,
+          status: "transferred",
+          overseersRemoved: overseersDeleted.affected ?? 0,
+          userUpdated,
+          speakersUpdated: speakerUpdatedCount,
+        })
+      }
+    })
+
+    return res.json({
+      message: "Publishers processed.",
+      results,
+    })
+  }
 }
 
 export default new PublisherControler()

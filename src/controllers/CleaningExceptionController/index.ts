@@ -29,6 +29,18 @@ class CleaningExceptionController {
             throw new NotFoundError("Congregation not found");
         }
 
+        const alreadyExists = await cleaningExceptionRepository.findOne({
+            where: {
+                date,
+                congregation: { id: congregation_id }
+            }
+        });
+
+        if (alreadyExists) {
+            throw new BadRequestError("Exception cleaning already exists");
+        }
+
+
         const exception = cleaningExceptionRepository.create({
             date,
             reason,
@@ -68,9 +80,9 @@ class CleaningExceptionController {
 
     async update(req: ParamsCustomRequest<ParamsUpdateCleaningException>, res: Response) {
         const { exception_id } = req.params;
-        const data = req.body 
+        const data = req.body
 
-        const exception = await cleaningExceptionRepository.findOne({ where: { id:exception_id } });
+        const exception = await cleaningExceptionRepository.findOne({ where: { id: exception_id } });
 
         if (!exception) {
             throw new NotFoundError("Cleaning exception not found");

@@ -141,14 +141,19 @@ class CleaningScheduleController {
         const schedulesProcessed = schedules.map(schedule => {
             const orderedPublishers = organizePublishersByFamily(schedule.group.publishers);
 
+            const date = dayjs(schedule.date);
+
             return {
                 ...schedule,
+                weekdayNumber: date.isoWeekday(),            // 1 = segunda, 7 = domingo
+                weekdayName: date.format("dddd"),            // "quarta-feira"
                 group: {
                     ...schedule.group,
                     publishers: orderedPublishers
                 }
             };
         });
+
 
         return res.status(200).json({ schedules: schedulesProcessed });
     }

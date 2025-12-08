@@ -16,6 +16,15 @@ class CleaningExceptionController {
         if (!congregation) {
             throw new api_errors_1.NotFoundError("Congregation not found");
         }
+        const alreadyExists = await cleaningExceptionRepository_1.cleaningExceptionRepository.findOne({
+            where: {
+                date,
+                congregation: { id: congregation_id }
+            }
+        });
+        if (alreadyExists) {
+            throw new api_errors_1.BadRequestError("Exception cleaning already exists");
+        }
         const exception = cleaningExceptionRepository_1.cleaningExceptionRepository.create({
             date,
             reason,
