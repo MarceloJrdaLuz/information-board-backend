@@ -24,6 +24,7 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 const privileges_1 = require("../../types/privileges");
+const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
 class PublisherControler {
     async create(req, res) {
         const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContact_id } = req.body;
@@ -268,6 +269,23 @@ class PublisherControler {
             relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
             order: { date: "ASC" }
         });
+        const cleaningSchedules = await cleaningScheduleRepository_1.cleaningScheduleRepository.find({
+            where: {
+                date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD")),
+                group: {
+                    publishers: {
+                        id: publisher_id
+                    }
+                }
+            },
+            relations: [
+                "group",
+                "group.publishers"
+            ],
+            order: {
+                date: "ASC"
+            }
+        });
         const hospitality = await hospitalityAssignmentRepository_1.hospitalityAssignmentRepository.find({
             where: {
                 weekend: {
@@ -330,6 +348,11 @@ class PublisherControler {
             }
             return undefined;
         }).filter(Boolean);
+        // 🔹 Mapeia designações de limpeza
+        const cleaningAssignments = cleaningSchedules.map((c) => ({
+            role: "Limpeza do Salão",
+            date: c.date
+        }));
         // 🔹 Mapeia designações externas
         const externalAssignments = externalTalks.map(e => {
             var _a, _b, _c, _d, _e, _f;
@@ -353,6 +376,7 @@ class PublisherControler {
             ...assignments,
             ...hospitalityAssignments,
             ...externalAssignments,
+            ...cleaningAssignments
         ];
         // 🔹 Ordena por data
         allAssignments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

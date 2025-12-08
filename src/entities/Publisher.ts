@@ -6,6 +6,7 @@ import { GroupOverseers } from "./GroupOverseers"
 import { HospitalityGroup } from "./HospitalityGroup."
 import { User } from "./User"
 import { PublisherPrivilege } from "./PublisherPrivilege"
+import { Family } from "./Family"
 
 export enum Gender {
     Masculino = "Masculino",
@@ -33,6 +34,17 @@ export class Publisher {
 
     @Column({ type: 'text', nullable: true })
     nickname: string
+
+    @ManyToOne(() => Family, family => family.members, {
+        nullable: true,
+        onDelete: "SET NULL"
+    })
+    @JoinColumn({ name: "family_id" })
+    family: Family | null;
+
+    @Column({ type: "uuid", nullable: true })
+    family_id: string | null;
+
 
     @Column({ type: "enum", enum: Hope, default: Hope.OutrasOvelhas })
     hope: Hope

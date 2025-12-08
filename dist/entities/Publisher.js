@@ -18,6 +18,7 @@ const GroupOverseers_1 = require("./GroupOverseers");
 const HospitalityGroup_1 = require("./HospitalityGroup.");
 const User_1 = require("./User");
 const PublisherPrivilege_1 = require("./PublisherPrivilege");
+const Family_1 = require("./Family");
 var Gender;
 (function (Gender) {
     Gender["Masculino"] = "Masculino";
@@ -49,6 +50,18 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)
 ], Publisher.prototype, "nickname", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Family_1.Family, family => family.members, {
+        nullable: true,
+        onDelete: "SET NULL"
+    }),
+    (0, typeorm_1.JoinColumn)({ name: "family_id" }),
+    __metadata("design:type", Object)
+], Publisher.prototype, "family", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "uuid", nullable: true }),
+    __metadata("design:type", Object)
+], Publisher.prototype, "family_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "enum", enum: Hope, default: Hope.OutrasOvelhas }),
     __metadata("design:type", String)

@@ -41,7 +41,7 @@ class VercelUsageController {
             )
         }, 0)
 
-        const percent = ((total / 100000) * 100).toFixed(2)
+        const percent = ((total / 1000000) * 100).toFixed(2)
 
         // breakdown por projeto
         const breakdown = data.data
@@ -78,7 +78,7 @@ class VercelUsageController {
         return res.status(200).json({
             total_invocations: total,
             percent_used: percent,
-            limit: 100000,
+            limit: 1000000,
             breakdown: breakdownFormatted,
             daily
         })

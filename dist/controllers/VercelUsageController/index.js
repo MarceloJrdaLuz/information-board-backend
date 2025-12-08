@@ -27,7 +27,7 @@ class VercelUsageController {
                 (day.function_invocation_successful_count || 0) +
                 (day.function_invocation_error_count || 0));
         }, 0);
-        const percent = ((total / 100000) * 100).toFixed(2);
+        const percent = ((total / 1000000) * 100).toFixed(2);
         // breakdown por projeto
         const breakdown = data.data
             .flatMap((d) => d.breakdown.function_invocations)
@@ -57,7 +57,7 @@ class VercelUsageController {
         return res.status(200).json({
             total_invocations: total,
             percent_used: percent,
-            limit: 100000,
+            limit: 1000000,
             breakdown: breakdownFormatted,
             daily
         });

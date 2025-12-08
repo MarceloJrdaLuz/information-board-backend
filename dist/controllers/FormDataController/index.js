@@ -10,6 +10,8 @@ const talkRepository_1 = require("../../repositories/talkRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 const hospitalityGroupRepository_1 = require("../../repositories/hospitalityGroupRepository");
+const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepository");
+const familyRepository_1 = require("../../repositories/familyRepository");
 class FormDataController {
     async getFormData(req, res) {
         const requestUser = await (0, permissions_1.decoder)(req);
@@ -145,6 +147,42 @@ class FormDataController {
                         relations: ["host", "members"]
                     });
                     return res.json({ publishers, hospitalityGroups });
+                }
+                case "cleaningGroup": {
+                    const publishers = await publisherRepository_1.publisherRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id
+                            }
+                        }
+                    });
+                    const cleaningGroups = await cleaningGroupRepository_1.cleaningGroupRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id
+                            }
+                        },
+                        relations: ["publishers"]
+                    });
+                    return res.json({ publishers, cleaningGroups });
+                }
+                case "family": {
+                    const publishers = await publisherRepository_1.publisherRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id
+                            }
+                        }
+                    });
+                    const families = await familyRepository_1.familyRepository.find({
+                        where: {
+                            congregation: {
+                                id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id
+                            }
+                        },
+                        relations: ["responsible", "members"]
+                    });
+                    return res.json({ publishers, families });
                 }
                 default:
                     return res.status(400).json({ message: "Unknown form" });

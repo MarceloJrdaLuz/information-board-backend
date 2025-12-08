@@ -13,6 +13,8 @@ exports.messageErrors = {
         report: "Report was not found",
         group: "Group was not found",
         groupOverseers: "GroupOverseers was not found",
+        cleaningGroup: "Cleaning group was not found",
+        cleaningException: "Cleaning exception was not found",
         permission: "Permission was not found",
         notice: "Notice was not found",
         role: "Role was not found",
