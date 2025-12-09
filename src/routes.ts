@@ -35,6 +35,7 @@ import CleaningGroupController from "./controllers/CleaningGroupController"
 import CleaningExceptionController from "./controllers/CleaningExceptionController"
 import CleaningScheduleController from "./controllers/CleaningScheduleController"
 import FamilyController from "./controllers/FamilyController"
+import { verifyGitHubCron } from "./middlewares/gitHubCronAuth"
 
 const routes = Router()
 
@@ -280,7 +281,7 @@ routes.get("/consent/congregation/:congregation_id", is(['ADMIN_CONGREGATION']),
 routes.get('/form-data', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'TALK_MANAGER']), FormDataController.getFormData)
 
 /* === Cron Jobs === */
-routes.get('/deleteExpiredNotices', verifyCronSecret, CronJobController.deleteExpiredNotices)
+routes.get('/deleteExpiredNotices', verifyGitHubCron, CronJobController.deleteExpiredNotices)
 routes.get('/reportsCleanUp', verifyCronSecret, CronJobController.reportsCleanUp)
 routes.get('/backup', verifyCronSecret, CronJobController.backup)
 routes.get("/usage", is(["ADMIN"]), VercelUsageController.getUsage);

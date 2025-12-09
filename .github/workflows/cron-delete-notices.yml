@@ -1,0 +1,31 @@
+name: Delete Expired Notices
+
+on:
+  schedule:
+    - cron: '0 4 * * *'  # todo dia à 1 da manhã
+  workflow_dispatch:      # permite disparar manualmente
+
+jobs:
+  delete-expired-notices:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call Delete Expired Notices Route
+        id: call_api
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST ${{ secrets.API_URL }}/cron/delete-expired-notices \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET_GITHUB }}" \
+            -H "Content-Type: application/json")
+          
+          # separa corpo da resposta e status code
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          STATUS=$(echo "$RESPONSE" | tail -n1)
+
+          echo "Status code: $STATUS"
+          echo "Response body: $BODY"
+
+          # falha se status não for 2xx
+          if [[ "$STATUS" -lt 200 ]] || [[ "$STATUS" -ge 300 ]]; then
+            echo "❌ API returned error"
+            exit 1
+          fi
