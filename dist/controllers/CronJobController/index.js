@@ -13,12 +13,10 @@ const meetingAssistanceRepository_1 = require("../../repositories/meetingAssista
 const mailer_1 = __importDefault(require("../../modules/mailer"));
 const child_process_1 = require("child_process");
 const config_1 = require("../../config");
-const data_source_1 = require("../../data-source");
-const Notice_1 = require("../../entities/Notice");
+
 class CronJobController {
     async deleteExpiredNotices(req, res) {
-        const dataSource = await (0, data_source_1.initializeAppDataSource)();
-        const noticeRepository = dataSource.getRepository(Notice_1.Notice);
+        
         const startOfToday = (0, moment_timezone_1.default)().startOf('day').toDate();
         const expiredNotices = await noticeRepository.find({
             where: {
