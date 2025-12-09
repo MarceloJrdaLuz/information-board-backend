@@ -2,7 +2,7 @@ name: Database Backup
 
 on:
   schedule:
-    - - cron: "0 2 20 * *"   # todo dia 20 de cada mês às 02:00 UTC
+    - cron: "0 2 20 * *"   # todo dia 20 de cada mês às 02:00 UTC
   workflow_dispatch:         # botão manual no GitHub
 
 jobs:
