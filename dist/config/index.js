@@ -22,7 +22,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.config = void 0;
 const dotenv = __importStar(require("dotenv"));
@@ -41,11 +41,12 @@ exports.config = {
     google_storage_key: (_h = process.env.GOOGLE_STORAGE_KEY) !== null && _h !== void 0 ? _h : "",
     environment: (_j = process.env.ENVIRONMENT) !== null && _j !== void 0 ? _j : "",
     cron_secret: (_k = process.env.CRON_SECRET) !== null && _k !== void 0 ? _k : "",
-    db_user: (_l = process.env.DB_USER) !== null && _l !== void 0 ? _l : "",
-    db_host: (_m = process.env.DB_HOST) !== null && _m !== void 0 ? _m : "",
-    db_port: (_o = process.env.DB_PORT) !== null && _o !== void 0 ? _o : "",
-    db_name: (_p = process.env.DB_NAME) !== null && _p !== void 0 ? _p : "",
-    db_pass: (_q = process.env.DB_PASS) !== null && _q !== void 0 ? _q : "",
-    email_backup: (_r = process.env.EMAIL_BACKUP) !== null && _r !== void 0 ? _r : "",
-    vercel_token: (_s = process.env.VERCEL_TOKEN) !== null && _s !== void 0 ? _s : ""
+    cron_secret_github: (_l = process.env.CRON_SECRET_GITHUB) !== null && _l !== void 0 ? _l : "",
+    db_user: (_m = process.env.DB_USER) !== null && _m !== void 0 ? _m : "",
+    db_host: (_o = process.env.DB_HOST) !== null && _o !== void 0 ? _o : "",
+    db_port: (_p = process.env.DB_PORT) !== null && _p !== void 0 ? _p : "",
+    db_name: (_q = process.env.DB_NAME) !== null && _q !== void 0 ? _q : "",
+    db_pass: (_r = process.env.DB_PASS) !== null && _r !== void 0 ? _r : "",
+    email_backup: (_s = process.env.EMAIL_BACKUP) !== null && _s !== void 0 ? _s : "",
+    vercel_token: (_t = process.env.VERCEL_TOKEN) !== null && _t !== void 0 ? _t : ""
 };
