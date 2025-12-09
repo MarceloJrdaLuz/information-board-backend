@@ -1,0 +1,38 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: "0 2 * * *"     # automático
+  workflow_dispatch:         # botão manual no GitHub
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create backup
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+        run: |
+          pg_dump "$DB_URL" > backup.sql
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install mailer deps
+        run: npm install nodemailer
+
+      - name: Send email with backup
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: node .github/scripts/send-backup.js
