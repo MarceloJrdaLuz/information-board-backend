@@ -242,6 +242,7 @@ routes.get("/consent/congregation/:congregation_id", (0, permissions_1.is)(['ADM
 routes.get('/form-data', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'TALK_MANAGER']), FormDataController_1.default.getFormData);
 /* === Cron Jobs === */
 routes.get('/deleteExpiredNotices', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.deleteExpiredNotices);
+routes.delete('/cron/clean-old-schedules', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.cleanOldData);
 routes.get('/reportsCleanUp', permissions_1.verifyCronSecret, CronJobController_1.default.reportsCleanUp);
 routes.get('/backup', permissions_1.verifyCronSecret, CronJobController_1.default.backup);
 routes.get("/usage", (0, permissions_1.is)(["ADMIN"]), VercelUsageController_1.default.getUsage);

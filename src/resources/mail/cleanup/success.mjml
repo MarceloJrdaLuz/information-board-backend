@@ -1,0 +1,26 @@
+<mjml>
+  <mj-body background-color="#83c5be">
+    <mj-section background-color="white">
+      <mj-column background-color="white">
+        
+        <mj-column background-color="#178582" width="100%">
+          <mj-image align="left" width="100px" src="https://quadrodeanuncios.vercel.app/images/miniatura.png" />
+        </mj-column>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">
+          Olá,
+        </mj-text>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">
+          A limpeza automática das programações foi concluída com sucesso.
+        </mj-text>
+
+        <mj-text font-size="14px" color="#444" font-family="helvetica">
+          <b>Registros removidos:</b> {{deleted}} <br/>
+          <b>Mais antigos que:</b> {{limitDate}}
+        </mj-text>
+
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

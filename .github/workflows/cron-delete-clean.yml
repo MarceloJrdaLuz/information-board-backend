@@ -1,0 +1,16 @@
+name: Clean old schedules
+
+on:
+  schedule:
+    - cron: '0 4 10 * *'  # todo dia 1º do mês às 01:00 BRT
+  workflow_dispatch:
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cleanup route
+        run: |
+          curl -s -L -X DELETE ${{ secrets.API_URL }}/cron/clean-old-schedules \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET_GITHUB }}" \
+            -H "Cache-Control: no-cache"

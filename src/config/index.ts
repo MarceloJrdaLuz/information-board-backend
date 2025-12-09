@@ -22,8 +22,8 @@ export const config: {
     db_port: string, 
     db_name: string, 
     db_pass: string, 
-    email_backup: string
-    vercel_token: string
+    email_backup: string,
+    vercel_token: string, 
 } = {
     app_url: process.env.APP_URL ?? "",
     storage_type: process.env.STORAGE_TYPE ?? "",

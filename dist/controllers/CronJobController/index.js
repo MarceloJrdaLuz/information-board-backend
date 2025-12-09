@@ -14,6 +14,9 @@ const meetingAssistanceRepository_1 = require("../../repositories/meetingAssista
 const mailer_1 = __importDefault(require("../../modules/mailer"));
 const child_process_1 = require("child_process");
 const config_1 = require("../../config");
+const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
+const dayjs_1 = __importDefault(require("dayjs"));
+const cleaningExceptionRepository_1 = require("../../repositories/cleaningExceptionRepository");
 class CronJobController {
     async deleteExpiredNotices(req, res) {
         const startOfToday = (0, moment_timezone_1.default)().startOf('day').toDate();
@@ -94,6 +97,56 @@ class CronJobController {
                 res.send({ message: 'Backup successfully emailed' });
             });
         });
+    }
+    async cleanOldData(req, res) {
+        var _a, _b;
+        const scheduleLimitDate = (0, dayjs_1.default)().subtract(12, "month").format("YYYY-MM-DD");
+        const exceptionLimitDate = (0, dayjs_1.default)().subtract(6, "month").format("YYYY-MM-DD");
+        try {
+            // Apaga schedules antigos
+            const schedulesResult = await cleaningScheduleRepository_1.cleaningScheduleRepository.delete({
+                date: (0, typeorm_1.LessThan)(scheduleLimitDate)
+            });
+            // Apaga exceptions antigas
+            const exceptionsResult = await cleaningExceptionRepository_1.cleaningExceptionRepository.delete({
+                date: (0, typeorm_1.LessThan)(exceptionLimitDate)
+            });
+            const deletedSchedules = (_a = schedulesResult.affected) !== null && _a !== void 0 ? _a : 0;
+            const deletedExceptions = (_b = exceptionsResult.affected) !== null && _b !== void 0 ? _b : 0;
+            await mailer_1.default.sendMail({
+                from: process.env.EMAIL_USER,
+                to: config_1.config.email_backup,
+                subject: "🧹 Limpeza automática concluída",
+                template: "cleanup/success",
+                context: {
+                    deletedSchedules,
+                    deletedExceptions,
+                    scheduleLimitDate,
+                    exceptionLimitDate
+                }
+            });
+            return res.json({
+                message: "Cleanup completed",
+                deletedSchedules,
+                deletedExceptions
+            });
+        }
+        catch (error) {
+            console.error("Cleanup error:", error);
+            await mailer_1.default.sendMail({
+                from: process.env.EMAIL_USER,
+                to: config_1.config.email_backup,
+                subject: "❌ Falha na limpeza automática",
+                template: "cleanup/error",
+                context: {
+                    error: error.message
+                }
+            });
+            return res.status(500).json({
+                message: "Error cleaning old data",
+                error: error.message
+            });
+        }
     }
 }
 exports.default = new CronJobController();
