@@ -13,9 +13,11 @@ jobs:
       - name: Call Delete Expired Notices Route
         id: call_api
         run: |
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X GET ${{ secrets.API_URL }}/deleteExpiredNotices \
+          RESPONSE=$(curl -s -L -w "\n%{http_code}" -X GET ${{ secrets.API_URL }}/deleteExpiredNotices \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET_GITHUB }}" \
-            -H "Content-Type: application/json")
+            -H "Content-Type: application/json" \
+            -H "Cache-Control: no-cache" \
+            -H "Pragma: no-cache")
           
           # separa corpo da resposta e status code
           BODY=$(echo "$RESPONSE" | sed '$d')
