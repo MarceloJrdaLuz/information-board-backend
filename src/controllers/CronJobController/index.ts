@@ -10,14 +10,10 @@ import { meetingAssistanceRepository } from "../../repositories/meetingAssistanc
 import mailer from '../../modules/mailer'
 import { exec } from "child_process"
 import { config } from "../../config"
-import { initializeAppDataSource } from "../../data-source"
-import { Notice } from "../../entities/Notice"
-
 
 class CronJobController {
     async deleteExpiredNotices(req: Request, res: Response) {
-        const dataSource = await initializeAppDataSource();
-        const noticeRepository = dataSource.getRepository(Notice);
+        
         const startOfToday = moment().startOf('day').toDate()
 
         const expiredNotices = await noticeRepository.find({
