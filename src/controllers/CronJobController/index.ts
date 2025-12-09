@@ -10,10 +10,14 @@ import { meetingAssistanceRepository } from "../../repositories/meetingAssistanc
 import mailer from '../../modules/mailer'
 import { exec } from "child_process"
 import { config } from "../../config"
+import { initializeAppDataSource } from "../../data-source"
+import { Notice } from "../../entities/Notice"
 
 
 class CronJobController {
     async deleteExpiredNotices(req: Request, res: Response) {
+        const dataSource = await initializeAppDataSource();
+        const noticeRepository = dataSource.getRepository(Notice);
         const startOfToday = moment().startOf('day').toDate()
 
         const expiredNotices = await noticeRepository.find({
@@ -78,7 +82,7 @@ class CronJobController {
             (error, stdout, stderr) => {
                 if (error) {
                     console.error('Error executing pg_dump command:', error)
-                    return res.status(500).send({message: 'Error executing database dump'})
+                    return res.status(500).send({ message: 'Error executing database dump' })
                 }
 
                 if (stderr) {
@@ -103,11 +107,11 @@ class CronJobController {
                 mailer.sendMail(mailOptions, (err: any, info: any) => {
                     if (err) {
                         console.error('Error sending email:', err)
-                        return res.status(500).send({message: "Error sending email"})
+                        return res.status(500).send({ message: "Error sending email" })
                     }
 
                     console.log('Email sent:', info.response)
-                    res.send({message: 'Backup successfully emailed'})
+                    res.send({ message: 'Backup successfully emailed' })
                 })
             }
         )
