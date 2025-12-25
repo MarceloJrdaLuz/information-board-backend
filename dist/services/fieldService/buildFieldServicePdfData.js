@@ -20,6 +20,15 @@ const WEEKDAY_LABELS = {
     5: "Sexta-feira",
     6: "Sábado",
 };
+const FIELD_SERVICE_WEEKDAY_ORDER = {
+    6: 0,
+    0: 1,
+    1: 2,
+    2: 3,
+    3: 4,
+    4: 5,
+    5: 6,
+};
 const weekdayLabel = (weekday) => { var _a; return (_a = WEEKDAY_LABELS[weekday]) !== null && _a !== void 0 ? _a : "—"; };
 /* ===================== SERVICE ===================== */
 async function buildFieldServicePdfData(congregation_id, start, end) {
@@ -59,9 +68,10 @@ async function buildFieldServicePdfData(congregation_id, start, end) {
             leader: ((_a = t.leader) === null || _a === void 0 ? void 0 : _a.nickname) ? t.leader.nickname : (_c = (_b = t.leader) === null || _b === void 0 ? void 0 : _b.fullName) !== null && _c !== void 0 ? _c : "—",
         });
     }).sort((a, b) => {
-        if (a.weekdayIndex !== b.weekdayIndex) {
-            return a.weekdayIndex - b.weekdayIndex;
-        }
+        const dayDiff = FIELD_SERVICE_WEEKDAY_ORDER[a.weekdayIndex] -
+            FIELD_SERVICE_WEEKDAY_ORDER[b.weekdayIndex];
+        if (dayDiff !== 0)
+            return dayDiff;
         return a.time.localeCompare(b.time);
     });
     /* ===================== ROTATION ===================== */
@@ -129,9 +139,10 @@ async function buildFieldServicePdfData(congregation_id, start, end) {
         block.schedules.sort((a, b) => (a.date < b.date ? -1 : 1));
     });
     const rotationBlocks = Array.from(rotationBlocksMap.values()).sort((a, b) => {
-        if (a.weekday !== b.weekday) {
-            return a.weekday - b.weekday;
-        }
+        const dayDiff = FIELD_SERVICE_WEEKDAY_ORDER[a.weekday] -
+            FIELD_SERVICE_WEEKDAY_ORDER[b.weekday];
+        if (dayDiff !== 0)
+            return dayDiff;
         return a.time.localeCompare(b.time);
     });
     return {
