@@ -1,5 +1,5 @@
+import dayjs from "dayjs"
 import { Response } from "express-serve-static-core"
-import moment from "moment-timezone"
 import { In, MoreThanOrEqual, Not } from "typeorm"
 import { CongregationType } from "../../entities/Congregation"
 import { GroupOverseers } from "../../entities/GroupOverseers"
@@ -10,9 +10,11 @@ import { User } from "../../entities/User"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
 import { privilegePTtoEN, translatePrivilegesPTToEN } from "../../helpers/privilegesTranslations"
+import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { emergencyContactRepository } from "../../repositories/emergencyContact"
 import { externalTalkRepository } from "../../repositories/externalTalkRepository"
+import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
 import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
 import { privilegeRepository } from "../../repositories/privilegeRepository"
 import { publisherPrivilegeRepository } from "../../repositories/publisherPrivilegeRepository"
@@ -22,12 +24,13 @@ import { weekendScheduleRepository } from "../../repositories/weekendScheduleRep
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import { Privileges } from "../../types/privileges"
 import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
-import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository"
 
 interface UnifiedAssignment {
   role: string
   date: string
   eventType?: string
+  fieldServiceLocation?: string
+  fieldServiceHour?: string
   talk?: {
     number: number
     title: string
@@ -328,9 +331,9 @@ class PublisherControler {
 
     const assignmentsMeeting = await weekendScheduleRepository.find({
       where: [
-        { chairman: { id: publisher_id }, date: MoreThanOrEqual(moment().format("YYYY-MM-DD")) },
-        { reader: { id: publisher_id }, date: MoreThanOrEqual(moment().format("YYYY-MM-DD")) },
-        { speaker: { publisher: { id: publisher_id } }, date: MoreThanOrEqual(moment().format("YYYY-MM-DD")) },
+        { chairman: { id: publisher_id }, date: MoreThanOrEqual(dayjs().format("YYYY-MM-DD")) },
+        { reader: { id: publisher_id }, date: MoreThanOrEqual(dayjs().format("YYYY-MM-DD")) },
+        { speaker: { publisher: { id: publisher_id } }, date: MoreThanOrEqual(dayjs().format("YYYY-MM-DD")) },
       ],
       relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
       order: { date: "ASC" }
@@ -338,7 +341,7 @@ class PublisherControler {
 
     const cleaningSchedules = await cleaningScheduleRepository.find({
       where: {
-        date: MoreThanOrEqual(moment().format("YYYY-MM-DD")),
+        date: MoreThanOrEqual(dayjs().format("YYYY-MM-DD")),
         group: {
           publishers: {
             id: publisher_id
@@ -357,7 +360,7 @@ class PublisherControler {
     const hospitality = await hospitalityAssignmentRepository.find({
       where: {
         weekend: {
-          date: MoreThanOrEqual(moment().format("YYYY-MM-DD"))
+          date: MoreThanOrEqual(dayjs().format("YYYY-MM-DD"))
         }
       },
       relations: ['group', 'group.members', 'group.host', 'weekend']
@@ -370,10 +373,23 @@ class PublisherControler {
             id: publisher_id
           }
         },
-        date: MoreThanOrEqual(moment().format("YYYY-MM-DD"))
+        date: MoreThanOrEqual(dayjs().format("YYYY-MM-DD"))
       },
       relations: ['destinationCongregation', 'talk']
     })
+
+    const fieldServiceRotationAssignments =
+      await fieldServiceScheduleRepository.find({
+        where: {
+          leader: { id: publisher_id },
+          date: MoreThanOrEqual(dayjs().format("YYYY-MM-DD")),
+        },
+        order: {
+          date: "ASC",
+        },
+        relations: ["template", "leader"],
+      })
+
 
     const filteredHospitality = hospitality.filter(h =>
       // Verifica se o publisher é host OU membro do grupo
@@ -423,6 +439,14 @@ class PublisherControler {
       date: c.date
     }));
 
+    const fieldServiceRotationMapped: UnifiedAssignment[] =
+      fieldServiceRotationAssignments.map(fs => ({
+        role: "Dirigente de Campo",
+        date: fs.date,
+        fieldServiceHour: fs.template.time,
+        fieldServiceLocation: fs.template.location,
+      }))
+
     // 🔹 Mapeia designações externas
     const externalAssignments = externalTalks.map(e => ({
       role: "Discurso Externo",
@@ -444,7 +468,8 @@ class PublisherControler {
       ...assignments as UnifiedAssignment[],
       ...hospitalityAssignments as UnifiedAssignment[],
       ...externalAssignments as UnifiedAssignment[],
-      ...cleaningAssignments as UnifiedAssignment[]
+      ...cleaningAssignments as UnifiedAssignment[],
+      ...fieldServiceRotationMapped as UnifiedAssignment[]
     ]
 
     // 🔹 Ordena por data
