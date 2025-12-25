@@ -63,10 +63,16 @@ export async function buildFieldServicePdfData(
     .filter(t => t.type === "FIXED")
     .map(t => ({
       weekday: weekdayLabel(t.weekday),
+      weekdayIndex: t.weekday,
       time: t.time.slice(0, 5),
       location: t.location,
       leader: t.leader?.nickname ? t.leader.nickname : t.leader?.fullName ?? "—",
-    }))
+    })).sort((a, b) => {
+      if (a.weekdayIndex !== b.weekdayIndex) {
+        return a.weekdayIndex - b.weekdayIndex
+      }
+      return a.time.localeCompare(b.time)
+    })
 
   /* ===================== ROTATION ===================== */
   const rotationTemplates = templates.filter(t => t.type === "ROTATION")
@@ -144,7 +150,12 @@ export async function buildFieldServicePdfData(
 
 
   const rotationBlocks = Array.from(rotationBlocksMap.values()).sort(
-    (a, b) => a.weekday - b.weekday
+    (a, b) => {
+      if (a.weekday !== b.weekday) {
+        return a.weekday - b.weekday
+      }
+      return a.time.localeCompare(b.time)
+    }
   )
 
   return {
