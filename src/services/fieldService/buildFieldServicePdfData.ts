@@ -21,6 +21,16 @@ const WEEKDAY_LABELS: Record<number, string> = {
   6: "Sábado",
 }
 
+const FIELD_SERVICE_WEEKDAY_ORDER: Record<number, number> = {
+  6: 0, // Sábado
+  0: 1, // Domingo
+  1: 2,
+  2: 3,
+  3: 4,
+  4: 5,
+  5: 6,
+}
+
 const weekdayLabel = (weekday: number) =>
   WEEKDAY_LABELS[weekday] ?? "—"
 
@@ -63,10 +73,20 @@ export async function buildFieldServicePdfData(
     .filter(t => t.type === "FIXED")
     .map(t => ({
       weekday: weekdayLabel(t.weekday),
+      weekdayIndex: t.weekday,
       time: t.time.slice(0, 5),
       location: t.location,
       leader: t.leader?.nickname ? t.leader.nickname : t.leader?.fullName ?? "—",
-    }))
+    })).sort((a, b) => {
+      const dayDiff =
+        FIELD_SERVICE_WEEKDAY_ORDER[a.weekdayIndex] -
+        FIELD_SERVICE_WEEKDAY_ORDER[b.weekdayIndex]
+
+      if (dayDiff !== 0) return dayDiff
+
+      return a.time.localeCompare(b.time)
+    })
+
 
   /* ===================== ROTATION ===================== */
   const rotationTemplates = templates.filter(t => t.type === "ROTATION")
@@ -143,9 +163,16 @@ export async function buildFieldServicePdfData(
   })
 
 
-  const rotationBlocks = Array.from(rotationBlocksMap.values()).sort(
-    (a, b) => a.weekday - b.weekday
-  )
+  const rotationBlocks = Array.from(rotationBlocksMap.values()).sort((a, b) => {
+    const dayDiff =
+      FIELD_SERVICE_WEEKDAY_ORDER[a.weekday] -
+      FIELD_SERVICE_WEEKDAY_ORDER[b.weekday]
+
+    if (dayDiff !== 0) return dayDiff
+
+    return a.time.localeCompare(b.time)
+  })
+
 
   return {
     congregationName: congregation.name,
