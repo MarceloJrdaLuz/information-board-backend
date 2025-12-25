@@ -1,0 +1,26 @@
+<mjml>
+  <mj-body background-color="#ffdddd">
+    <mj-section background-color="white">
+      <mj-column background-color="white">
+        
+        <mj-column background-color="#b00020" width="100%">
+          <mj-image align="left" width="100px" src="https://quadrodeanuncios.vercel.app/images/miniatura.png" />
+        </mj-column>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">
+          Olá,
+        </mj-text>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">
+          ❗ Ocorreu um erro durante a limpeza automática do sistema.
+        </mj-text>
+
+        <mj-text font-size="14px" color="#444" font-family="helvetica">
+          <b>Data limite:</b> {{limitDate}} <br/>
+          <b>Erro:</b> {{error}}
+        </mj-text>
+
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -315,6 +315,7 @@ routes.get('/form-data', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'TALK_M
 
 /* === Cron Jobs === */
 routes.get('/deleteExpiredNotices', verifyGitHubCron, CronJobController.deleteExpiredNotices)
+routes.delete('/cron/clean-old-schedules', verifyGitHubCron, CronJobController.cleanOldData)
 routes.get('/reportsCleanUp', verifyCronSecret, CronJobController.reportsCleanUp)
 routes.get('/backup', verifyCronSecret, CronJobController.backup)
 routes.get("/usage", is(["ADMIN"]), VercelUsageController.getUsage);

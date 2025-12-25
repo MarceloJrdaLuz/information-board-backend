@@ -17,7 +17,6 @@ import { CustomRequest, ParamsCustomRequest } from "../../types/customRequest"
 import { BodyAddDomainsTypes, BodyLinkPublisherToUserTypes, BodyResetPasswordTypes, BodyUserCreateTypes, BodyUserLoginTypes, BodyUserUpdateTypes, ParamsGetUsersByCongregationTypes, ParamsLinkPublisherToUserTypes } from "./types"
 //@ts-expect-error
 import mailer from '../../modules/mailer'
-import { weekendScheduleRepository } from '../../repositories/weekendScheduleRepository'
 
 class UserController {
     async create(req: CustomRequest<BodyUserCreateTypes>, res: Response) {

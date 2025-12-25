@@ -10,14 +10,13 @@ import { meetingAssistanceRepository } from "../../repositories/meetingAssistanc
 import mailer from '../../modules/mailer'
 import { exec } from "child_process"
 import { config } from "../../config"
-import { initializeAppDataSource } from "../../data-source"
-import { Notice } from "../../entities/Notice"
-
+import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository"
+import dayjs from "dayjs"
+import { cleaningExceptionRepository } from "../../repositories/cleaningExceptionRepository"
 
 class CronJobController {
     async deleteExpiredNotices(req: Request, res: Response) {
-        const dataSource = await initializeAppDataSource();
-        const noticeRepository = dataSource.getRepository(Notice);
+
         const startOfToday = moment().startOf('day').toDate()
 
         const expiredNotices = await noticeRepository.find({
@@ -115,6 +114,62 @@ class CronJobController {
                 })
             }
         )
+    }
+
+    async cleanOldData(req: Request, res: Response) {
+        const scheduleLimitDate = dayjs().subtract(12, "month").format("YYYY-MM-DD");
+        const exceptionLimitDate = dayjs().subtract(6, "month").format("YYYY-MM-DD");
+
+        try {
+            // Apaga schedules antigos
+            const schedulesResult = await cleaningScheduleRepository.delete({
+                date: LessThan(scheduleLimitDate)
+            });
+
+            // Apaga exceptions antigas
+            const exceptionsResult = await cleaningExceptionRepository.delete({
+                date: LessThan(exceptionLimitDate)
+            });
+
+            const deletedSchedules = schedulesResult.affected ?? 0;
+            const deletedExceptions = exceptionsResult.affected ?? 0;
+
+            await mailer.sendMail({
+                from: process.env.EMAIL_USER,
+                to: config.email_backup,
+                subject: "🧹 Limpeza automática concluída",
+                template: "cleanup/success",
+                context: {
+                    deletedSchedules,
+                    deletedExceptions,
+                    scheduleLimitDate,
+                    exceptionLimitDate
+                }
+            });
+
+            return res.json({
+                message: "Cleanup completed",
+                deletedSchedules,
+                deletedExceptions
+            });
+        } catch (error: any) {
+            console.error("Cleanup error:", error);
+
+            await mailer.sendMail({
+                from: process.env.EMAIL_USER,
+                to: config.email_backup,
+                subject: "❌ Falha na limpeza automática",
+                template: "cleanup/error",
+                context: {
+                    error: error.message
+                }
+            });
+
+            return res.status(500).json({
+                message: "Error cleaning old data",
+                error: error.message
+            });
+        }
     }
 }
 
