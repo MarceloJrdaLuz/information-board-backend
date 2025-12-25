@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const moment_timezone_1 = __importDefault(require("moment-timezone"));
+const dayjs_1 = __importDefault(require("dayjs"));
 const typeorm_1 = require("typeorm");
 const Congregation_1 = require("../../entities/Congregation");
 const GroupOverseers_1 = require("../../entities/GroupOverseers");
@@ -14,9 +14,11 @@ const User_1 = require("../../entities/User");
 const api_errors_1 = require("../../helpers/api-errors");
 const messageErrors_1 = require("../../helpers/messageErrors");
 const privilegesTranslations_1 = require("../../helpers/privilegesTranslations");
+const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const emergencyContact_1 = require("../../repositories/emergencyContact");
 const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
+const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 const hospitalityAssignmentRepository_1 = require("../../repositories/hospitalityAssignmentRepository");
 const privilegeRepository_1 = require("../../repositories/privilegeRepository");
 const publisherPrivilegeRepository_1 = require("../../repositories/publisherPrivilegeRepository");
@@ -24,7 +26,6 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 const privileges_1 = require("../../types/privileges");
-const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
 class PublisherControler {
     async create(req, res) {
         const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContact_id } = req.body;
@@ -262,16 +263,16 @@ class PublisherControler {
         }
         const assignmentsMeeting = await weekendScheduleRepository_1.weekendScheduleRepository.find({
             where: [
-                { chairman: { id: publisher_id }, date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD")) },
-                { reader: { id: publisher_id }, date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD")) },
-                { speaker: { publisher: { id: publisher_id } }, date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD")) },
+                { chairman: { id: publisher_id }, date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD")) },
+                { reader: { id: publisher_id }, date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD")) },
+                { speaker: { publisher: { id: publisher_id } }, date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD")) },
             ],
             relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
             order: { date: "ASC" }
         });
         const cleaningSchedules = await cleaningScheduleRepository_1.cleaningScheduleRepository.find({
             where: {
-                date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD")),
+                date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD")),
                 group: {
                     publishers: {
                         id: publisher_id
@@ -289,7 +290,7 @@ class PublisherControler {
         const hospitality = await hospitalityAssignmentRepository_1.hospitalityAssignmentRepository.find({
             where: {
                 weekend: {
-                    date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD"))
+                    date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD"))
                 }
             },
             relations: ['group', 'group.members', 'group.host', 'weekend']
@@ -301,9 +302,19 @@ class PublisherControler {
                         id: publisher_id
                     }
                 },
-                date: (0, typeorm_1.MoreThanOrEqual)((0, moment_timezone_1.default)().format("YYYY-MM-DD"))
+                date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD"))
             },
             relations: ['destinationCongregation', 'talk']
+        });
+        const fieldServiceRotationAssignments = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository.find({
+            where: {
+                leader: { id: publisher_id },
+                date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD")),
+            },
+            order: {
+                date: "ASC",
+            },
+            relations: ["template", "leader"],
         });
         const filteredHospitality = hospitality.filter(h => {
             var _a, _b, _c, _d;
@@ -353,6 +364,12 @@ class PublisherControler {
             role: "Limpeza do Salão",
             date: c.date
         }));
+        const fieldServiceRotationMapped = fieldServiceRotationAssignments.map(fs => ({
+            role: "Dirigente de Campo",
+            date: fs.date,
+            fieldServiceHour: fs.template.time,
+            fieldServiceLocation: fs.template.location,
+        }));
         // 🔹 Mapeia designações externas
         const externalAssignments = externalTalks.map(e => {
             var _a, _b, _c, _d, _e, _f;
@@ -376,7 +393,8 @@ class PublisherControler {
             ...assignments,
             ...hospitalityAssignments,
             ...externalAssignments,
-            ...cleaningAssignments
+            ...cleaningAssignments,
+            ...fieldServiceRotationMapped
         ];
         // 🔹 Ordena por data
         allAssignments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

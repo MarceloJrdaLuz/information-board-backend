@@ -36,6 +36,9 @@ import CleaningExceptionController from "./controllers/CleaningExceptionControll
 import CleaningScheduleController from "./controllers/CleaningScheduleController"
 import FamilyController from "./controllers/FamilyController"
 import { verifyGitHubCron } from "./middlewares/gitHubCronAuth"
+import FieldServiceTemplateController from "./controllers/FieldServiceTemplateController"
+import FieldServiceExceptionController from "./controllers/FieldServiceExceptionController"
+import FieldServiceScheduleController from "./controllers/FieldServiceScheduleController"
 
 const routes = Router()
 
@@ -62,6 +65,9 @@ routes.get('/publishers/congregationNumber/:congregationNumber', PublisherContro
 
 // Anúncios (dados públicos)
 routes.get('/notices/:congregation_id', NoticeController.getNotices)
+
+// Serviço de campo (dados públicos)
+routes.get("/field-service/schedules/futures/congregation/:congregation_id", FieldServiceScheduleController.getAllFutureSchedules);
 
 // Categorias (dados públicos)
 routes.get('/categories', CategoryController.getCategories)
@@ -268,6 +274,33 @@ routes.get('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), S
 routes.post('/speaker', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.create)
 routes.patch('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.update)
 routes.delete('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.delete)
+
+/* === Field Service Templates === */
+
+routes.post("/field-service/templates/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController.create);
+routes.get("/field-service/templates/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController.getByCongregation);
+routes.get("/field-service/templates/:template_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController.getOne);
+routes.patch("/field-service/templates/:template_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController.update);
+routes.delete("/field-service/templates/:template_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController.delete);
+
+/* === Field Service Schedules === */
+
+routes.post("/field-service/templates/:template_id/schedules", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.create);
+routes.post("/field-service/templates/:template_id/generate-schedules", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.generateByPeriod);
+
+routes.get("/field-service/templates/:template_id/schedules", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.getByTemplate);
+routes.get("/field-service/schedules/pdf/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.pdf);
+routes.get("/field-service/schedules/:schedule_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.getOne);
+routes.patch("/field-service/schedules/:schedule_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.update)
+routes.delete("/field-service/schedules/:schedule_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.delete);
+
+/* === Field Service Exceptions === */
+
+routes.post("/field-service/exceptions/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController.create);
+routes.get("/field-service/exceptions/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController.getByCongregation);
+routes.get("/field-service/exceptions/:exception_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController.getOne);
+routes.patch("/field-service/exceptions/:exception_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController.update);
+routes.delete("/field-service/exceptions/:exception_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController.delete);
 
 /* === Termos de uso (administração) === */
 routes.post("/terms", is(['ADMIN']), TermsOfUseController.create)

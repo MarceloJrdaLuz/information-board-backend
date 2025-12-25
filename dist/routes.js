@@ -40,6 +40,9 @@ const CleaningExceptionController_1 = __importDefault(require("./controllers/Cle
 const CleaningScheduleController_1 = __importDefault(require("./controllers/CleaningScheduleController"));
 const FamilyController_1 = __importDefault(require("./controllers/FamilyController"));
 const gitHubCronAuth_1 = require("./middlewares/gitHubCronAuth");
+const FieldServiceTemplateController_1 = __importDefault(require("./controllers/FieldServiceTemplateController"));
+const FieldServiceExceptionController_1 = __importDefault(require("./controllers/FieldServiceExceptionController"));
+const FieldServiceScheduleController_1 = __importDefault(require("./controllers/FieldServiceScheduleController"));
 const routes = (0, express_1.Router)();
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
@@ -59,6 +62,8 @@ routes.get('/congregation/:congregation_id/hospitality/weekends', HospitalityCon
 routes.get('/publishers/congregationNumber/:congregationNumber', PublisherControllers_1.default.getPublishersWithCongregatioNumber);
 // Anúncios (dados públicos)
 routes.get('/notices/:congregation_id', NoticeController_1.default.getNotices);
+// Serviço de campo (dados públicos)
+routes.get("/field-service/schedules/futures/congregation/:congregation_id", FieldServiceScheduleController_1.default.getAllFutureSchedules);
 // Categorias (dados públicos)
 routes.get('/categories', CategoryController_1.default.getCategories);
 routes.get('/category/:category_id', CategoryController_1.default.getPermission);
@@ -232,6 +237,26 @@ routes.get('/speaker/:speaker_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 
 routes.post('/speaker', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController_1.default.create);
 routes.patch('/speaker/:speaker_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController_1.default.update);
 routes.delete('/speaker/:speaker_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController_1.default.delete);
+/* === Field Service Templates === */
+routes.post("/field-service/templates/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController_1.default.create);
+routes.get("/field-service/templates/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController_1.default.getByCongregation);
+routes.get("/field-service/templates/:template_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController_1.default.getOne);
+routes.patch("/field-service/templates/:template_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController_1.default.update);
+routes.delete("/field-service/templates/:template_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController_1.default.delete);
+/* === Field Service Schedules === */
+routes.post("/field-service/templates/:template_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.create);
+routes.post("/field-service/templates/:template_id/generate-schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.generateByPeriod);
+routes.get("/field-service/templates/:template_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.getByTemplate);
+routes.get("/field-service/schedules/pdf/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.pdf);
+routes.get("/field-service/schedules/:schedule_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.getOne);
+routes.patch("/field-service/schedules/:schedule_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.update);
+routes.delete("/field-service/schedules/:schedule_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.delete);
+/* === Field Service Exceptions === */
+routes.post("/field-service/exceptions/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController_1.default.create);
+routes.get("/field-service/exceptions/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController_1.default.getByCongregation);
+routes.get("/field-service/exceptions/:exception_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController_1.default.getOne);
+routes.patch("/field-service/exceptions/:exception_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController_1.default.update);
+routes.delete("/field-service/exceptions/:exception_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController_1.default.delete);
 /* === Termos de uso (administração) === */
 routes.post("/terms", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.create);
 routes.get("/terms", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.list);
