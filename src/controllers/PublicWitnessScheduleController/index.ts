@@ -231,7 +231,7 @@ class PublicWitnessScheduleController {
             arrangement_id,
             start_date,
             end_date,
-            schedule, 
+            schedule,
             exceptions
         })
     }
@@ -348,7 +348,11 @@ class PublicWitnessScheduleController {
         const rotationBlocksMap = new Map<string, any>()
 
         for (const arr of arrangements) {
-            for (const slot of arr.timeSlots) {
+            const sortedTimeSlots = [...arr.timeSlots].sort((a, b) =>
+                a.start_time.localeCompare(b.start_time)
+            )
+
+            for (const slot of sortedTimeSlots) {
 
                 /* ================= FIXOS ================= */
                 if (!slot.is_rotative) {

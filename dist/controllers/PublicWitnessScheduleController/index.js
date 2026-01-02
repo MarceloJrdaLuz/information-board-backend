@@ -284,7 +284,8 @@ class PublicWitnessScheduleController {
         const fixedSchedules = [];
         const rotationBlocksMap = new Map();
         for (const arr of arrangements) {
-            for (const slot of arr.timeSlots) {
+            const sortedTimeSlots = [...arr.timeSlots].sort((a, b) => a.start_time.localeCompare(b.start_time));
+            for (const slot of sortedTimeSlots) {
                 /* ================= FIXOS ================= */
                 if (!slot.is_rotative) {
                     fixedSchedules.push({
