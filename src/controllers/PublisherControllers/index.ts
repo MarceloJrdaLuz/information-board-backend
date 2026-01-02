@@ -24,6 +24,8 @@ import { weekendScheduleRepository } from "../../repositories/weekendScheduleRep
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import { Privileges } from "../../types/privileges"
 import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
+import { publicWitnessArrangementRepository } from "../../repositories/publicWitnessArrangementRepository"
+import { publicWitnessAssignmentRepository } from "../../repositories/publicWitnessAssignmentRepository"
 
 interface UnifiedAssignment {
   role: string
@@ -357,6 +359,23 @@ class PublisherControler {
       }
     });
 
+    const publicWitnessAssignments =
+      await publicWitnessAssignmentRepository
+        .createQueryBuilder("pw")
+        .innerJoin("pw.publishers", "pp")
+        .innerJoin("pp.publisher", "publisherFilter")
+        .leftJoinAndSelect("pw.publishers", "allPublishers")
+        .leftJoinAndSelect("allPublishers.publisher", "publisher")
+        .leftJoinAndSelect("pw.timeSlot", "timeSlot")
+        .leftJoinAndSelect("timeSlot.arrangement", "arrangement")
+        .where("publisherFilter.id = :publisher_id", { publisher_id })
+        .andWhere("pw.date >= :today", {
+          today: dayjs().format("YYYY-MM-DD")
+        })
+        .orderBy("pw.date", "ASC")
+        .getMany()
+
+
     const hospitality = await hospitalityAssignmentRepository.find({
       where: {
         weekend: {
@@ -396,6 +415,20 @@ class PublisherControler {
       h.group?.host?.id === publisher_id ||
       h.group?.members?.some(member => member.id === publisher_id)
     )
+
+    const publicWitnessMapped: UnifiedAssignment[] =
+      publicWitnessAssignments.map(pw => ({
+        role: "Testemunho Público",
+        date: pw.date,
+        title: pw.timeSlot.arrangement.title,
+        start_time: pw.timeSlot.start_time,
+        end_time: pw.timeSlot.end_time,
+        publishers: pw.publishers.map(p => ({
+          id: p.publisher.id,
+          name: p.publisher.nickname ?? p.publisher.fullName ?? "-"
+        }))
+      }))
+
 
     // 4️⃣ Mapeia as designações de hospitalidade
     const hospitalityAssignments = filteredHospitality.map((h) => ({
@@ -469,7 +502,8 @@ class PublisherControler {
       ...hospitalityAssignments as UnifiedAssignment[],
       ...externalAssignments as UnifiedAssignment[],
       ...cleaningAssignments as UnifiedAssignment[],
-      ...fieldServiceRotationMapped as UnifiedAssignment[]
+      ...fieldServiceRotationMapped as UnifiedAssignment[],
+      ...publicWitnessMapped as UnifiedAssignment[]
     ]
 
     // 🔹 Ordena por data

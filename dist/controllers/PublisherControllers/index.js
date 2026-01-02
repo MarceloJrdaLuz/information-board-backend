@@ -26,6 +26,7 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 const privileges_1 = require("../../types/privileges");
+const publicWitnessAssignmentRepository_1 = require("../../repositories/publicWitnessAssignmentRepository");
 class PublisherControler {
     async create(req, res) {
         const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContact_id } = req.body;
@@ -287,6 +288,20 @@ class PublisherControler {
                 date: "ASC"
             }
         });
+        const publicWitnessAssignments = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository
+            .createQueryBuilder("pw")
+            .innerJoin("pw.publishers", "pp")
+            .innerJoin("pp.publisher", "publisherFilter")
+            .leftJoinAndSelect("pw.publishers", "allPublishers")
+            .leftJoinAndSelect("allPublishers.publisher", "publisher")
+            .leftJoinAndSelect("pw.timeSlot", "timeSlot")
+            .leftJoinAndSelect("timeSlot.arrangement", "arrangement")
+            .where("publisherFilter.id = :publisher_id", { publisher_id })
+            .andWhere("pw.date >= :today", {
+            today: (0, dayjs_1.default)().format("YYYY-MM-DD")
+        })
+            .orderBy("pw.date", "ASC")
+            .getMany();
         const hospitality = await hospitalityAssignmentRepository_1.hospitalityAssignmentRepository.find({
             where: {
                 weekend: {
@@ -322,6 +337,20 @@ class PublisherControler {
             return ((_b = (_a = h.group) === null || _a === void 0 ? void 0 : _a.host) === null || _b === void 0 ? void 0 : _b.id) === publisher_id ||
                 ((_d = (_c = h.group) === null || _c === void 0 ? void 0 : _c.members) === null || _d === void 0 ? void 0 : _d.some(member => member.id === publisher_id));
         });
+        const publicWitnessMapped = publicWitnessAssignments.map(pw => ({
+            role: "Testemunho Público",
+            date: pw.date,
+            title: pw.timeSlot.arrangement.title,
+            start_time: pw.timeSlot.start_time,
+            end_time: pw.timeSlot.end_time,
+            publishers: pw.publishers.map(p => {
+                var _a, _b;
+                return ({
+                    id: p.publisher.id,
+                    name: (_b = (_a = p.publisher.nickname) !== null && _a !== void 0 ? _a : p.publisher.fullName) !== null && _b !== void 0 ? _b : "-"
+                });
+            })
+        }));
         // 4️⃣ Mapeia as designações de hospitalidade
         const hospitalityAssignments = filteredHospitality.map((h) => {
             var _a, _b, _c, _d;
@@ -394,7 +423,8 @@ class PublisherControler {
             ...hospitalityAssignments,
             ...externalAssignments,
             ...cleaningAssignments,
-            ...fieldServiceRotationMapped
+            ...fieldServiceRotationMapped,
+            ...publicWitnessMapped
         ];
         // 🔹 Ordena por data
         allAssignments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

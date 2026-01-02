@@ -39,6 +39,8 @@ import { verifyGitHubCron } from "./middlewares/gitHubCronAuth"
 import FieldServiceTemplateController from "./controllers/FieldServiceTemplateController"
 import FieldServiceExceptionController from "./controllers/FieldServiceExceptionController"
 import FieldServiceScheduleController from "./controllers/FieldServiceScheduleController"
+import PublicWitnessArrangementController from "./controllers/PublicWitnessArrangementController"
+import PublicWitnessScheduleController from "./controllers/PublicWitnessScheduleController"
 
 const routes = Router()
 
@@ -68,6 +70,8 @@ routes.get('/notices/:congregation_id', NoticeController.getNotices)
 
 // Serviço de campo (dados públicos)
 routes.get("/field-service/schedules/futures/congregation/:congregation_id", FieldServiceScheduleController.getAllFutureSchedules);
+// Testemunho público (dados públicos)
+routes.get("/publicWitness/schedules/futures/congregation/:congregation_id", PublicWitnessScheduleController.getPublicWitnessScheduleByCongregation);
 
 // Categorias (dados públicos)
 routes.get('/categories', CategoryController.getCategories)
@@ -301,6 +305,21 @@ routes.get("/field-service/exceptions/congregation/:congregation_id", is(["ADMIN
 routes.get("/field-service/exceptions/:exception_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController.getOne);
 routes.patch("/field-service/exceptions/:exception_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController.update);
 routes.delete("/field-service/exceptions/:exception_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController.delete);
+
+/* === Public Witness Arrangements === */
+
+routes.post("/public-witness/arrangements/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.create)
+routes.get("/public-witness/arrangements/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.getByCongregation)
+routes.get("/public-witness/arrangements/:arrangement_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.getOne)
+routes.patch("/public-witness/arrangements/:arrangement_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.update)
+routes.delete("/public-witness/arrangements/:arrangement_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.delete)
+
+/* === Public Witness Schedules === */
+routes.post("/public-witness/arrangements/:arrangement_id/schedules", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.createMultiple)
+routes.get("/public-witness/arrangements/:arrangement_id/schedules", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.getByDateRange)
+routes.get("/public-witness/schedules/pdf/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.getPdfByCongregation)
+routes.get("/public-witness/schedules/congregation/:congregation_id/history", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.getAssignmentsHistory)
+
 
 /* === Termos de uso (administração) === */
 routes.post("/terms", is(['ADMIN']), TermsOfUseController.create)

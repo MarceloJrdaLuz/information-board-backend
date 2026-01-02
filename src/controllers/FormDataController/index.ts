@@ -63,6 +63,19 @@ class FormDataController {
 
                     return res.json({ publishers: fieldConductors })
                 }
+                case 'publicWitness': {
+                    const publishers = await publisherRepository.find({
+                        where: { congregation: { id: userReq?.congregation.id } },
+                        relations: ["privilegesRelation", "privilegesRelation.privilege", "congregation"],
+                        order: { fullName: "ASC" },
+                    })
+
+                    const publicWitnesses = publishers.filter(pp =>
+                        pp.privilegesRelation.some(p => p.privilege.name === "Public Witness")
+                    )
+
+                    return res.json(publicWitnesses)
+                }
 
                 case 'territoryHistory': {
                     const publishers = await publisherRepository.find({

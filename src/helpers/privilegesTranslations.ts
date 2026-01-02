@@ -10,7 +10,7 @@ export const privilegeENToPT: Record<string, string> = {
     "Chairman": "Presidente",
     "Attendant": "Indicador",
     "Microphone Attendant": "Microfone Volante",
-    "Field Conductor": "Dirigente de Campo"
+    "Public Witness": "Testemunho Público"
 }
 
 export const privilegePTtoEN: Record<string, string> = {
@@ -24,7 +24,8 @@ export const privilegePTtoEN: Record<string, string> = {
     "Leitor": "Reader",
     "Presidente": "Chairman",
     "Indicador": "Attendant",
-    "Dirigente de Campo": "Field Conductor"
+    "Dirigente de Campo": "Field Conductor",
+    "Testemunho Público": "Public Witness"
 }
 
 export function translatePrivilegesPTToEN(privileges: string[]) {

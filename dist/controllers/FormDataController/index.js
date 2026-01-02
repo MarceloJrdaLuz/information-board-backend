@@ -52,6 +52,15 @@ class FormDataController {
                     const fieldConductors = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Field Conductor"));
                     return res.json({ publishers: fieldConductors });
                 }
+                case 'publicWitness': {
+                    const publishers = await publisherRepository_1.publisherRepository.find({
+                        where: { congregation: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id } },
+                        relations: ["privilegesRelation", "privilegesRelation.privilege", "congregation"],
+                        order: { fullName: "ASC" },
+                    });
+                    const publicWitnesses = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Public Witness"));
+                    return res.json(publicWitnesses);
+                }
                 case 'territoryHistory': {
                     const publishers = await publisherRepository_1.publisherRepository.find({
                         where: { congregation: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id } },
