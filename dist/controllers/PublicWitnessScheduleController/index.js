@@ -16,7 +16,6 @@ class PublicWitnessScheduleController {
         var _a;
         const { schedule } = req.body;
         const { arrangement_id } = req.params;
-        // Buscar arranjo com slots
         const arrangement = await publicWitnessArrangementRepository_1.publicWitnessArrangementRepository.findOne({
             where: { id: arrangement_id },
             relations: ["timeSlots"]
@@ -43,7 +42,7 @@ class PublicWitnessScheduleController {
                 if (!timeSlot) {
                     throw new api_errors_1.BadRequestError(`Time slot ${slotPayload.time_slot_id} does not exist in the arrangement`);
                 }
-                // Verificar se há publishers fixos para esse slot
+                // FIXOS
                 const defaultPublishers = await publicWitnessTimeSlotDefaultPublisherRepository_1.publicWitnessTimeSlotDefaultPublisherRepository.find({
                     where: { time_slot_id: timeSlot.id },
                     relations: ["publisher"],
@@ -61,14 +60,20 @@ class PublicWitnessScheduleController {
                     });
                     continue;
                 }
-                if (!slotPayload.publishers || slotPayload.publishers.length === 0) {
-                    throw new api_errors_1.BadRequestError(`Slot ${slotPayload.time_slot_id} is rotative and requires publishers`);
-                }
-                // Verificar se já existe assignment para esta data e slot
+                // ROTATIVOS
                 let assignment = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository.findOne({
                     where: { date: daySchedule.date, time_slot_id: timeSlot.id },
                     relations: ["publishers", "publishers.publisher"]
                 });
+                if (!slotPayload.publishers || slotPayload.publishers.length === 0) {
+                    // ❌ Sem publishers: remove assignment se existir
+                    if (assignment) {
+                        await publicWitnessAssignmentPublisherRepository_1.publicWitnessAssignmentPublisherRepository.remove(assignment.publishers);
+                        await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository.remove(assignment);
+                    }
+                    continue;
+                }
+                // 🔹 Se houver publishers, cria/atualiza assignment
                 if (!assignment) {
                     assignment = publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository.create({
                         date: daySchedule.date,
@@ -78,12 +83,12 @@ class PublicWitnessScheduleController {
                     await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository.save(assignment);
                 }
                 else {
-                    // Se já existe, remove publishers antigos antes de atualizar
-                    if (assignment.publishers && assignment.publishers.length > 0) {
+                    // Remove publishers antigos antes de atualizar
+                    if (assignment.publishers.length > 0) {
                         await publicWitnessAssignmentPublisherRepository_1.publicWitnessAssignmentPublisherRepository.remove(assignment.publishers);
                     }
                 }
-                // Vincular publishers
+                // Vincula publishers novos
                 for (const pub of slotPayload.publishers) {
                     const publisher = await publisherRepository_1.publisherRepository.findOneBy({ id: pub.publisher_id });
                     if (!publisher)
