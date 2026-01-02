@@ -43,6 +43,8 @@ const gitHubCronAuth_1 = require("./middlewares/gitHubCronAuth");
 const FieldServiceTemplateController_1 = __importDefault(require("./controllers/FieldServiceTemplateController"));
 const FieldServiceExceptionController_1 = __importDefault(require("./controllers/FieldServiceExceptionController"));
 const FieldServiceScheduleController_1 = __importDefault(require("./controllers/FieldServiceScheduleController"));
+const PublicWitnessArrangementController_1 = __importDefault(require("./controllers/PublicWitnessArrangementController"));
+const PublicWitnessScheduleController_1 = __importDefault(require("./controllers/PublicWitnessScheduleController"));
 const routes = (0, express_1.Router)();
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
@@ -64,6 +66,8 @@ routes.get('/publishers/congregationNumber/:congregationNumber', PublisherContro
 routes.get('/notices/:congregation_id', NoticeController_1.default.getNotices);
 // Serviço de campo (dados públicos)
 routes.get("/field-service/schedules/futures/congregation/:congregation_id", FieldServiceScheduleController_1.default.getAllFutureSchedules);
+// Testemunho público (dados públicos)
+routes.get("/publicWitness/schedules/futures/congregation/:congregation_id", PublicWitnessScheduleController_1.default.getPublicWitnessScheduleByCongregation);
 // Categorias (dados públicos)
 routes.get('/categories', CategoryController_1.default.getCategories);
 routes.get('/category/:category_id', CategoryController_1.default.getPermission);
@@ -257,6 +261,16 @@ routes.get("/field-service/exceptions/congregation/:congregation_id", (0, permis
 routes.get("/field-service/exceptions/:exception_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController_1.default.getOne);
 routes.patch("/field-service/exceptions/:exception_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController_1.default.update);
 routes.delete("/field-service/exceptions/:exception_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceExceptionController_1.default.delete);
+/* === Public Witness Arrangements === */
+routes.post("/public-witness/arrangements/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.create);
+routes.get("/public-witness/arrangements/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.getByCongregation);
+routes.get("/public-witness/arrangements/:arrangement_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.getOne);
+routes.patch("/public-witness/arrangements/:arrangement_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.update);
+routes.delete("/public-witness/arrangements/:arrangement_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.delete);
+/* === Public Witness Schedules === */
+routes.post("/public-witness/arrangements/:arrangement_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.createMultiple);
+routes.get("/public-witness/arrangements/:arrangement_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getByDateRange);
+routes.get("/public-witness/schedules/pdf/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getPdfByCongregation);
 /* === Termos de uso (administração) === */
 routes.post("/terms", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.create);
 routes.get("/terms", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.list);
