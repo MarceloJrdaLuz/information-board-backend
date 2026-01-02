@@ -11,6 +11,7 @@ const publicWitnessAssignmentPublisherRepository_1 = require("../../repositories
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const publicWitnessTimeSlotDefaultPublisherRepository_1 = require("../../repositories/publicWitnessTimeSlotDefaultPublisherRepository");
 const typeorm_1 = require("typeorm");
+const fieldServiceExceptionRepository_1 = require("../../repositories/fieldServiceExceptionRepository");
 class PublicWitnessScheduleController {
     async createMultiple(req, res) {
         var _a;
@@ -155,6 +156,12 @@ class PublicWitnessScheduleController {
                 }
             }
         });
+        const exceptions = await fieldServiceExceptionRepository_1.fieldServiceExceptionRepository.find({
+            where: {
+                congregation_id: arrangement.congregation_id,
+                date: (0, typeorm_1.Between)(start.format("YYYY-MM-DD"), end.format("YYYY-MM-DD"))
+            }
+        });
         // 🔁 Agrupar por data
         const scheduleMap = {};
         for (const assignment of assignments) {
@@ -178,7 +185,8 @@ class PublicWitnessScheduleController {
             arrangement_id,
             start_date,
             end_date,
-            schedule
+            schedule,
+            exceptions
         });
     }
     // =========================

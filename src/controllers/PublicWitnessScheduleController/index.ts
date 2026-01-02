@@ -10,6 +10,7 @@ import { BodyScheduleCreateMultiple, ParamsSchedule } from "./types"
 import { publicWitnessTimeSlotDefaultPublisherRepository } from "../../repositories/publicWitnessTimeSlotDefaultPublisherRepository"
 import { Between } from "typeorm"
 import { ParamsCongregation } from "../PublicWitnessArrangementController/types"
+import { fieldServiceExceptionRepository } from "../../repositories/fieldServiceExceptionRepository"
 
 class PublicWitnessScheduleController {
     async createMultiple(
@@ -191,6 +192,16 @@ class PublicWitnessScheduleController {
             }
         })
 
+        const exceptions = await fieldServiceExceptionRepository.find({
+            where: {
+                congregation_id: arrangement.congregation_id,
+                date: Between(
+                    start.format("YYYY-MM-DD"),
+                    end.format("YYYY-MM-DD")
+                )
+            }
+        })
+
         // 🔁 Agrupar por data
         const scheduleMap: Record<string, any[]> = {}
 
@@ -220,7 +231,8 @@ class PublicWitnessScheduleController {
             arrangement_id,
             start_date,
             end_date,
-            schedule
+            schedule, 
+            exceptions
         })
     }
 
