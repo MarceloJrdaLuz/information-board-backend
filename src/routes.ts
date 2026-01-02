@@ -318,6 +318,7 @@ routes.delete("/public-witness/arrangements/:arrangement_id", is(["ADMIN_CONGREG
 routes.post("/public-witness/arrangements/:arrangement_id/schedules", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.createMultiple)
 routes.get("/public-witness/arrangements/:arrangement_id/schedules", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.getByDateRange)
 routes.get("/public-witness/schedules/pdf/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.getPdfByCongregation)
+routes.get("/public-witness/schedules/congregation/:congregation_id/history", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.getAssignmentsHistory)
 
 
 /* === Termos de uso (administração) === */

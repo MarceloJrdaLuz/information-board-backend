@@ -59,7 +59,7 @@ class FormDataController {
                         order: { fullName: "ASC" },
                     });
                     const publicWitnesses = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Public Witness"));
-                    return res.json(publishers);
+                    return res.json(publicWitnesses);
                 }
                 case 'territoryHistory': {
                     const publishers = await publisherRepository_1.publisherRepository.find({

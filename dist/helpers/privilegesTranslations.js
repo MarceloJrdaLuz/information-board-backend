@@ -13,7 +13,7 @@ exports.privilegeENToPT = {
     "Chairman": "Presidente",
     "Attendant": "Indicador",
     "Microphone Attendant": "Microfone Volante",
-    "Field Conductor": "Dirigente de Campo"
+    "Public Witness": "Testemunho Público"
 };
 exports.privilegePTtoEN = {
     "Publicador": "Publisher",
@@ -26,7 +26,8 @@ exports.privilegePTtoEN = {
     "Leitor": "Reader",
     "Presidente": "Chairman",
     "Indicador": "Attendant",
-    "Dirigente de Campo": "Field Conductor"
+    "Dirigente de Campo": "Field Conductor",
+    "Testemunho Público": "Public Witness"
 };
 function translatePrivilegesPTToEN(privileges) {
     return privileges.map(p => exports.privilegePTtoEN[p] || p);

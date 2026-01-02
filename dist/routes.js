@@ -271,6 +271,7 @@ routes.delete("/public-witness/arrangements/:arrangement_id", (0, permissions_1.
 routes.post("/public-witness/arrangements/:arrangement_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.createMultiple);
 routes.get("/public-witness/arrangements/:arrangement_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getByDateRange);
 routes.get("/public-witness/schedules/pdf/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getPdfByCongregation);
+routes.get("/public-witness/schedules/congregation/:congregation_id/history", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getAssignmentsHistory);
 /* === Termos de uso (administração) === */
 routes.post("/terms", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.create);
 routes.get("/terms", (0, permissions_1.is)(['ADMIN']), TermsOfUseController_1.default.list);

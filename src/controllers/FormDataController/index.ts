@@ -74,7 +74,7 @@ class FormDataController {
                         pp.privilegesRelation.some(p => p.privilege.name === "Public Witness")
                     )
 
-                    return res.json(publishers)
+                    return res.json(publicWitnesses)
                 }
 
                 case 'territoryHistory': {

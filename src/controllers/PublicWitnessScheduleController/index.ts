@@ -13,129 +13,129 @@ import { ParamsCongregation } from "../PublicWitnessArrangementController/types"
 
 class PublicWitnessScheduleController {
     async createMultiple(
-    req: CustomRequestPT<ParamsSchedule, BodyScheduleCreateMultiple>,
-    res: Response
-) {
-    const { schedule } = req.body
-    const { arrangement_id } = req.params
+        req: CustomRequestPT<ParamsSchedule, BodyScheduleCreateMultiple>,
+        res: Response
+    ) {
+        const { schedule } = req.body
+        const { arrangement_id } = req.params
 
-    const arrangement = await publicWitnessArrangementRepository.findOne({
-        where: { id: arrangement_id },
-        relations: ["timeSlots"]
-    })
-    if (!arrangement) throw new NotFoundError("Arrangement not found")
+        const arrangement = await publicWitnessArrangementRepository.findOne({
+            where: { id: arrangement_id },
+            relations: ["timeSlots"]
+        })
+        if (!arrangement) throw new NotFoundError("Arrangement not found")
 
-    const allCreatedAssignments = []
+        const allCreatedAssignments = []
 
-    for (const daySchedule of schedule) {
-        const scheduleDate = dayjs(daySchedule.date)
+        for (const daySchedule of schedule) {
+            const scheduleDate = dayjs(daySchedule.date)
 
-        // Validação da data
-        if (arrangement.is_fixed) {
-            if (arrangement.weekday === null || scheduleDate.day() !== arrangement.weekday) {
-                throw new BadRequestError(
-                    `The date ${daySchedule.date} does not match the weekday of the fixed arrangement`
-                )
-            }
-        } else {
-            if (!arrangement.date || arrangement.date !== daySchedule.date) {
-                throw new BadRequestError(
-                    `The date ${daySchedule.date} must match the specific date of the arrangement`
-                )
-            }
-        }
-
-        const createdAssignments = []
-
-        for (const slotPayload of daySchedule.slots) {
-            const timeSlot = arrangement.timeSlots.find(ts => ts.id === slotPayload.time_slot_id)
-            if (!timeSlot) {
-                throw new BadRequestError(`Time slot ${slotPayload.time_slot_id} does not exist in the arrangement`)
-            }
-
-            // FIXOS
-            const defaultPublishers =
-                await publicWitnessTimeSlotDefaultPublisherRepository.find({
-                    where: { time_slot_id: timeSlot.id },
-                    relations: ["publisher"],
-                    order: { order: "ASC" }
-                })
-
-            if (defaultPublishers.length > 0) {
-                createdAssignments.push({
-                    time_slot_id: timeSlot.id,
-                    publishers: defaultPublishers.map(dp => ({
-                        publisher_id: dp.publisher.id,
-                        name: dp.publisher.fullName,
-                        order: dp.order
-                    })),
-                    fixed: true
-                })
-                continue
-            }
-
-            // ROTATIVOS
-            let assignment = await publicWitnessAssignmentRepository.findOne({
-                where: { date: daySchedule.date, time_slot_id: timeSlot.id },
-                relations: ["publishers", "publishers.publisher"]
-            })
-
-            if (!slotPayload.publishers || slotPayload.publishers.length === 0) {
-                // ❌ Sem publishers: remove assignment se existir
-                if (assignment) {
-                    await publicWitnessAssignmentPublisherRepository.remove(assignment.publishers)
-                    await publicWitnessAssignmentRepository.remove(assignment)
+            // Validação da data
+            if (arrangement.is_fixed) {
+                if (arrangement.weekday === null || scheduleDate.day() !== arrangement.weekday) {
+                    throw new BadRequestError(
+                        `The date ${daySchedule.date} does not match the weekday of the fixed arrangement`
+                    )
                 }
-                continue
-            }
-
-            // 🔹 Se houver publishers, cria/atualiza assignment
-            if (!assignment) {
-                assignment = publicWitnessAssignmentRepository.create({
-                    date: daySchedule.date,
-                    time_slot_id: timeSlot.id,
-                    timeSlot: timeSlot
-                })
-                await publicWitnessAssignmentRepository.save(assignment)
             } else {
-                // Remove publishers antigos antes de atualizar
-                if (assignment.publishers.length > 0) {
-                    await publicWitnessAssignmentPublisherRepository.remove(assignment.publishers)
+                if (!arrangement.date || arrangement.date !== daySchedule.date) {
+                    throw new BadRequestError(
+                        `The date ${daySchedule.date} must match the specific date of the arrangement`
+                    )
                 }
             }
 
-            // Vincula publishers novos
-            for (const pub of slotPayload.publishers) {
-                const publisher = await publisherRepository.findOneBy({ id: pub.publisher_id })
-                if (!publisher) throw new NotFoundError(`Publisher ${pub.publisher_id} not found`)
+            const createdAssignments = []
 
-                const assignmentPublisher = publicWitnessAssignmentPublisherRepository.create({
-                    assignment_id: assignment.id,
-                    publisher_id: publisher.id,
-                    order: pub.order ?? 0
+            for (const slotPayload of daySchedule.slots) {
+                const timeSlot = arrangement.timeSlots.find(ts => ts.id === slotPayload.time_slot_id)
+                if (!timeSlot) {
+                    throw new BadRequestError(`Time slot ${slotPayload.time_slot_id} does not exist in the arrangement`)
+                }
+
+                // FIXOS
+                const defaultPublishers =
+                    await publicWitnessTimeSlotDefaultPublisherRepository.find({
+                        where: { time_slot_id: timeSlot.id },
+                        relations: ["publisher"],
+                        order: { order: "ASC" }
+                    })
+
+                if (defaultPublishers.length > 0) {
+                    createdAssignments.push({
+                        time_slot_id: timeSlot.id,
+                        publishers: defaultPublishers.map(dp => ({
+                            publisher_id: dp.publisher.id,
+                            name: dp.publisher.fullName,
+                            order: dp.order
+                        })),
+                        fixed: true
+                    })
+                    continue
+                }
+
+                // ROTATIVOS
+                let assignment = await publicWitnessAssignmentRepository.findOne({
+                    where: { date: daySchedule.date, time_slot_id: timeSlot.id },
+                    relations: ["publishers", "publishers.publisher"]
                 })
-                await publicWitnessAssignmentPublisherRepository.save(assignmentPublisher)
+
+                if (!slotPayload.publishers || slotPayload.publishers.length === 0) {
+                    // ❌ Sem publishers: remove assignment se existir
+                    if (assignment) {
+                        await publicWitnessAssignmentPublisherRepository.remove(assignment.publishers)
+                        await publicWitnessAssignmentRepository.remove(assignment)
+                    }
+                    continue
+                }
+
+                // 🔹 Se houver publishers, cria/atualiza assignment
+                if (!assignment) {
+                    assignment = publicWitnessAssignmentRepository.create({
+                        date: daySchedule.date,
+                        time_slot_id: timeSlot.id,
+                        timeSlot: timeSlot
+                    })
+                    await publicWitnessAssignmentRepository.save(assignment)
+                } else {
+                    // Remove publishers antigos antes de atualizar
+                    if (assignment.publishers.length > 0) {
+                        await publicWitnessAssignmentPublisherRepository.remove(assignment.publishers)
+                    }
+                }
+
+                // Vincula publishers novos
+                for (const pub of slotPayload.publishers) {
+                    const publisher = await publisherRepository.findOneBy({ id: pub.publisher_id })
+                    if (!publisher) throw new NotFoundError(`Publisher ${pub.publisher_id} not found`)
+
+                    const assignmentPublisher = publicWitnessAssignmentPublisherRepository.create({
+                        assignment_id: assignment.id,
+                        publisher_id: publisher.id,
+                        order: pub.order ?? 0
+                    })
+                    await publicWitnessAssignmentPublisherRepository.save(assignmentPublisher)
+                }
+
+                const assignmentWithPublishers = await publicWitnessAssignmentRepository.findOne({
+                    where: { id: assignment.id },
+                    relations: ["publishers", "publishers.publisher"]
+                })
+
+                createdAssignments.push({ ...assignmentWithPublishers, fixed: false })
             }
 
-            const assignmentWithPublishers = await publicWitnessAssignmentRepository.findOne({
-                where: { id: assignment.id },
-                relations: ["publishers", "publishers.publisher"]
+            allCreatedAssignments.push({
+                date: daySchedule.date,
+                assignments: createdAssignments
             })
-
-            createdAssignments.push({ ...assignmentWithPublishers, fixed: false })
         }
 
-        allCreatedAssignments.push({
-            date: daySchedule.date,
-            assignments: createdAssignments
+        return res.status(201).json({
+            arrangement_id: arrangement.id,
+            schedule: allCreatedAssignments
         })
     }
-
-    return res.status(201).json({
-        arrangement_id: arrangement.id,
-        schedule: allCreatedAssignments
-    })
-}
 
 
     async getByDateRange(
@@ -308,12 +308,12 @@ class PublicWitnessScheduleController {
         const { congregation_id } = req.params
         const { start, end } = req.query
 
-        if (!start || !end) {
-            throw new BadRequestError("start and end are required")
+        if ((start && !end) || (!start && end)) {
+            throw new BadRequestError("You need to specify both the start and the end.")
         }
 
-        const startDate = dayjs(start.toString())
-        const endDate = dayjs(end.toString())
+        const startDate = dayjs(start?.toString())
+        const endDate = dayjs(end?.toString())
 
         if (!startDate.isValid() || !endDate.isValid()) {
             throw new BadRequestError("Invalid date format. Use YYYY-MM-DD")
@@ -355,14 +355,15 @@ class PublicWitnessScheduleController {
                 }
 
                 /* ================= RODÍZIO ================= */
+
+                const where: any = { time_slot_id: slot.id }
+
+                // 🔹 Aplica filtro por data somente se ambas as datas forem passadas
+                if (startDate && endDate) {
+                    where.date = Between(startDate, endDate)
+                }
                 const assignments = await publicWitnessAssignmentRepository.find({
-                    where: {
-                        time_slot_id: slot.id,
-                        date: Between(
-                            startDate.format("YYYY-MM-DD"),
-                            endDate.format("YYYY-MM-DD")
-                        )
-                    },
+                    where,
                     relations: ["publishers", "publishers.publisher"],
                     order: {
                         date: "ASC",
@@ -418,6 +419,62 @@ class PublicWitnessScheduleController {
         })
     }
 
+    async getAssignmentsHistory(
+        req: ParamsCustomRequest<ParamsCongregation>,
+        res: Response
+    ) {
+        const { congregation_id } = req.params
+
+        // Busca todos os assignments da congregação
+        const assignments = await publicWitnessAssignmentRepository.find({
+            where: {
+                timeSlot: {
+                    arrangement: { congregation_id }
+                }
+            },
+            relations: ["publishers", "publishers.publisher", "timeSlot", "timeSlot.arrangement"],
+            order: {
+                date: "ASC",
+                publishers: { order: "ASC" }
+            }
+        })
+
+        // Agrupa por arranjo → data → horário
+        const historyMap = new Map<string, any>() // key = arrangement_id
+
+        for (const a of assignments) {
+            const arrId = a.timeSlot.arrangement.id
+            if (!historyMap.has(arrId)) {
+                historyMap.set(arrId, {
+                    arrangement_id: arrId,
+                    title: a.timeSlot.arrangement.title,
+                    schedule: []
+                })
+            }
+
+            const arrBlock = historyMap.get(arrId)
+
+            // Agrupa por data
+            let day = arrBlock.schedule.find((s: any) => s.date === a.date)
+            if (!day) {
+                day = { date: a.date, slots: [] }
+                arrBlock.schedule.push(day)
+            }
+
+            day.slots.push({
+                start_time: a.timeSlot.start_time,
+                end_time: a.timeSlot.end_time,
+                publishers: a.publishers.map(p => ({
+                    id: p.publisher.id,
+                    name: p.publisher.nickname ?? p.publisher.fullName ?? "-"
+                }))
+            })
+        }
+
+        return res.json({
+            history: Array.from(historyMap.values())
+        })
+    }
 }
 
 export default new PublicWitnessScheduleController()

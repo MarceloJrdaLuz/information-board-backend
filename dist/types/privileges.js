@@ -14,4 +14,5 @@ var Privileges;
     Privileges["PRESIDENTE"] = "Presidente";
     Privileges["LEITOR"] = "Leitor";
     Privileges["DIRIGENTECAMPO"] = "Dirigente de Campo";
+    Privileges["TESTEMUNHOPUBLICO"] = "Testemunho P\u00FAblico";
 })(Privileges = exports.Privileges || (exports.Privileges = {}));

@@ -254,11 +254,11 @@ class PublicWitnessScheduleController {
     async getPdfByCongregation(req, res) {
         const { congregation_id } = req.params;
         const { start, end } = req.query;
-        if (!start || !end) {
-            throw new api_errors_1.BadRequestError("start and end are required");
+        if ((start && !end) || (!start && end)) {
+            throw new api_errors_1.BadRequestError("You need to specify both the start and the end.");
         }
-        const startDate = (0, dayjs_1.default)(start.toString());
-        const endDate = (0, dayjs_1.default)(end.toString());
+        const startDate = (0, dayjs_1.default)(start === null || start === void 0 ? void 0 : start.toString());
+        const endDate = (0, dayjs_1.default)(end === null || end === void 0 ? void 0 : end.toString());
         if (!startDate.isValid() || !endDate.isValid()) {
             throw new api_errors_1.BadRequestError("Invalid date format. Use YYYY-MM-DD");
         }
@@ -296,11 +296,13 @@ class PublicWitnessScheduleController {
                     continue;
                 }
                 /* ================= RODÍZIO ================= */
+                const where = { time_slot_id: slot.id };
+                // 🔹 Aplica filtro por data somente se ambas as datas forem passadas
+                if (startDate && endDate) {
+                    where.date = (0, typeorm_1.Between)(startDate, endDate);
+                }
                 const assignments = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository.find({
-                    where: {
-                        time_slot_id: slot.id,
-                        date: (0, typeorm_1.Between)(startDate.format("YYYY-MM-DD"), endDate.format("YYYY-MM-DD"))
-                    },
+                    where,
                     relations: ["publishers", "publishers.publisher"],
                     order: {
                         date: "ASC",
@@ -347,6 +349,55 @@ class PublicWitnessScheduleController {
         return res.json({
             fixedSchedules,
             rotationBlocks: Array.from(rotationBlocksMap.values())
+        });
+    }
+    async getAssignmentsHistory(req, res) {
+        const { congregation_id } = req.params;
+        // Busca todos os assignments da congregação
+        const assignments = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository.find({
+            where: {
+                timeSlot: {
+                    arrangement: { congregation_id }
+                }
+            },
+            relations: ["publishers", "publishers.publisher", "timeSlot", "timeSlot.arrangement"],
+            order: {
+                date: "ASC",
+                publishers: { order: "ASC" }
+            }
+        });
+        // Agrupa por arranjo → data → horário
+        const historyMap = new Map(); // key = arrangement_id
+        for (const a of assignments) {
+            const arrId = a.timeSlot.arrangement.id;
+            if (!historyMap.has(arrId)) {
+                historyMap.set(arrId, {
+                    arrangement_id: arrId,
+                    title: a.timeSlot.arrangement.title,
+                    schedule: []
+                });
+            }
+            const arrBlock = historyMap.get(arrId);
+            // Agrupa por data
+            let day = arrBlock.schedule.find((s) => s.date === a.date);
+            if (!day) {
+                day = { date: a.date, slots: [] };
+                arrBlock.schedule.push(day);
+            }
+            day.slots.push({
+                start_time: a.timeSlot.start_time,
+                end_time: a.timeSlot.end_time,
+                publishers: a.publishers.map(p => {
+                    var _a, _b;
+                    return ({
+                        id: p.publisher.id,
+                        name: (_b = (_a = p.publisher.nickname) !== null && _a !== void 0 ? _a : p.publisher.fullName) !== null && _b !== void 0 ? _b : "-"
+                    });
+                })
+            });
+        }
+        return res.json({
+            history: Array.from(historyMap.values())
         });
     }
 }
