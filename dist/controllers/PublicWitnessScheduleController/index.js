@@ -12,6 +12,7 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const publicWitnessTimeSlotDefaultPublisherRepository_1 = require("../../repositories/publicWitnessTimeSlotDefaultPublisherRepository");
 const typeorm_1 = require("typeorm");
 const fieldServiceExceptionRepository_1 = require("../../repositories/fieldServiceExceptionRepository");
+const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 class PublicWitnessScheduleController {
     async createMultiple(req, res) {
         var _a;
@@ -375,6 +376,13 @@ class PublicWitnessScheduleController {
                 publishers: { order: "ASC" }
             }
         });
+        const fieldServiceSchedules = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository.find({
+            where: {
+                template: {
+                    congregation_id
+                }
+            }
+        });
         // Agrupa por arranjo → data → horário
         const historyMap = new Map(); // key = arrangement_id
         for (const a of assignments) {
@@ -406,7 +414,8 @@ class PublicWitnessScheduleController {
             });
         }
         return res.json({
-            history: Array.from(historyMap.values())
+            history: Array.from(historyMap.values()),
+            fieldServiceHistory: fieldServiceSchedules
         });
     }
 }

@@ -11,6 +11,7 @@ import { publicWitnessTimeSlotDefaultPublisherRepository } from "../../repositor
 import { Between } from "typeorm"
 import { ParamsCongregation } from "../PublicWitnessArrangementController/types"
 import { fieldServiceExceptionRepository } from "../../repositories/fieldServiceExceptionRepository"
+import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
 
 class PublicWitnessScheduleController {
     async createMultiple(
@@ -455,6 +456,14 @@ class PublicWitnessScheduleController {
             }
         })
 
+        const fieldServiceSchedules = await fieldServiceScheduleRepository.find({
+            where: {
+                template: {
+                    congregation_id
+                }
+            }
+        })
+
         // Agrupa por arranjo → data → horário
         const historyMap = new Map<string, any>() // key = arrangement_id
 
@@ -488,7 +497,8 @@ class PublicWitnessScheduleController {
         }
 
         return res.json({
-            history: Array.from(historyMap.values())
+            history: Array.from(historyMap.values()),
+            fieldServiceHistory: fieldServiceSchedules
         })
     }
 }
