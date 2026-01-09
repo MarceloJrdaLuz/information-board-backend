@@ -14,7 +14,7 @@ import {
 } from "./types";
 import { fieldServiceTemplateRepository } from "../../repositories/fieldServiceTemplateRepository";
 import { generateFieldServiceSchedules } from "../../services/fieldService/generateFieldServiceSchedules";
-import { buildFieldServicePdfData } from "../../services/fieldService/buildFieldServicePdfData";
+import { buildFieldServiceData } from "../../services/fieldService/buildFieldServiceData";
 import dayjs from "dayjs";
 
 class FieldServiceScheduleController {
@@ -111,7 +111,7 @@ class FieldServiceScheduleController {
             throw new BadRequestError("Datas inválidas")
         }
 
-        const data = await buildFieldServicePdfData(
+        const data = await buildFieldServiceData(
             congregation_id,
             startDate,
             endDate
@@ -127,7 +127,7 @@ class FieldServiceScheduleController {
         const startDate = dayjs().startOf('day').toDate();
         const endDate = dayjs().add(6, 'months').endOf('month').toDate();
 
-        const data = await buildFieldServicePdfData(
+        const data = await buildFieldServiceData(
             congregation_id,
             startDate,
             endDate

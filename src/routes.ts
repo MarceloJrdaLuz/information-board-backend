@@ -41,6 +41,7 @@ import FieldServiceExceptionController from "./controllers/FieldServiceException
 import FieldServiceScheduleController from "./controllers/FieldServiceScheduleController"
 import PublicWitnessArrangementController from "./controllers/PublicWitnessArrangementController"
 import PublicWitnessScheduleController from "./controllers/PublicWitnessScheduleController"
+import FieldServiceTemplateLocationOverrideController from "./controllers/FieldServiceTemplateLocationOverrideController"
 
 const routes = Router()
 
@@ -287,6 +288,7 @@ routes.get("/field-service/templates/:template_id", is(["ADMIN_CONGREGATION", "F
 routes.patch("/field-service/templates/:template_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController.update);
 routes.delete("/field-service/templates/:template_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController.delete);
 
+routes.post("/field-service/templates/:template_id/location-overrides", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateLocationOverrideController.upsert);
 /* === Field Service Schedules === */
 
 routes.post("/field-service/templates/:template_id/schedules", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.create);

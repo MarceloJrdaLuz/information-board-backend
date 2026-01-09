@@ -45,6 +45,7 @@ const FieldServiceExceptionController_1 = __importDefault(require("./controllers
 const FieldServiceScheduleController_1 = __importDefault(require("./controllers/FieldServiceScheduleController"));
 const PublicWitnessArrangementController_1 = __importDefault(require("./controllers/PublicWitnessArrangementController"));
 const PublicWitnessScheduleController_1 = __importDefault(require("./controllers/PublicWitnessScheduleController"));
+const FieldServiceTemplateLocationOverrideController_1 = __importDefault(require("./controllers/FieldServiceTemplateLocationOverrideController"));
 const routes = (0, express_1.Router)();
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
@@ -247,6 +248,7 @@ routes.get("/field-service/templates/congregation/:congregation_id", (0, permiss
 routes.get("/field-service/templates/:template_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController_1.default.getOne);
 routes.patch("/field-service/templates/:template_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController_1.default.update);
 routes.delete("/field-service/templates/:template_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController_1.default.delete);
+routes.post("/field-service/templates/:template_id/location-overrides", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateLocationOverrideController_1.default.upsert);
 /* === Field Service Schedules === */
 routes.post("/field-service/templates/:template_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.create);
 routes.post("/field-service/templates/:template_id/generate-schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.generateByPeriod);

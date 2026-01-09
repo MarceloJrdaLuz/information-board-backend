@@ -8,7 +8,7 @@ const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServic
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const fieldServiceTemplateRepository_1 = require("../../repositories/fieldServiceTemplateRepository");
 const generateFieldServiceSchedules_1 = require("../../services/fieldService/generateFieldServiceSchedules");
-const buildFieldServicePdfData_1 = require("../../services/fieldService/buildFieldServicePdfData");
+const buildFieldServiceData_1 = require("../../services/fieldService/buildFieldServiceData");
 const dayjs_1 = __importDefault(require("dayjs"));
 class FieldServiceScheduleController {
     async create(req, res) {
@@ -73,7 +73,7 @@ class FieldServiceScheduleController {
         if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
             throw new api_errors_1.BadRequestError("Datas inválidas");
         }
-        const data = await (0, buildFieldServicePdfData_1.buildFieldServicePdfData)(congregation_id, startDate, endDate);
+        const data = await (0, buildFieldServiceData_1.buildFieldServiceData)(congregation_id, startDate, endDate);
         return res.json(data);
     }
     async getAllFutureSchedules(req, res) {
@@ -81,7 +81,7 @@ class FieldServiceScheduleController {
         // Define o período: de hoje até daqui a 6 meses
         const startDate = (0, dayjs_1.default)().startOf('day').toDate();
         const endDate = (0, dayjs_1.default)().add(6, 'months').endOf('month').toDate();
-        const data = await (0, buildFieldServicePdfData_1.buildFieldServicePdfData)(congregation_id, startDate, endDate);
+        const data = await (0, buildFieldServiceData_1.buildFieldServiceData)(congregation_id, startDate, endDate);
         return res.json(data);
     }
     async getOne(req, res) {
