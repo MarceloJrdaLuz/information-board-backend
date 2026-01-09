@@ -65,7 +65,8 @@ export interface RotationSchedulePdfItem {
 
 export interface RotationBlockPdf {
   title: string
-  weekday: number
+  weekdayIndex: number
+  weekday: string
   time: string
   location: string
   schedules: RotationSchedulePdfItem[]
