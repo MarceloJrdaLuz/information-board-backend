@@ -36,7 +36,7 @@ const weekdayLabel = (weekday: number) =>
 
 /* ===================== SERVICE ===================== */
 
-export async function buildFieldServicePdfData(
+export async function buildFieldServiceData(
   congregation_id: string,
   start: Date,
   end: Date
@@ -51,9 +51,9 @@ export async function buildFieldServicePdfData(
 
   /* ===== Templates ativos ===== */
   const templates = await fieldServiceTemplateRepository.find({
-    where: { congregation_id, active: true },
-    relations: ["leader"],
-  })
+    where: { congregation: { id: congregation_id } },
+    relations: ["leader", "location_overrides"],
+  });
 
   /* ===== Exceptions do período ===== */
   const exceptions = await fieldServiceExceptionRepository.find({
@@ -75,8 +75,13 @@ export async function buildFieldServicePdfData(
       weekday: weekdayLabel(t.weekday),
       weekdayIndex: t.weekday,
       time: t.time.slice(0, 5),
-      location: t.location,
       leader: t.leader?.nickname ? t.leader.nickname : t.leader?.fullName ?? "—",
+      location: t.location,
+      locationRotation: t.location_overrides.length > 0,
+      locationOverrides: t.location_overrides.map(o => ({
+        weekStart: o.week_start,
+        location: o.location,
+      })),
     })).sort((a, b) => {
       const dayDiff =
         FIELD_SERVICE_WEEKDAY_ORDER[a.weekdayIndex] -
@@ -121,8 +126,6 @@ export async function buildFieldServicePdfData(
       })
     }
   }
-
-  // Preencher os blocos com agendamentos existentes
   // Preencher os blocos com agendamentos existentes
   for (const schedule of schedules) {
     const template = schedule.template

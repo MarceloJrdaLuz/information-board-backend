@@ -14,6 +14,7 @@ const typeorm_1 = require("typeorm");
 const Congregation_1 = require("./Congregation");
 const Publisher_1 = require("./Publisher");
 const FieldServiceRotationMember_1 = require("./FieldServiceRotationMember");
+const FieldServiceTemplateLocationOverride_1 = require("./FieldServiceTemplateLocationOverride");
 let FieldServiceTemplate = class FieldServiceTemplate {
 };
 __decorate([
@@ -48,6 +49,10 @@ __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], FieldServiceTemplate.prototype, "location", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => FieldServiceTemplateLocationOverride_1.FieldServiceTemplateLocationOverride, o => o.template),
+    __metadata("design:type", Array)
+], FieldServiceTemplate.prototype, "location_overrides", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "uuid", nullable: true }),
     __metadata("design:type", Object)

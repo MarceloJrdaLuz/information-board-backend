@@ -1,10 +1,14 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_errors_1 = require("../../helpers/api-errors");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const fieldServiceTemplateRepository_1 = require("../../repositories/fieldServiceTemplateRepository");
 const fieldServiceRotationMembersRepository_1 = require("../../repositories/fieldServiceRotationMembersRepository");
+const dayjs_1 = __importDefault(require("dayjs"));
 class FieldServiceTemplateController {
     /* =====================
        CREATE
@@ -72,6 +76,7 @@ class FieldServiceTemplateController {
        GET ONE
     ===================== */
     async getOne(req, res) {
+        var _a;
         const { template_id } = req.params;
         const template = await fieldServiceTemplateRepository_1.fieldServiceTemplateRepository.findOne({
             where: { id: template_id },
@@ -80,12 +85,30 @@ class FieldServiceTemplateController {
                 "congregation",
                 "rotation_members",
                 "rotation_members.publisher",
+                "location_overrides"
             ],
+            order: {
+                location_overrides: {
+                    week_start: "ASC",
+                },
+            },
         });
         if (!template) {
             throw new api_errors_1.NotFoundError("Field service template not found");
         }
-        return res.json(template);
+        const overrides = (_a = template.location_overrides) !== null && _a !== void 0 ? _a : [];
+        return res.json({
+            ...template,
+            location_rotation: overrides.length > 0,
+            location_overrides: overrides.map(o => ({
+                week_start: o.week_start,
+                // 👇 data real da saída (mesmo weekday do template)
+                date: (0, dayjs_1.default)(o.week_start)
+                    .isoWeekday(template.weekday + 1) // weekday JS → ISO
+                    .format("YYYY-MM-DD"),
+                location: o.location,
+            })),
+        });
     }
     /* =====================
        GET BY CONGREGATION

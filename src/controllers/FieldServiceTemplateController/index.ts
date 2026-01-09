@@ -14,6 +14,7 @@ import {
     BodyUpdateFieldServiceTemplate,
 } from "./types";
 import { fieldServiceRotationMemberRepository } from "../../repositories/fieldServiceRotationMembersRepository";
+import dayjs from "dayjs";
 
 class FieldServiceTemplateController {
     /* =====================
@@ -118,14 +119,33 @@ class FieldServiceTemplateController {
                 "congregation",
                 "rotation_members",
                 "rotation_members.publisher",
+                "location_overrides"
             ],
+            order: {
+                location_overrides: {
+                    week_start: "ASC",
+                },
+            },
         });
 
         if (!template) {
             throw new NotFoundError("Field service template not found");
         }
 
-        return res.json(template);
+        const overrides = template.location_overrides ?? [];
+
+        return res.json({
+            ...template,
+            location_rotation: overrides.length > 0,
+            location_overrides: overrides.map(o => ({
+                week_start: o.week_start,
+                // 👇 data real da saída (mesmo weekday do template)
+                date: dayjs(o.week_start)
+                    .isoWeekday(template.weekday + 1) // weekday JS → ISO
+                    .format("YYYY-MM-DD"),
+                location: o.location,
+            })),
+        });
     }
 
     /* =====================
