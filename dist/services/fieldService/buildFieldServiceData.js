@@ -99,7 +99,8 @@ async function buildFieldServiceData(congregation_id, start, end) {
         if (!rotationBlocksMap.has(key)) {
             rotationBlocksMap.set(key, {
                 title: `${weekdayLabel(template.weekday)} – ${template.time.slice(0, 5)} – ${template.location}`,
-                weekday: template.weekday,
+                weekdayIndex: template.weekday,
+                weekday: weekdayLabel(template.weekday),
                 time: template.time.slice(0, 5),
                 location: template.location,
                 schedules: [],
@@ -143,8 +144,8 @@ async function buildFieldServiceData(congregation_id, start, end) {
         block.schedules.sort((a, b) => (a.date < b.date ? -1 : 1));
     });
     const rotationBlocks = Array.from(rotationBlocksMap.values()).sort((a, b) => {
-        const dayDiff = FIELD_SERVICE_WEEKDAY_ORDER[a.weekday] -
-            FIELD_SERVICE_WEEKDAY_ORDER[b.weekday];
+        const dayDiff = FIELD_SERVICE_WEEKDAY_ORDER[a.weekdayIndex] -
+            FIELD_SERVICE_WEEKDAY_ORDER[b.weekdayIndex];
         if (dayDiff !== 0)
             return dayDiff;
         return a.time.localeCompare(b.time);

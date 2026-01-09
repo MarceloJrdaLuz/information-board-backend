@@ -119,7 +119,8 @@ export async function buildFieldServiceData(
           0,
           5
         )} – ${template.location}`,
-        weekday: template.weekday,
+        weekdayIndex: template.weekday,
+        weekday: weekdayLabel(template.weekday),
         time: template.time.slice(0, 5),
         location: template.location,
         schedules: [],
@@ -168,8 +169,8 @@ export async function buildFieldServiceData(
 
   const rotationBlocks = Array.from(rotationBlocksMap.values()).sort((a, b) => {
     const dayDiff =
-      FIELD_SERVICE_WEEKDAY_ORDER[a.weekday] -
-      FIELD_SERVICE_WEEKDAY_ORDER[b.weekday]
+      FIELD_SERVICE_WEEKDAY_ORDER[a.weekdayIndex] -
+      FIELD_SERVICE_WEEKDAY_ORDER[b.weekdayIndex]
 
     if (dayDiff !== 0) return dayDiff
 
