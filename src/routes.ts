@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { uploadFile } from "./config/multer"
-import { is, verifyCronSecret } from "./middlewares/permissions"
+import { is, requirePublisher, verifyCronSecret } from "./middlewares/permissions"
 
 // Controllers
 import UserController from "./controllers/UserController"
@@ -42,6 +42,7 @@ import FieldServiceScheduleController from "./controllers/FieldServiceScheduleCo
 import PublicWitnessArrangementController from "./controllers/PublicWitnessArrangementController"
 import PublicWitnessScheduleController from "./controllers/PublicWitnessScheduleController"
 import FieldServiceTemplateLocationOverrideController from "./controllers/FieldServiceTemplateLocationOverrideController"
+import PublisherReminderController from "./controllers/PublisherReminderController"
 
 const routes = Router()
 
@@ -110,6 +111,16 @@ routes.delete('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_
 routes.put('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.update)
 routes.patch('/publisher/:publisher_id/unlink-publisher', is(['ADMIN_CONGREGATION']), PublisherControllers.unlinkPublisherFromUser)
 routes.put('/publishers/transfer-congregation', is(['ADMIN_CONGREGATION']), PublisherControllers.transferPublishers)
+
+/* === Lembretes pessoais === */
+routes.post("/reminders/publishers/:publisher_id", requirePublisher(), PublisherReminderController.create)
+routes.post("/reminders/:reminder_id/complete", requirePublisher(), PublisherReminderController.complete)
+routes.patch("/reminders/:reminder_id", requirePublisher(), PublisherReminderController.update)
+routes.delete("/reminders/:reminder_id", requirePublisher(), PublisherReminderController.delete)
+routes.get("/reminders/:reminder_id", requirePublisher(), PublisherReminderController.getOne)
+routes.get("/reminders/publishers/:publisher_id", requirePublisher(), PublisherReminderController.getActive)
+routes.get("/reminders/publishers/:publisher_id/all", requirePublisher(), PublisherReminderController.getAll)
+
 
 /* === Contatos de emergência === */
 routes.get('/emergencyContacts/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController.listByCongregation)
@@ -229,7 +240,7 @@ routes.post('/report/totals/:congregation_id', is(['ADMIN_CONGREGATION', 'REPORT
 routes.get('/report/totals/:congregation_id', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), TotalsReportsController.get)
 routes.post('/report', ReportController.create)
 routes.get('/reports/:congregationId', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'REPORTS_VIEWER']), ReportController.getReports)
-routes.get('/myReports', ReportController.getMyReports)
+routes.get('/myReports', requirePublisher(), ReportController.getMyReports)
 
 /* === Grupos === */
 routes.post('/group/:group_id/add-publishers', is(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController.addPublishersGroup)
