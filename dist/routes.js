@@ -46,6 +46,7 @@ const FieldServiceScheduleController_1 = __importDefault(require("./controllers/
 const PublicWitnessArrangementController_1 = __importDefault(require("./controllers/PublicWitnessArrangementController"));
 const PublicWitnessScheduleController_1 = __importDefault(require("./controllers/PublicWitnessScheduleController"));
 const FieldServiceTemplateLocationOverrideController_1 = __importDefault(require("./controllers/FieldServiceTemplateLocationOverrideController"));
+const PublisherReminderController_1 = __importDefault(require("./controllers/PublisherReminderController"));
 const routes = (0, express_1.Router)();
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
@@ -99,6 +100,14 @@ routes.delete('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGA
 routes.put('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.update);
 routes.patch('/publisher/:publisher_id/unlink-publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION']), PublisherControllers_1.default.unlinkPublisherFromUser);
 routes.put('/publishers/transfer-congregation', (0, permissions_1.is)(['ADMIN_CONGREGATION']), PublisherControllers_1.default.transferPublishers);
+/* === Lembretes pessoais === */
+routes.post("/reminders/publishers/:publisher_id", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.create);
+routes.post("/reminders/:reminder_id/complete", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.complete);
+routes.patch("/reminders/:reminder_id", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.update);
+routes.delete("/reminders/:reminder_id", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.delete);
+routes.get("/reminders/:reminder_id", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.getOne);
+routes.get("/reminders/publishers/:publisher_id", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.getActive);
+routes.get("/reminders/publishers/:publisher_id/all", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.getAll);
 /* === Contatos de emergência === */
 routes.get('/emergencyContacts/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController_1.default.listByCongregation);
 routes.get('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController_1.default.getEmergencyContact);
@@ -199,7 +208,7 @@ routes.post('/report/totals/:congregation_id', (0, permissions_1.is)(['ADMIN_CON
 routes.get('/report/totals/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), TotalsReportsController_1.default.get);
 routes.post('/report', ReportController_1.default.create);
 routes.get('/reports/:congregationId', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'REPORTS_VIEWER']), ReportController_1.default.getReports);
-routes.get('/myReports', ReportController_1.default.getMyReports);
+routes.get('/myReports', (0, permissions_1.requirePublisher)(), ReportController_1.default.getMyReports);
 /* === Grupos === */
 routes.post('/group/:group_id/add-publishers', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController_1.default.addPublishersGroup);
 routes.delete('/group/:group_id/remove-publishers', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController_1.default.removePublishersGroup);

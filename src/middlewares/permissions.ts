@@ -35,11 +35,19 @@ export async function decoder(request: Request) {
 
     const payload = decode(token)
 
-    const user = await userRepository.findOneBy({ id: payload?.sub?.toString() })
+    const user = await userRepository.findOne({
+        where: { id: payload?.sub?.toString() },
+        relations: ['publisher']
+    })
+
+    if (!user) {
+        throw new UnauthorizedError("User not found")
+    }
 
     return {
-        id: user?.id,
-        roles: user?.roles
+        id: user.id,
+        roles: user.roles,
+        publisher_id: user.publisher?.id ?? null
     }
 
 }
@@ -51,6 +59,20 @@ export function verifyCronSecret(req: Request, res: Response, next: NextFunction
         throw new UnauthorizedError('Cron secret invalid')
     }
     return next()
+}
+
+export function requirePublisher() {
+    return async (req: Request, res: Response, next: NextFunction) => {
+        const user = await decoder(req)
+
+        if (!user.publisher_id) {
+            throw new UnauthorizedError(
+                "User is not linked to a publisher"
+            )
+        }
+
+        return next()
+    }
 }
 
 export function is(role: string[]) {
