@@ -9,6 +9,13 @@ import {
 } from "typeorm"
 import { Publisher } from "./Publisher"
 
+// types/RecurrenceType.ts ou dentro do arquivo da entidade
+export enum RecurrenceType {
+    DAILY = "DAILY",
+    WEEKLY = "WEEKLY",
+    MONTHLY = "MONTHLY",
+    YEARLY = "YEARLY"
+}
 @Entity("publisher_reminders")
 export class PublisherReminder {
     @PrimaryGeneratedColumn("uuid")
@@ -43,12 +50,20 @@ export class PublisherReminder {
     @Column({ type: "boolean", default: false })
     isRecurring: boolean
 
-    /**
-     * Regra de recorrência em dias
-     * Ex: 30, 90, 180, 7, 45...
-     */
-    @Column({ type: "int", nullable: true })
-    recurrenceIntervalDays?: number | null
+
+    @Column({
+        name: "recurrenceIntervalDays", // <-- Garante que no banco o nome continue o mesmo
+        type: "int",
+        nullable: true
+    })
+    recurrenceInterval?: number | null // <-- No seu código, você usa esse nome mais bonito
+
+    @Column({
+        type: "enum",
+        enum: RecurrenceType,
+        default: RecurrenceType.DAILY
+    })
+    recurrenceType: RecurrenceType
 
     /**
      * Quantas vezes deve repetir

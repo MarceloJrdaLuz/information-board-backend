@@ -9,9 +9,17 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PublisherReminder = void 0;
+exports.PublisherReminder = exports.RecurrenceType = void 0;
 const typeorm_1 = require("typeorm");
 const Publisher_1 = require("./Publisher");
+// types/RecurrenceType.ts ou dentro do arquivo da entidade
+var RecurrenceType;
+(function (RecurrenceType) {
+    RecurrenceType["DAILY"] = "DAILY";
+    RecurrenceType["WEEKLY"] = "WEEKLY";
+    RecurrenceType["MONTHLY"] = "MONTHLY";
+    RecurrenceType["YEARLY"] = "YEARLY";
+})(RecurrenceType = exports.RecurrenceType || (exports.RecurrenceType = {}));
 let PublisherReminder = class PublisherReminder {
 };
 __decorate([
@@ -44,9 +52,21 @@ __decorate([
     __metadata("design:type", Boolean)
 ], PublisherReminder.prototype, "isRecurring", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "int", nullable: true }),
+    (0, typeorm_1.Column)({
+        name: "recurrenceIntervalDays",
+        type: "int",
+        nullable: true
+    }),
     __metadata("design:type", Object)
-], PublisherReminder.prototype, "recurrenceIntervalDays", void 0);
+], PublisherReminder.prototype, "recurrenceInterval", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: "enum",
+        enum: RecurrenceType,
+        default: RecurrenceType.DAILY
+    }),
+    __metadata("design:type", String)
+], PublisherReminder.prototype, "recurrenceType", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "int", nullable: true }),
     __metadata("design:type", Object)

@@ -1,3 +1,5 @@
+import { RecurrenceType } from "../../entities/PublisherReminders"
+
 export type ParamsPublisherReminderTypes = {
   publisher_id: string
 }
@@ -16,7 +18,8 @@ export interface BodyReminderCreateTypes {
   endDate?: string
 
   isRecurring?: boolean
-  recurrenceIntervalDays?: number
+  recurrenceType?: RecurrenceType 
+  recurrenceInterval?: number
   recurrenceCount?: number
 }
 
@@ -28,7 +31,8 @@ export interface BodyReminderUpdateTypes {
   endDate?: string
 
   isRecurring?: boolean
-  recurrenceIntervalDays?: number
+  recurrenceType?: RecurrenceType 
+  recurrenceInterval?: number
   recurrenceCount?: number
   isActive?: boolean
 }

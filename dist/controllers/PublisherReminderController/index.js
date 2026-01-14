@@ -8,13 +8,14 @@ const api_errors_1 = require("../../helpers/api-errors");
 const resolveReminderOccurrence_1 = require("../../helpers/resolveReminderOccurrence");
 const publisherReminderRepository_1 = require("../../repositories/publisherReminderRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
+const PublisherReminders_1 = require("../../entities/PublisherReminders");
 class PublisherReminderController {
     /* =======================
        CREATE
     ======================= */
     async create(req, res) {
         const { publisher_id } = req.params;
-        const { title, description, startDate, endDate, isRecurring, recurrenceIntervalDays, recurrenceCount } = req.body;
+        const { title, description, startDate, endDate, isRecurring, recurrenceType, recurrenceInterval, recurrenceCount } = req.body;
         if (!title)
             throw new api_errors_1.BadRequestError("Title is required");
         if (!startDate)
@@ -25,8 +26,9 @@ class PublisherReminderController {
         if ((0, dayjs_1.default)(endDate).isBefore((0, dayjs_1.default)(startDate), "day")) {
             throw new api_errors_1.BadRequestError("endDate cannot be before startDate");
         }
-        if (isRecurring && !recurrenceIntervalDays) {
-            throw new api_errors_1.BadRequestError("recurrenceIntervalDays is required for recurring reminders");
+        // Validação da recorrência
+        if (isRecurring && !recurrenceInterval) {
+            throw new api_errors_1.BadRequestError("recurrenceInterval is required for recurring reminders");
         }
         const publisher = await publisherRepository_1.publisherRepository.findOneBy({ id: publisher_id });
         if (!publisher)
@@ -37,16 +39,17 @@ class PublisherReminderController {
             startDate: (0, dayjs_1.default)(startDate).format("YYYY-MM-DD"),
             endDate: endDate ? (0, dayjs_1.default)(endDate).format("YYYY-MM-DD") : null,
             isRecurring: isRecurring !== null && isRecurring !== void 0 ? isRecurring : false,
-            recurrenceIntervalDays: isRecurring ? recurrenceIntervalDays : null,
-            recurrenceCount: isRecurring ? recurrenceCount !== null && recurrenceCount !== void 0 ? recurrenceCount : null : null,
+            recurrenceType: isRecurring ? (recurrenceType !== null && recurrenceType !== void 0 ? recurrenceType : PublisherReminders_1.RecurrenceType.DAILY) : PublisherReminders_1.RecurrenceType.DAILY,
+            // Mapeia o valor para a coluna recurrenceIntervalDays no banco
+            recurrenceInterval: isRecurring ? recurrenceInterval : null, recurrenceCount: isRecurring ? recurrenceCount !== null && recurrenceCount !== void 0 ? recurrenceCount : null : null,
             publisher
         });
         const saved = await publisherReminderRepository_1.publisherReminderRepository.save(reminder);
         return res.status(201).json(saved);
     }
     /* =======================
-       UPDATE (UNITÁRIO)
-    ======================= */
+        UPDATE (UNITÁRIO)
+     ======================= */
     async update(req, res) {
         const { reminder_id } = req.params;
         const reminder = await publisherReminderRepository_1.publisherReminderRepository.findOne({
@@ -55,38 +58,40 @@ class PublisherReminderController {
         });
         if (!reminder)
             throw new api_errors_1.NotFoundError("Reminder not found");
-        const { title, description, startDate, endDate, isRecurring, recurrenceIntervalDays, recurrenceCount, isActive } = req.body;
+        const { title, description, startDate, endDate, isRecurring, recurrenceType, recurrenceInterval, recurrenceCount, isActive } = req.body;
         if (title !== undefined)
             reminder.title = title;
         if (description !== undefined)
             reminder.description = description;
+        if (isActive !== undefined)
+            reminder.isActive = isActive;
         if (startDate !== undefined) {
             reminder.startDate = (0, dayjs_1.default)(startDate).format("YYYY-MM-DD");
         }
         if (endDate !== undefined) {
-            const start = startDate
-                ? (0, dayjs_1.default)(startDate)
-                : (0, dayjs_1.default)(reminder.startDate);
+            const start = startDate ? (0, dayjs_1.default)(startDate) : (0, dayjs_1.default)(reminder.startDate);
             if ((0, dayjs_1.default)(endDate).isBefore(start, "day")) {
                 throw new api_errors_1.BadRequestError("endDate cannot be before startDate");
             }
             reminder.endDate = (0, dayjs_1.default)(endDate).format("YYYY-MM-DD");
         }
+        // Lógica de Recorrência no Update
         if (isRecurring !== undefined) {
             reminder.isRecurring = isRecurring;
+            // Se o usuário desativar a recorrência, limpamos os campos auxiliares
             if (!isRecurring) {
-                reminder.recurrenceIntervalDays = null;
+                reminder.recurrenceInterval = null;
                 reminder.recurrenceCount = null;
+                reminder.recurrenceType = PublisherReminders_1.RecurrenceType.DAILY;
             }
         }
-        if (recurrenceIntervalDays !== undefined) {
-            reminder.recurrenceIntervalDays = recurrenceIntervalDays;
-        }
-        if (recurrenceCount !== undefined) {
-            reminder.recurrenceCount = recurrenceCount;
-        }
-        if (isActive !== undefined) {
-            reminder.isActive = isActive;
+        if (reminder.isRecurring) {
+            if (recurrenceType !== undefined)
+                reminder.recurrenceType = recurrenceType;
+            if (recurrenceInterval !== undefined)
+                reminder.recurrenceInterval = recurrenceInterval;
+            if (recurrenceCount !== undefined)
+                reminder.recurrenceCount = recurrenceCount;
         }
         const saved = await publisherReminderRepository_1.publisherReminderRepository.save(reminder);
         return res.json(saved);

@@ -11,6 +11,7 @@ import {
     ParamsPublisherReminderTypes,
     ParamsReminderTypes
 } from "./types"
+import { RecurrenceType } from "../../entities/PublisherReminders"
 
 class PublisherReminderController {
 
@@ -28,7 +29,8 @@ class PublisherReminderController {
             startDate,
             endDate,
             isRecurring,
-            recurrenceIntervalDays,
+            recurrenceType,
+            recurrenceInterval,
             recurrenceCount
         } = req.body
 
@@ -44,8 +46,9 @@ class PublisherReminderController {
         }
 
 
-        if (isRecurring && !recurrenceIntervalDays) {
-            throw new BadRequestError("recurrenceIntervalDays is required for recurring reminders")
+        // Validação da recorrência
+        if (isRecurring && !recurrenceInterval) {
+            throw new BadRequestError("recurrenceInterval is required for recurring reminders")
         }
 
         const publisher = await publisherRepository.findOneBy({ id: publisher_id })
@@ -57,8 +60,9 @@ class PublisherReminderController {
             startDate: dayjs(startDate).format("YYYY-MM-DD"),
             endDate: endDate ? dayjs(endDate).format("YYYY-MM-DD") : null,
             isRecurring: isRecurring ?? false,
-            recurrenceIntervalDays: isRecurring ? recurrenceIntervalDays : null,
-            recurrenceCount: isRecurring ? recurrenceCount ?? null : null,
+            recurrenceType: isRecurring ? (recurrenceType ?? RecurrenceType.DAILY) : RecurrenceType.DAILY,
+            // Mapeia o valor para a coluna recurrenceIntervalDays no banco
+            recurrenceInterval: isRecurring ? recurrenceInterval : null, recurrenceCount: isRecurring ? recurrenceCount ?? null : null,
             publisher
         })
 
@@ -67,8 +71,8 @@ class PublisherReminderController {
     }
 
     /* =======================
-       UPDATE (UNITÁRIO)
-    ======================= */
+        UPDATE (UNITÁRIO)
+     ======================= */
     async update(
         req: CustomRequestPT<ParamsReminderTypes, BodyReminderUpdateTypes>,
         res: Response
@@ -88,49 +92,43 @@ class PublisherReminderController {
             startDate,
             endDate,
             isRecurring,
-            recurrenceIntervalDays,
+            recurrenceType,
+            recurrenceInterval,
             recurrenceCount,
             isActive
         } = req.body
 
         if (title !== undefined) reminder.title = title
         if (description !== undefined) reminder.description = description
+        if (isActive !== undefined) reminder.isActive = isActive
 
         if (startDate !== undefined) {
             reminder.startDate = dayjs(startDate).format("YYYY-MM-DD")
         }
 
         if (endDate !== undefined) {
-            const start = startDate
-                ? dayjs(startDate)
-                : dayjs(reminder.startDate)
-
+            const start = startDate ? dayjs(startDate) : dayjs(reminder.startDate)
             if (dayjs(endDate).isBefore(start, "day")) {
                 throw new BadRequestError("endDate cannot be before startDate")
             }
-
             reminder.endDate = dayjs(endDate).format("YYYY-MM-DD")
         }
 
+        // Lógica de Recorrência no Update
         if (isRecurring !== undefined) {
             reminder.isRecurring = isRecurring
-
+            // Se o usuário desativar a recorrência, limpamos os campos auxiliares
             if (!isRecurring) {
-                reminder.recurrenceIntervalDays = null
+                reminder.recurrenceInterval = null
                 reminder.recurrenceCount = null
+                reminder.recurrenceType = RecurrenceType.DAILY
             }
         }
 
-        if (recurrenceIntervalDays !== undefined) {
-            reminder.recurrenceIntervalDays = recurrenceIntervalDays
-        }
-
-        if (recurrenceCount !== undefined) {
-            reminder.recurrenceCount = recurrenceCount
-        }
-
-        if (isActive !== undefined) {
-            reminder.isActive = isActive
+        if (reminder.isRecurring) {
+            if (recurrenceType !== undefined) reminder.recurrenceType = recurrenceType
+            if (recurrenceInterval !== undefined) reminder.recurrenceInterval = recurrenceInterval
+            if (recurrenceCount !== undefined) reminder.recurrenceCount = recurrenceCount
         }
 
         const saved = await publisherReminderRepository.save(reminder)
