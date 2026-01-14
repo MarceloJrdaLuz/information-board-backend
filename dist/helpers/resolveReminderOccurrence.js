@@ -6,23 +6,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.resolveReminderOccurrence = void 0;
 const dayjs_1 = __importDefault(require("dayjs"));
 const isBetween_1 = __importDefault(require("dayjs/plugin/isBetween"));
+const isSameOrBefore_1 = __importDefault(require("dayjs/plugin/isSameOrBefore")); // Importante adicionar este plugin
+const PublisherReminders_1 = require("../entities/PublisherReminders");
 dayjs_1.default.extend(isBetween_1.default);
+dayjs_1.default.extend(isSameOrBefore_1.default);
 function resolveReminderOccurrence(reminder, today = (0, dayjs_1.default)()) {
     if (!reminder.isActive)
         return null;
     const todayDay = today.startOf("day");
     const start = (0, dayjs_1.default)(reminder.startDate).startOf("day");
-    const end = (0, dayjs_1.default)(reminder.endDate).startOf("day");
+    // Duração calculada do evento original
+    const durationDays = reminder.endDate
+        ? (0, dayjs_1.default)(reminder.endDate).diff(start, "day") + 1
+        : 1;
     const completedUntil = reminder.completed_until ? (0, dayjs_1.default)(reminder.completed_until).startOf("day") : null;
-    // Se já concluído até o fim do ciclo atual, não mostra
-    if (completedUntil && todayDay.isSameOrBefore(completedUntil))
-        return null;
-    // duração INCLUSIVA (1–20 = 20 dias)
-    const durationDays = end.diff(start, "day") + 1;
-    // =====================
-    // 📌 NÃO RECORRENTE
-    // =====================
-    if (!reminder.isRecurring || !reminder.recurrenceIntervalDays) {
+    // 1. NÃO RECORRENTE
+    if (!reminder.isRecurring) {
+        const end = start.add(durationDays - 1, "day");
+        if (completedUntil && todayDay.isSameOrBefore(completedUntil))
+            return null;
         if (!todayDay.isBetween(start, end, "day", "[]"))
             return null;
         return {
@@ -34,26 +36,34 @@ function resolveReminderOccurrence(reminder, today = (0, dayjs_1.default)()) {
             isRecurring: false
         };
     }
-    // =====================
-    // 📌 RECORRENTE
-    // =====================
-    const daysFromStart = todayDay.diff(start, "day");
-    if (daysFromStart < 0)
+    // 2. RECORRENTE
+    const interval = reminder.recurrenceInterval || 1;
+    const type = reminder.recurrenceType || PublisherReminders_1.RecurrenceType.DAILY;
+    // Mapeia o tipo para a unidade do Dayjs
+    const unitMap = {
+        [PublisherReminders_1.RecurrenceType.DAILY]: 'day',
+        [PublisherReminders_1.RecurrenceType.WEEKLY]: 'week',
+        [PublisherReminders_1.RecurrenceType.MONTHLY]: 'month',
+        [PublisherReminders_1.RecurrenceType.YEARLY]: 'year'
+    };
+    const unit = unitMap[type];
+    // Diferença na unidade específica
+    const diff = todayDay.diff(start, unit);
+    if (diff < 0)
         return null;
-    const cycleIndex = Math.floor(daysFromStart / reminder.recurrenceIntervalDays);
-    // controle por quantidade
-    if (typeof reminder.recurrenceCount === "number" &&
-        cycleIndex + 1 > reminder.recurrenceCount) {
+    const cycleIndex = Math.floor(diff / interval);
+    // Controle de quantidade
+    if (reminder.recurrenceCount && (cycleIndex + 1) > reminder.recurrenceCount)
         return null;
-    }
-    const cycleStart = start.add(cycleIndex * reminder.recurrenceIntervalDays, "day");
+    // Projeta as datas do ciclo atual
+    const cycleStart = start.add(cycleIndex * interval, unit);
     const cycleEnd = cycleStart.add(durationDays - 1, "day");
-    // Se já concluído até o fim do ciclo atual
+    // Se já concluído este ciclo
     if (completedUntil && cycleEnd.isSameOrBefore(completedUntil))
         return null;
-    if (!todayDay.isBetween(cycleStart, cycleEnd, "day", "[]")) {
+    // Verifica se hoje está dentro da janela do ciclo
+    if (!todayDay.isBetween(cycleStart, cycleEnd, "day", "[]"))
         return null;
-    }
     return {
         id: reminder.id,
         title: reminder.title,
