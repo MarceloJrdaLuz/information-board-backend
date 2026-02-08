@@ -55,22 +55,19 @@ class UserController {
             expiresIn: '8h'
         })
 
-        const code = generateUserCode
+        res.status(201).json({ user, token })
 
-        mailer.sendMail({
-            to: email,
-            from: process.env.NODEMAILER_USER,
-            subject: 'Cadastro efetuado com sucesso!',
-            template: 'register/register_success',
-            context: { code }
-        }, (err: any) => {
-            if (err) {
-                console.log(err)
-                return res.status(400).send({ error: 'Cannot send forgot email' })
-            }
-            return res.status(201).json({ user, token })
-        })
-
+        try {
+            await mailer.sendMail({
+                to: email,
+                from: process.env.NODEMAILER_USER,
+                subject: 'Cadastro efetuado com sucesso!',
+                template: 'register/register_success',
+                context: { code: generateUserCode }
+            })
+        } catch (err) {
+            console.error('Erro ao enviar email de cadastro:', err)
+        }
     }
 
     async login(req: CustomRequest<BodyUserLoginTypes>, res: Response) {
