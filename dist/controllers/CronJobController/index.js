@@ -17,6 +17,10 @@ const config_1 = require("../../config");
 const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
 const dayjs_1 = __importDefault(require("dayjs"));
 const cleaningExceptionRepository_1 = require("../../repositories/cleaningExceptionRepository");
+const fieldServiceTemplateLocationOverrideRepository_1 = require("../../repositories/fieldServiceTemplateLocationOverrideRepository");
+const territoryHistoryRepository_1 = require("../../repositories/territoryHistoryRepository");
+const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
+const fieldServiceExceptionRepository_1 = require("../../repositories/fieldServiceExceptionRepository");
 class CronJobController {
     async deleteExpiredNotices(req, res) {
         const startOfToday = (0, moment_timezone_1.default)().startOf('day').toDate();
@@ -98,6 +102,124 @@ class CronJobController {
             });
         });
     }
+    async cleanTerritoryHistory(req, res) {
+        try {
+            const histories = await territoryHistoryRepository_1.territoryHistoryRepository.find({
+                where: {
+                    completion_date: (0, typeorm_1.Not)((0, typeorm_1.IsNull)())
+                },
+                relations: ["territory"],
+                order: {
+                    completion_date: "DESC"
+                }
+            });
+            const grouped = {};
+            for (const history of histories) {
+                const territoryId = history.territory.id;
+                if (!grouped[territoryId]) {
+                    grouped[territoryId] = [];
+                }
+                grouped[territoryId].push(history);
+            }
+            const toDelete = [];
+            for (const territoryId in grouped) {
+                const records = grouped[territoryId];
+                if (records.length > 4) {
+                    const excess = records.slice(4);
+                    toDelete.push(...excess);
+                }
+            }
+            if (toDelete.length > 0) {
+                await territoryHistoryRepository_1.territoryHistoryRepository.remove(toDelete);
+            }
+            const deleted = toDelete.length;
+            await mailer_1.default.sendMail({
+                from: process.env.EMAIL_USER,
+                to: config_1.config.email_backup,
+                subject: "🧹 Limpeza de histórico de territórios concluída",
+                template: "cleanup/territoryHistory",
+                context: {
+                    deleted
+                }
+            });
+            return res.json({
+                message: "Territory history cleanup completed",
+                deleted
+            });
+        }
+        catch (error) {
+            console.error(error);
+            await mailer_1.default.sendMail({
+                from: process.env.EMAIL_USER,
+                to: config_1.config.email_backup,
+                subject: "❌ Falha na limpeza de histórico de territórios",
+                template: "cleanup/error",
+                context: {
+                    error: error.message
+                }
+            });
+            return res.status(500).json({
+                message: "Error cleaning territory history",
+                error: error.message
+            });
+        }
+    }
+    async cleanOldFieldService(req, res) {
+        var _a, _b, _c;
+        const overrideLimitDate = (0, dayjs_1.default)()
+            .startOf("isoWeek")
+            .format("YYYY-MM-DD");
+        const scheduleLimitDate = (0, dayjs_1.default)()
+            .subtract(6, "month")
+            .format("YYYY-MM-DD");
+        const exceptionLimitDate = (0, dayjs_1.default)()
+            .subtract(1, "month")
+            .format("YYYY-MM-DD");
+        try {
+            // limpa overrides antigos
+            const overrideResult = await fieldServiceTemplateLocationOverrideRepository_1.fieldServiceTemplateLocationOverrideRepository.delete({
+                week_start: (0, typeorm_1.LessThan)(overrideLimitDate)
+            });
+            // limpa programações antigas
+            const schedulesResult = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository.delete({
+                date: (0, typeorm_1.LessThan)(scheduleLimitDate)
+            });
+            // limpa exceções antigas
+            const exceptionsResult = await fieldServiceExceptionRepository_1.fieldServiceExceptionRepository.delete({
+                date: (0, typeorm_1.LessThan)(exceptionLimitDate)
+            });
+            const deletedOverrides = (_a = overrideResult.affected) !== null && _a !== void 0 ? _a : 0;
+            const deletedSchedules = (_b = schedulesResult.affected) !== null && _b !== void 0 ? _b : 0;
+            const deletedExceptions = (_c = exceptionsResult.affected) !== null && _c !== void 0 ? _c : 0;
+            await mailer_1.default.sendMail({
+                from: process.env.EMAIL_USER,
+                to: config_1.config.email_backup,
+                subject: "🧹 Limpeza semanal de saída de campo",
+                template: "cleanup/fieldService",
+                context: {
+                    deletedOverrides,
+                    deletedSchedules,
+                    deletedExceptions,
+                    limitDateOverrides: overrideLimitDate,
+                    limitDateSchedules: scheduleLimitDate,
+                    limitDateExceptions: exceptionLimitDate
+                }
+            });
+            return res.json({
+                message: "Field service cleanup completed",
+                deletedOverrides,
+                deletedSchedules,
+                deletedExceptions
+            });
+        }
+        catch (error) {
+            console.error(error);
+            return res.status(500).json({
+                message: "Error cleaning field service data",
+                error: error.message
+            });
+        }
+    }
     async cleanOldData(req, res) {
         var _a, _b;
         const scheduleLimitDate = (0, dayjs_1.default)().subtract(12, "month").format("YYYY-MM-DD");
@@ -122,13 +244,13 @@ class CronJobController {
                     deletedSchedules,
                     deletedExceptions,
                     scheduleLimitDate,
-                    exceptionLimitDate
+                    exceptionLimitDate,
                 }
             });
             return res.json({
                 message: "Cleanup completed",
                 deletedSchedules,
-                deletedExceptions
+                deletedExceptions,
             });
         }
         catch (error) {
