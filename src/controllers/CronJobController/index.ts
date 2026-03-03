@@ -1,6 +1,6 @@
 import { Response, Request } from "express"
 import { noticeRepository } from "../../repositories/noticeRepository"
-import { LessThan } from "typeorm"
+import { IsNull, LessThan, Not } from "typeorm"
 import { NotFoundError } from "../../helpers/api-errors"
 import moment from "moment-timezone"
 import { reportRepository } from "../../repositories/reportRepository"
@@ -13,6 +13,10 @@ import { config } from "../../config"
 import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository"
 import dayjs from "dayjs"
 import { cleaningExceptionRepository } from "../../repositories/cleaningExceptionRepository"
+import { fieldServiceTemplateLocationOverrideRepository } from "../../repositories/fieldServiceTemplateLocationOverrideRepository"
+import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
+import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
+import { fieldServiceExceptionRepository } from "../../repositories/fieldServiceExceptionRepository"
 
 class CronJobController {
     async deleteExpiredNotices(req: Request, res: Response) {
@@ -116,6 +120,155 @@ class CronJobController {
         )
     }
 
+    async cleanTerritoryHistory(req: Request, res: Response) {
+        try {
+
+            const histories = await territoryHistoryRepository.find({
+                where: {
+                    completion_date: Not(IsNull())
+                },
+                relations: ["territory"],
+                order: {
+                    completion_date: "DESC"
+                }
+            })
+
+            const grouped: Record<string, typeof histories> = {}
+
+            for (const history of histories) {
+                const territoryId = history.territory.id
+
+                if (!grouped[territoryId]) {
+                    grouped[territoryId] = []
+                }
+
+                grouped[territoryId].push(history)
+            }
+
+            const toDelete: typeof histories = []
+
+            for (const territoryId in grouped) {
+                const records = grouped[territoryId]
+
+                if (records.length > 4) {
+                    const excess = records.slice(4)
+                    toDelete.push(...excess)
+                }
+            }
+
+            if (toDelete.length > 0) {
+                await territoryHistoryRepository.remove(toDelete)
+            }
+
+            const deleted = toDelete.length
+
+            await mailer.sendMail({
+                from: process.env.EMAIL_USER,
+                to: config.email_backup,
+                subject: "🧹 Limpeza de histórico de territórios concluída",
+                template: "cleanup/territoryHistory",
+                context: {
+                    deleted
+                }
+            })
+
+            return res.json({
+                message: "Territory history cleanup completed",
+                deleted
+            })
+
+        } catch (error: any) {
+
+            console.error(error)
+
+            await mailer.sendMail({
+                from: process.env.EMAIL_USER,
+                to: config.email_backup,
+                subject: "❌ Falha na limpeza de histórico de territórios",
+                template: "cleanup/error",
+                context: {
+                    error: error.message
+                }
+            })
+
+            return res.status(500).json({
+                message: "Error cleaning territory history",
+                error: error.message
+            })
+        }
+    }
+
+    async cleanOldFieldService(req: Request, res: Response) {
+
+        const overrideLimitDate = dayjs()
+            .startOf("isoWeek")
+            .format("YYYY-MM-DD");
+
+        const scheduleLimitDate = dayjs()
+            .subtract(6, "month")
+            .format("YYYY-MM-DD");
+
+        const exceptionLimitDate = dayjs()
+            .subtract(1, "month")
+            .format("YYYY-MM-DD");
+
+        try {
+
+            // limpa overrides antigos
+            const overrideResult =
+                await fieldServiceTemplateLocationOverrideRepository.delete({
+                    week_start: LessThan(overrideLimitDate)
+                });
+
+            // limpa programações antigas
+            const schedulesResult =
+                await fieldServiceScheduleRepository.delete({
+                    date: LessThan(scheduleLimitDate)
+                });
+
+            // limpa exceções antigas
+            const exceptionsResult =
+                await fieldServiceExceptionRepository.delete({
+                    date: LessThan(exceptionLimitDate)
+                });
+
+            const deletedOverrides = overrideResult.affected ?? 0;
+            const deletedSchedules = schedulesResult.affected ?? 0;
+            const deletedExceptions = exceptionsResult.affected ?? 0;
+
+            await mailer.sendMail({
+                from: process.env.EMAIL_USER,
+                to: config.email_backup,
+                subject: "🧹 Limpeza semanal de saída de campo",
+                template: "cleanup/fieldService",
+                context: {
+                    deletedOverrides,
+                    deletedSchedules,
+                    deletedExceptions,
+                    overrideLimitDate,
+                    scheduleLimitDate,
+                    exceptionLimitDate
+                }
+            });
+
+            return res.json({
+                message: "Field service cleanup completed",
+                deletedOverrides,
+                deletedSchedules,
+                deletedExceptions
+            });
+
+        } catch (error: any) {
+
+            console.error(error);
+
+            return res.status(500).json({
+                message: "Error cleaning field service data",
+                error: error.message
+            });
+        }
+    }
+
     async cleanOldData(req: Request, res: Response) {
         const scheduleLimitDate = dayjs().subtract(12, "month").format("YYYY-MM-DD");
         const exceptionLimitDate = dayjs().subtract(6, "month").format("YYYY-MM-DD");
@@ -143,14 +296,14 @@ class CronJobController {
                     deletedSchedules,
                     deletedExceptions,
                     scheduleLimitDate,
-                    exceptionLimitDate
+                    exceptionLimitDate,
                 }
             });
 
             return res.json({
                 message: "Cleanup completed",
                 deletedSchedules,
-                deletedExceptions
+                deletedExceptions,
             });
         } catch (error: any) {
             console.error("Cleanup error:", error);

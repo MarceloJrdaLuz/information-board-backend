@@ -1,0 +1,16 @@
+name: Clean territory history
+
+on:
+  schedule:
+    - cron: '0 5 5 * *'  # dia 5 de cada mês às 02:00 BRT
+  workflow_dispatch:
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call territory history cleanup route
+        run: |
+          curl -s -L -X DELETE ${{ secrets.API_URL }}/cron/clean-old-territoryHistory \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET_GITHUB }}" \
+            -H "Cache-Control: no-cache"

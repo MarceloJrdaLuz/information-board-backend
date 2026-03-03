@@ -1,0 +1,16 @@
+name: Clean field service overrides
+
+on:
+  schedule:
+    - cron: '0 5 * * 1' # toda segunda às 02:00 BRT
+  workflow_dispatch:
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cleanup route
+        run: |
+          curl -s -L -X DELETE ${{ secrets.API_URL }}/cron/clean-field-service-overrides \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET_GITHUB }}" \
+            -H "Cache-Control: no-cache"
