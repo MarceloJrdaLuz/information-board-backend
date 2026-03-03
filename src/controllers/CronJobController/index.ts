@@ -245,9 +245,9 @@ class CronJobController {
                     deletedOverrides,
                     deletedSchedules,
                     deletedExceptions,
-                    overrideLimitDate,
-                    scheduleLimitDate,
-                    exceptionLimitDate
+                    limitDateOverrides: overrideLimitDate,
+                    limitDateSchedules: scheduleLimitDate,
+                    limitDateExceptions: exceptionLimitDate
                 }
             });
 
