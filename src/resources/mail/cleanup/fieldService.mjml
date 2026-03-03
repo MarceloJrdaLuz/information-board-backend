@@ -1,0 +1,40 @@
+<mjml>
+  <mj-body background-color="#f4f4f4">
+    <mj-section background-color="#ffffff" padding="20px">
+      <mj-column>
+
+        <mj-text font-size="20px" font-weight="bold">
+          🧹 Limpeza semanal concluída
+        </mj-text>
+
+        <mj-text>
+          A limpeza automática de dados de saída de campo foi executada com sucesso.
+        </mj-text>
+
+        <mj-divider />
+
+        <mj-text>
+          <strong>Locais de saída alternados removidos:</strong> {{deletedOverrides}} <br/>
+          <strong>Limite:</strong> {{overrideLimitDate}}
+        </mj-text>
+
+        <mj-text>
+          <strong>Programações removidas:</strong> {{deletedSchedules}} <br/>
+          <strong>Limite:</strong> {{scheduleLimitDate}}
+        </mj-text>
+
+        <mj-text>
+          <strong>Exceções removidas:</strong> {{deletedExceptions}} <br/>
+          <strong>Limite:</strong> {{exceptionLimitDate}}
+        </mj-text>
+
+        <mj-divider />
+
+        <mj-text font-size="12px" color="#888888">
+          Este e-mail foi gerado automaticamente pelo sistema.
+        </mj-text>
+
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

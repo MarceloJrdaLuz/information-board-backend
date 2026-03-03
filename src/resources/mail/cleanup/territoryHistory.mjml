@@ -1,0 +1,33 @@
+<mjml>
+  <mj-body background-color="#83c5be">
+
+    <mj-section background-color="white">
+      <mj-column>
+
+        <mj-section background-color="#178582" padding="10px">
+          <mj-column>
+            <mj-image
+              align="left"
+              width="100px"
+              src="https://quadrodeanuncios.vercel.app/images/miniatura.png"
+            />
+          </mj-column>
+        </mj-section>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">
+          Olá,
+        </mj-text>
+
+        <mj-text font-size="15px" color="gray" font-family="helvetica">
+          A limpeza automática do histórico de territórios foi concluída com sucesso.
+        </mj-text>
+
+        <mj-text font-size="14px" color="#444" font-family="helvetica">
+          <b>Registros removidos:</b> {{deleted}}
+        </mj-text>
+
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>
