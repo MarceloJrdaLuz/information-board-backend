@@ -141,7 +141,7 @@ class FieldServiceTemplateController {
                 week_start: o.week_start,
                 // 👇 data real da saída (mesmo weekday do template)
                 date: dayjs(o.week_start)
-                    .isoWeekday(template.weekday + 1) // weekday JS → ISO
+                    .isoWeekday(template.weekday) 
                     .format("YYYY-MM-DD"),
                 location: o.location,
             })),
