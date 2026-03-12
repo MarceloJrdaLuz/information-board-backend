@@ -350,6 +350,7 @@ routes.get('/deleteExpiredNotices', verifyGitHubCron, CronJobController.deleteEx
 routes.delete('/cron/clean-old-territoryHistory', verifyGitHubCron, CronJobController.cleanTerritoryHistory)
 routes.delete('/cron/clean-old-schedules', verifyGitHubCron, CronJobController.cleanOldData)
 routes.delete("/cron/clean-field-service-overrides", verifyGitHubCron, CronJobController.cleanOldFieldService)
+routes.delete("/cron/clean-publisher-reminders", verifyGitHubCron, CronJobController.cleanOldPublisherReminders)
 routes.get('/reportsCleanUp', verifyCronSecret, CronJobController.reportsCleanUp)
 routes.get('/backup', verifyCronSecret, CronJobController.backup)
 routes.get("/usage", is(["ADMIN"]), VercelUsageController.getUsage);

@@ -1,6 +1,6 @@
 import { Response, Request } from "express"
 import { noticeRepository } from "../../repositories/noticeRepository"
-import { IsNull, LessThan, Not } from "typeorm"
+import { And, IsNull, LessThan, Not } from "typeorm"
 import { NotFoundError } from "../../helpers/api-errors"
 import moment from "moment-timezone"
 import { reportRepository } from "../../repositories/reportRepository"
@@ -17,6 +17,7 @@ import { fieldServiceTemplateLocationOverrideRepository } from "../../repositori
 import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
 import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
 import { fieldServiceExceptionRepository } from "../../repositories/fieldServiceExceptionRepository"
+import { publisherReminderRepository } from "../../repositories/publisherReminderRepository"
 
 class CronJobController {
     async deleteExpiredNotices(req: Request, res: Response) {
@@ -41,6 +42,39 @@ class CronJobController {
             throw new Error("Error deleting expired notices")
         }
 
+    }
+
+    async cleanOldPublisherReminders(req: Request, res: Response) {
+
+        const today = dayjs().startOf("day").format("YYYY-MM-DD");
+
+        try {
+
+            const result = await publisherReminderRepository.delete({
+                isRecurring: false,
+                endDate: And(
+                    Not(IsNull()),
+                    LessThan(today)
+                )
+            });
+
+            const deleted = result.affected ?? 0;
+
+            return res.json({
+                message: "Old publisher reminders cleaned",
+                deleted
+            });
+
+        } catch (error: any) {
+
+            console.error(error);
+
+            return res.status(500).json({
+                message: "Error cleaning old publisher reminders",
+                error: error.message
+            });
+
+        }
     }
     async reportsCleanUp(req: Request, res: Response) {
         const monthsListReports = getMonthsOld(3)
