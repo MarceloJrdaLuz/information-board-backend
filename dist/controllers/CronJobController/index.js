@@ -21,6 +21,7 @@ const fieldServiceTemplateLocationOverrideRepository_1 = require("../../reposito
 const territoryHistoryRepository_1 = require("../../repositories/territoryHistoryRepository");
 const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 const fieldServiceExceptionRepository_1 = require("../../repositories/fieldServiceExceptionRepository");
+const publisherReminderRepository_1 = require("../../repositories/publisherReminderRepository");
 class CronJobController {
     async deleteExpiredNotices(req, res) {
         const startOfToday = (0, moment_timezone_1.default)().startOf('day').toDate();
@@ -39,6 +40,28 @@ class CronJobController {
         catch (error) {
             console.log(error);
             throw new Error("Error deleting expired notices");
+        }
+    }
+    async cleanOldPublisherReminders(req, res) {
+        var _a;
+        const today = (0, dayjs_1.default)().startOf("day").format("YYYY-MM-DD");
+        try {
+            const result = await publisherReminderRepository_1.publisherReminderRepository.delete({
+                isRecurring: false,
+                endDate: (0, typeorm_1.And)((0, typeorm_1.Not)((0, typeorm_1.IsNull)()), (0, typeorm_1.LessThan)(today))
+            });
+            const deleted = (_a = result.affected) !== null && _a !== void 0 ? _a : 0;
+            return res.json({
+                message: "Old publisher reminders cleaned",
+                deleted
+            });
+        }
+        catch (error) {
+            console.error(error);
+            return res.status(500).json({
+                message: "Error cleaning old publisher reminders",
+                error: error.message
+            });
         }
     }
     async reportsCleanUp(req, res) {
