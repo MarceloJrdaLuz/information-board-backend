@@ -31,7 +31,9 @@ class CleaningScheduleController {
             return res.status(400).json({ message: "Invalid date format" });
         if (endDate.isBefore(startDate))
             return res.status(400).json({ message: "end must be after start" });
-        const congregation = await congregationRepository_1.congregationRepository.findOne({ where: { id: congregation_id } });
+        const congregation = await congregationRepository_1.congregationRepository.findOne({
+            where: { id: congregation_id }
+        });
         if (!congregation)
             return res.status(404).json({ message: "Congregation not found" });
         const config = await cleaningScheduleConfigRepository_1.cleaningScheduleConfigRepository.findOne({
@@ -49,17 +51,33 @@ class CleaningScheduleController {
             where: { congregation: { id: congregation.id } }
         });
         const exceptionDates = new Set(exceptions.map(e => e.date));
+        // 🔹 BUSCA o último agendamento ANTES de deletar
+        const lastSchedule = await cleaningScheduleRepository_1.cleaningScheduleRepository.findOne({
+            where: { congregation: { id: congregation.id } },
+            order: { date: "DESC" },
+            relations: ["group"]
+        });
         // 🔹 Deleta programações existentes no intervalo
         await cleaningScheduleRepository_1.cleaningScheduleRepository.delete({
             congregation: { id: congregation.id },
             date: (0, typeorm_1.In)(Array.from({ length: endDate.diff(startDate, "day") + 1 }, (_, i) => startDate.clone().add(i, "day").format("YYYY-MM-DD")))
         });
         const newSchedule = [];
+        // 🔹 DEFINE o ponto inicial do rodízio
         let groupIndex = 0;
+        if (lastSchedule) {
+            const lastGroupId = lastSchedule.group.id;
+            const lastIndex = groups.findIndex(g => g.id === lastGroupId);
+            if (lastIndex !== -1) {
+                groupIndex = lastIndex + 1;
+            }
+        }
+        // 🔁 MODO SEMANAL
         if (config.mode === cleaning_1.CleaningScheduleMode.WEEKLY) {
             let current = startDate.clone().isoWeekday(1);
-            if (current.isBefore(startDate))
+            if (current.isBefore(startDate)) {
                 current = current.add(1, "week");
+            }
             while (current.isSameOrBefore(endDate)) {
                 const dateStr = current.format("YYYY-MM-DD");
                 if (!exceptionDates.has(dateStr)) {
@@ -74,12 +92,13 @@ class CleaningScheduleController {
                 current = current.add(1, "week");
             }
         }
+        // 🔁 MODO POR DIAS DE REUNIÃO
         else {
-            const midweekDay = (0, cleaningFunctions_1.convertMeetingDayPortugueseToIso)(congregation.dayMeetingLifeAndMinistary); // ex: 3
-            const endweekDay = (0, cleaningFunctions_1.convertMeetingDayPortugueseToIso)(congregation.dayMeetingPublic); // ex: 7
+            const midweekDay = (0, cleaningFunctions_1.convertMeetingDayPortugueseToIso)(congregation.dayMeetingLifeAndMinistary);
+            const endweekDay = (0, cleaningFunctions_1.convertMeetingDayPortugueseToIso)(congregation.dayMeetingPublic);
             let current = startDate.clone();
             while (current.isSameOrBefore(endDate)) {
-                const weekday = current.isoWeekday(); // 1 = segunda, 7 = domingo
+                const weekday = current.isoWeekday();
                 if (weekday === midweekDay || weekday === endweekDay) {
                     const dateStr = current.format("YYYY-MM-DD");
                     if (!exceptionDates.has(dateStr)) {

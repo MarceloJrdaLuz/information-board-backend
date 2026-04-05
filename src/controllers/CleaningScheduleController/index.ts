@@ -33,29 +33,47 @@ class CleaningScheduleController {
 
         const startDate = dayjs(start.toString());
         const endDate = dayjs(end.toString());
+
         if (!startDate.isValid() || !endDate.isValid())
             return res.status(400).json({ message: "Invalid date format" });
+
         if (endDate.isBefore(startDate))
             return res.status(400).json({ message: "end must be after start" });
 
-        const congregation = await congregationRepository.findOne({ where: { id: congregation_id } });
-        if (!congregation) return res.status(404).json({ message: "Congregation not found" });
+        const congregation = await congregationRepository.findOne({
+            where: { id: congregation_id }
+        });
+
+        if (!congregation)
+            return res.status(404).json({ message: "Congregation not found" });
 
         const config = await cleaningScheduleConfigRepository.findOne({
             where: { congregation: { id: congregation.id } }
         });
-        if (!config) return res.status(404).json({ message: "Cleaning schedule config not found" });
+
+        if (!config)
+            return res.status(404).json({ message: "Cleaning schedule config not found" });
 
         const groups = await cleaningGroupRepository.find({
             where: { congregation: { id: congregation.id } },
             order: { order: "ASC" }
         });
-        if (!groups.length) return res.status(404).json({ message: "No groups found" });
+
+        if (!groups.length)
+            return res.status(404).json({ message: "No groups found" });
 
         const exceptions = await cleaningExceptionRepository.find({
             where: { congregation: { id: congregation.id } }
         });
+
         const exceptionDates = new Set(exceptions.map(e => e.date));
+
+        // 🔹 BUSCA o último agendamento ANTES de deletar
+        const lastSchedule = await cleaningScheduleRepository.findOne({
+            where: { congregation: { id: congregation.id } },
+            order: { date: "DESC" },
+            relations: ["group"]
+        });
 
         // 🔹 Deleta programações existentes no intervalo
         await cleaningScheduleRepository.delete({
@@ -68,42 +86,74 @@ class CleaningScheduleController {
         });
 
         const newSchedule = [];
+
+        // 🔹 DEFINE o ponto inicial do rodízio
         let groupIndex = 0;
 
+        if (lastSchedule) {
+            const lastGroupId = lastSchedule.group.id;
+
+            const lastIndex = groups.findIndex(g => g.id === lastGroupId);
+
+            if (lastIndex !== -1) {
+                groupIndex = lastIndex + 1;
+            }
+        }
+
+        // 🔁 MODO SEMANAL
         if (config.mode === CleaningScheduleMode.WEEKLY) {
             let current = startDate.clone().isoWeekday(1);
-            if (current.isBefore(startDate)) current = current.add(1, "week");
+
+            if (current.isBefore(startDate)) {
+                current = current.add(1, "week");
+            }
 
             while (current.isSameOrBefore(endDate)) {
                 const dateStr = current.format("YYYY-MM-DD");
+
                 if (!exceptionDates.has(dateStr)) {
                     const group = groups[groupIndex % groups.length];
+
                     newSchedule.push({
                         date: dateStr,
                         group_id: group.id,
                         congregation_id: congregation.id
                     });
+
                     groupIndex++;
                 }
+
                 current = current.add(1, "week");
             }
-        } else {
-            const midweekDay = convertMeetingDayPortugueseToIso(congregation.dayMeetingLifeAndMinistary); // ex: 3
-            const endweekDay = convertMeetingDayPortugueseToIso(congregation.dayMeetingPublic!);       // ex: 7
+        }
+
+        // 🔁 MODO POR DIAS DE REUNIÃO
+        else {
+            const midweekDay = convertMeetingDayPortugueseToIso(
+                congregation.dayMeetingLifeAndMinistary
+            );
+
+            const endweekDay = convertMeetingDayPortugueseToIso(
+                congregation.dayMeetingPublic!
+            );
+
             let current = startDate.clone();
 
             while (current.isSameOrBefore(endDate)) {
-                const weekday = current.isoWeekday(); // 1 = segunda, 7 = domingo
+                const weekday = current.isoWeekday();
 
                 if (weekday === midweekDay || weekday === endweekDay) {
                     const dateStr = current.format("YYYY-MM-DD");
+
                     if (!exceptionDates.has(dateStr)) {
                         const group = groups[groupIndex % groups.length];
+
                         newSchedule.push({
                             date: dateStr,
                             group_id: group.id,
                             congregation_id: congregation.id
                         });
+
                         groupIndex++;
                     }
                 }
@@ -113,6 +163,7 @@ class CleaningScheduleController {
         }
 
         const saved = await cleaningScheduleRepository.save(newSchedule);
+
         return res.status(200).json({ schedule: saved });
     }
 
