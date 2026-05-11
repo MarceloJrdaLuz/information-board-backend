@@ -79,47 +79,94 @@ class SpeakerController {
 
   async update(req: CustomRequestPT<ParamsSpeakerTypes, BodySpeakerUpdateTypes>, res: Response) {
     const { speaker_id } = req.params
-    const { fullName, phone, address, publisher_id, talk_ids, originCongregation_id } = req.body
+
+    const {
+      fullName,
+      phone,
+      address,
+      publisher_id,
+      talk_ids,
+      originCongregation_id
+    } = req.body
 
     const speaker = await speakerRepository.findOne({
       where: { id: speaker_id },
-      relations: ["publisher", "talks"],
+      relations: ["publisher", "talks", "originCongregation"],
     })
-    if (!speaker) throw new NotFoundError(messageErrors.notFound.speaker)
+
+    if (!speaker) {
+      throw new NotFoundError(messageErrors.notFound.speaker)
+    }
 
     speaker.fullName = fullName ?? speaker.fullName
     speaker.phone = phone ?? speaker.phone
     speaker.address = address ?? speaker.address
 
+    // -------------------------
+    // PUBLISHER
+    // -------------------------
+
     if (publisher_id !== undefined) {
+
+      // Vincular publisher
       if (publisher_id) {
-        // Novo publisher enviado → atualizar dados e congregação do Speaker
+
         const newPublisher = await publisherRepository.findOne({
           where: { id: publisher_id },
           relations: ["congregation"],
         })
-        if (!newPublisher) throw new NotFoundError(messageErrors.notFound.publisher)
 
-        // Atualiza dados do Speaker com o Publisher
+        if (!newPublisher) {
+          throw new NotFoundError(messageErrors.notFound.publisher)
+        }
+
+        speaker.publisher = newPublisher
+
         speaker.fullName = newPublisher.fullName
         speaker.phone = newPublisher.phone
         speaker.address = newPublisher.address
-        speaker.originCongregation = newPublisher.congregation
-        speaker.publisher = newPublisher
-      } else {
-        // Sem publisher_id → desvincula publisher
-        speaker.publisher = null
-        speaker.fullName = fullName ?? speaker.fullName
-        speaker.phone = phone ?? speaker.phone
-        speaker.address = address ?? speaker.address
 
+        // congregação vem do publisher
+        speaker.originCongregation = newPublisher.congregation
+      }
+
+      // Desvincular publisher
+      else {
+        speaker.publisher = null
+
+        // agora pode usar congregation manual
         if (originCongregation_id) {
-          const newCongregation = await congregationRepository.findOneBy({ id: originCongregation_id })
-          if (!newCongregation) throw new NotFoundError(messageErrors.notFound.congregation)
+
+          const newCongregation = await congregationRepository.findOneBy({
+            id: originCongregation_id
+          })
+
+          if (!newCongregation) {
+            throw new NotFoundError(messageErrors.notFound.congregation)
+          }
+
           speaker.originCongregation = newCongregation
         }
       }
     }
+
+    // sem mexer no publisher, mas quer trocar congregação
+    else if (originCongregation_id && !speaker.publisher) {
+
+      const newCongregation = await congregationRepository.findOneBy({
+        id: originCongregation_id
+      })
+
+      if (!newCongregation) {
+        throw new NotFoundError(messageErrors.notFound.congregation)
+      }
+
+      speaker.originCongregation = newCongregation
+    }
+
+    // -------------------------
+    // TALKS
+    // -------------------------
 
     if (talk_ids !== undefined) {
       speaker.talks = talk_ids.length > 0
@@ -130,6 +177,7 @@ class SpeakerController {
     }
 
     await speakerRepository.save(speaker)
+
     return res.json(speaker)
   }
 
@@ -151,7 +199,7 @@ class SpeakerController {
     })
     const speakers = await speakerRepository.find({
       where: { creatorCongregation: { id: userReq?.congregation.id } },
-      relations: ["originCongregation", "talks"],
+      relations: ["originCongregation", "talks", "publisher"],
       order: { fullName: "ASC" },
     })
     return res.json(speakers)
