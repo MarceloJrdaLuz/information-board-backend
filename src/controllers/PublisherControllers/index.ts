@@ -135,7 +135,6 @@ class PublisherControler {
   async update(req: CustomRequest<BodyPublisherUpdateTypes>, res: Response) {
     const { publisher_id: id } = req.params
     const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContact_id } = req.body
-
     const publisher = await publisherRepository.findOne({
       where: { id },
       relations: ["congregation"]
@@ -186,6 +185,10 @@ class PublisherControler {
     }
 
     const privilegesEN = translatePrivilegesPTToEN(privileges ?? [])
+    const hasPioneerPrivilege =
+      privileges?.includes(Privileges.PIONEIROREGULAR) ||
+      privileges?.includes(Privileges.PIONEIROAUXILIAR) ||
+      privileges?.includes(Privileges.AUXILIARINDETERMINADO)
     // Atualizar as propriedades do publisher
     publisher.fullName = fullName !== undefined ? fullName : publisher.fullName
     publisher.nickname = nickname !== undefined ? nickname : publisher.nickname
@@ -196,11 +199,17 @@ class PublisherControler {
     publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate
     publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed
     publisher.situation = situation !== undefined ? situation : publisher.situation
-    publisher.startPioneer = startPioneer !== undefined ? startPioneer : publisher.startPioneer
+    if (privileges && !hasPioneerPrivilege) {
+      publisher.startPioneer = null
+    } else {
+      publisher.startPioneer =
+        startPioneer !== undefined
+          ? startPioneer
+          : publisher.startPioneer
+    }
     publisher.phone = phone !== undefined ? phone : publisher.phone
     publisher.address = address !== undefined ? address : publisher.address
     publisher.privileges = privileges && privileges?.length > 0 ? privileges : publisher.privileges
-
 
     await publisherRepository.save(publisher)
 

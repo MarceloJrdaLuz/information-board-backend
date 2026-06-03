@@ -144,6 +144,9 @@ class PublisherControler {
                 throw new api_errors_1.BadRequestError('Nickname already exists too');
         }
         const privilegesEN = (0, privilegesTranslations_1.translatePrivilegesPTToEN)(privileges !== null && privileges !== void 0 ? privileges : []);
+        const hasPioneerPrivilege = (privileges === null || privileges === void 0 ? void 0 : privileges.includes(privileges_1.Privileges.PIONEIROREGULAR)) ||
+            (privileges === null || privileges === void 0 ? void 0 : privileges.includes(privileges_1.Privileges.PIONEIROAUXILIAR)) ||
+            (privileges === null || privileges === void 0 ? void 0 : privileges.includes(privileges_1.Privileges.AUXILIARINDETERMINADO));
         // Atualizar as propriedades do publisher
         publisher.fullName = fullName !== undefined ? fullName : publisher.fullName;
         publisher.nickname = nickname !== undefined ? nickname : publisher.nickname;
@@ -154,7 +157,15 @@ class PublisherControler {
         publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate;
         publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed;
         publisher.situation = situation !== undefined ? situation : publisher.situation;
-        publisher.startPioneer = startPioneer !== undefined ? startPioneer : publisher.startPioneer;
+        if (privileges && !hasPioneerPrivilege) {
+            publisher.startPioneer = null;
+        }
+        else {
+            publisher.startPioneer =
+                startPioneer !== undefined
+                    ? startPioneer
+                    : publisher.startPioneer;
+        }
         publisher.phone = phone !== undefined ? phone : publisher.phone;
         publisher.address = address !== undefined ? address : publisher.address;
         publisher.privileges = privileges && (privileges === null || privileges === void 0 ? void 0 : privileges.length) > 0 ? privileges : publisher.privileges;

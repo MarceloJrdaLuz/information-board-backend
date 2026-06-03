@@ -76,7 +76,7 @@ export class Publisher {
     birthDate: string
 
     @Column({ type: "date", nullable: true })
-    startPioneer: string
+    startPioneer: string | null
 
     @Column({ type: 'simple-array', nullable: true })
     privileges: string[]
