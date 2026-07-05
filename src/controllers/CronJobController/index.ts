@@ -21,27 +21,33 @@ import { publisherReminderRepository } from "../../repositories/publisherReminde
 
 class CronJobController {
     async deleteExpiredNotices(req: Request, res: Response) {
-
-        const startOfToday = moment().startOf('day').toDate()
-
-        const expiredNotices = await noticeRepository.find({
-            where: {
-                expired: LessThan(startOfToday)
-            }
-        })
-
-        if (expiredNotices.length === 0) {
-            throw new NotFoundError("No expired notices found")
-        }
+        const startOfToday = moment().startOf("day").toDate();
 
         try {
-            await noticeRepository.remove(expiredNotices)
-            return res.status(200).json({ message: "Expired notices deleted", notices: expiredNotices })
-        } catch (error) {
-            console.log(error)
-            throw new Error("Error deleting expired notices")
-        }
+            const expiredNotices = await noticeRepository.find({
+                where: {
+                    expired: LessThan(startOfToday),
+                },
+            });
 
+            if (expiredNotices.length === 0) {
+                return res.status(200).json({
+                    message: "No expired notices found",
+                    deleted: 0,
+                });
+            }
+
+            await noticeRepository.remove(expiredNotices);
+
+            return res.status(200).json({
+                message: "Expired notices deleted",
+                deleted: expiredNotices.length,
+                notices: expiredNotices,
+            });
+        } catch (error) {
+            console.error(error);
+            throw new Error("Error deleting expired notices");
+        }
     }
 
     async cleanOldPublisherReminders(req: Request, res: Response) {
