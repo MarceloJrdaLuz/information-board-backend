@@ -3,46 +3,48 @@ import { uploadFile } from "./config/multer"
 import { is, requirePublisher, verifyCronSecret } from "./middlewares/permissions"
 
 // Controllers
-import UserController from "./controllers/UserController"
-import PublisherControllers from "./controllers/PublisherControllers"
-import EmergencyContactController from "./controllers/EmergencyContactController"
-import CongregationController from "./controllers/CongregationController"
-import HospitalityGroupController from "./controllers/HospitalityGroupController"
 import CategoryController from "./controllers/CategoryController"
-import DocumentController from "./controllers/DocumentController"
-import ProfileController from "./controllers/ProfileController"
-import TerritoryController from "./controllers/TerritoryController"
-import TerritoryHistoryController from "./controllers/TerritoryHistoryController"
-import RoleController from "./controllers/RoleController"
-import PermissionController from "./controllers/PermissionController"
-import NoticeController from "./controllers/NoticeController"
-import ReportController from "./controllers/ReportController"
-import TotalsReportsController from "./controllers/TotalsReportsController"
-import GroupController from "./controllers/GroupController"
-import MeetingAssistanceController from "./controllers/MeetingAssistanceController"
-import TalkController from "./controllers/TalkController"
-import WeekendScheduleController from "./controllers/WeekendScheduleController"
-import HospitalityController from "./controllers/HospitalityController"
-import ExternalTalkController from "./controllers/ExternalTalkController"
-import SpeakerController from "./controllers/SpeakerController"
-import TermsOfUseController from "./controllers/TermsOfUseController"
-import DataProcessingAgreementController from "./controllers/DataProcessingAgreement"
-import FormDataController from "./controllers/FormDataController"
-import CronJobController from "./controllers/CronJobController"
-import VercelUsageController from "./controllers/VercelUsageController"
-import CleaningScheduleConfigController from "./controllers/CleaningScheduleConfigController"
-import CleaningGroupController from "./controllers/CleaningGroupController"
 import CleaningExceptionController from "./controllers/CleaningExceptionController"
+import CleaningGroupController from "./controllers/CleaningGroupController"
+import CleaningScheduleConfigController from "./controllers/CleaningScheduleConfigController"
 import CleaningScheduleController from "./controllers/CleaningScheduleController"
+import CongregationController from "./controllers/CongregationController"
+import CronJobController from "./controllers/CronJobController"
+import DataProcessingAgreementController from "./controllers/DataProcessingAgreement"
+import DocumentController from "./controllers/DocumentController"
+import EmergencyContactController from "./controllers/EmergencyContactController"
+import ExternalTalkController from "./controllers/ExternalTalkController"
 import FamilyController from "./controllers/FamilyController"
-import { verifyGitHubCron } from "./middlewares/gitHubCronAuth"
-import FieldServiceTemplateController from "./controllers/FieldServiceTemplateController"
 import FieldServiceExceptionController from "./controllers/FieldServiceExceptionController"
 import FieldServiceScheduleController from "./controllers/FieldServiceScheduleController"
+import FieldServiceTemplateController from "./controllers/FieldServiceTemplateController"
+import FieldServiceTemplateLocationOverrideController from "./controllers/FieldServiceTemplateLocationOverrideController"
+import FormDataController from "./controllers/FormDataController"
+import GroupController from "./controllers/GroupController"
+import HospitalityController from "./controllers/HospitalityController"
+import HospitalityGroupController from "./controllers/HospitalityGroupController"
+import MeetingAssistanceController from "./controllers/MeetingAssistanceController"
+import NoticeController from "./controllers/NoticeController"
+import NotificationController from "./controllers/NotificationController"
+import PermissionController from "./controllers/PermissionController"
+import ProfileController from "./controllers/ProfileController"
 import PublicWitnessArrangementController from "./controllers/PublicWitnessArrangementController"
 import PublicWitnessScheduleController from "./controllers/PublicWitnessScheduleController"
-import FieldServiceTemplateLocationOverrideController from "./controllers/FieldServiceTemplateLocationOverrideController"
+import PublisherControllers from "./controllers/PublisherControllers"
 import PublisherReminderController from "./controllers/PublisherReminderController"
+import PushNotificationController from "./controllers/PushNotificationController"
+import ReportController from "./controllers/ReportController"
+import RoleController from "./controllers/RoleController"
+import SpeakerController from "./controllers/SpeakerController"
+import TalkController from "./controllers/TalkController"
+import TermsOfUseController from "./controllers/TermsOfUseController"
+import TerritoryController from "./controllers/TerritoryController"
+import TerritoryHistoryController from "./controllers/TerritoryHistoryController"
+import TotalsReportsController from "./controllers/TotalsReportsController"
+import UserController from "./controllers/UserController"
+import VercelUsageController from "./controllers/VercelUsageController"
+import WeekendScheduleController from "./controllers/WeekendScheduleController"
+import { verifyGitHubCron } from "./middlewares/gitHubCronAuth"
 
 const routes = Router()
 
@@ -91,6 +93,9 @@ routes.get("/consent/check", DataProcessingAgreementController.check)
 // Termos de uso (público)
 routes.get("/terms/active/:type", TermsOfUseController.getActive)
 
+// Web Push (chave pública)
+routes.get('/push/public-key', PushNotificationController.getPublicKey)
+
 /* =========================================================
    🔒 ROTAS PRIVADAS (com autenticação e permissões)
 ========================================================= */
@@ -120,6 +125,18 @@ routes.delete("/reminders/:reminder_id", requirePublisher(), PublisherReminderCo
 routes.get("/reminders/:reminder_id", requirePublisher(), PublisherReminderController.getOne)
 routes.get("/reminders/publishers/:publisher_id", requirePublisher(), PublisherReminderController.getActive)
 routes.get("/reminders/publishers/:publisher_id/all", requirePublisher(), PublisherReminderController.getAll)
+
+/* === Notificações Push === */
+routes.post("/push/subscribe", PushNotificationController.subscribe)
+routes.post("/push/unsubscribe", PushNotificationController.unsubscribe)
+routes.get("/push/status", PushNotificationController.getStatus)
+routes.post("/push/test", PushNotificationController.testNotification)
+
+/* === Histórico de Notificações === */
+routes.get("/notifications", NotificationController.list)
+routes.get("/notifications/unread-count", NotificationController.getUnreadCount)
+routes.patch("/notifications/read-all", NotificationController.markAllAsRead)
+routes.patch("/notifications/:notification_id/read", NotificationController.markAsRead)
 
 
 /* === Contatos de emergência === */
@@ -351,6 +368,8 @@ routes.delete('/cron/clean-old-territoryHistory', verifyGitHubCron, CronJobContr
 routes.delete('/cron/clean-old-schedules', verifyGitHubCron, CronJobController.cleanOldData)
 routes.delete("/cron/clean-field-service-overrides", verifyGitHubCron, CronJobController.cleanOldFieldService)
 routes.delete("/cron/clean-publisher-reminders", verifyGitHubCron, CronJobController.cleanOldPublisherReminders)
+routes.get('/cron/daily-notifications', verifyGitHubCron, CronJobController.dispatchDailyNotifications)
+routes.post('/cron/daily-notifications', verifyGitHubCron, CronJobController.dispatchDailyNotifications)
 routes.get('/reportsCleanUp', verifyCronSecret, CronJobController.reportsCleanUp)
 routes.get('/backup', verifyCronSecret, CronJobController.backup)
 routes.get("/usage", is(["ADMIN"]), VercelUsageController.getUsage);

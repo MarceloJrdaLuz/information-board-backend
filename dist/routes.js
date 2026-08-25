@@ -7,46 +7,48 @@ const express_1 = require("express");
 const multer_1 = require("./config/multer");
 const permissions_1 = require("./middlewares/permissions");
 // Controllers
-const UserController_1 = __importDefault(require("./controllers/UserController"));
-const PublisherControllers_1 = __importDefault(require("./controllers/PublisherControllers"));
-const EmergencyContactController_1 = __importDefault(require("./controllers/EmergencyContactController"));
-const CongregationController_1 = __importDefault(require("./controllers/CongregationController"));
-const HospitalityGroupController_1 = __importDefault(require("./controllers/HospitalityGroupController"));
 const CategoryController_1 = __importDefault(require("./controllers/CategoryController"));
-const DocumentController_1 = __importDefault(require("./controllers/DocumentController"));
-const ProfileController_1 = __importDefault(require("./controllers/ProfileController"));
-const TerritoryController_1 = __importDefault(require("./controllers/TerritoryController"));
-const TerritoryHistoryController_1 = __importDefault(require("./controllers/TerritoryHistoryController"));
-const RoleController_1 = __importDefault(require("./controllers/RoleController"));
-const PermissionController_1 = __importDefault(require("./controllers/PermissionController"));
-const NoticeController_1 = __importDefault(require("./controllers/NoticeController"));
-const ReportController_1 = __importDefault(require("./controllers/ReportController"));
-const TotalsReportsController_1 = __importDefault(require("./controllers/TotalsReportsController"));
-const GroupController_1 = __importDefault(require("./controllers/GroupController"));
-const MeetingAssistanceController_1 = __importDefault(require("./controllers/MeetingAssistanceController"));
-const TalkController_1 = __importDefault(require("./controllers/TalkController"));
-const WeekendScheduleController_1 = __importDefault(require("./controllers/WeekendScheduleController"));
-const HospitalityController_1 = __importDefault(require("./controllers/HospitalityController"));
-const ExternalTalkController_1 = __importDefault(require("./controllers/ExternalTalkController"));
-const SpeakerController_1 = __importDefault(require("./controllers/SpeakerController"));
-const TermsOfUseController_1 = __importDefault(require("./controllers/TermsOfUseController"));
-const DataProcessingAgreement_1 = __importDefault(require("./controllers/DataProcessingAgreement"));
-const FormDataController_1 = __importDefault(require("./controllers/FormDataController"));
-const CronJobController_1 = __importDefault(require("./controllers/CronJobController"));
-const VercelUsageController_1 = __importDefault(require("./controllers/VercelUsageController"));
-const CleaningScheduleConfigController_1 = __importDefault(require("./controllers/CleaningScheduleConfigController"));
-const CleaningGroupController_1 = __importDefault(require("./controllers/CleaningGroupController"));
 const CleaningExceptionController_1 = __importDefault(require("./controllers/CleaningExceptionController"));
+const CleaningGroupController_1 = __importDefault(require("./controllers/CleaningGroupController"));
+const CleaningScheduleConfigController_1 = __importDefault(require("./controllers/CleaningScheduleConfigController"));
 const CleaningScheduleController_1 = __importDefault(require("./controllers/CleaningScheduleController"));
+const CongregationController_1 = __importDefault(require("./controllers/CongregationController"));
+const CronJobController_1 = __importDefault(require("./controllers/CronJobController"));
+const DataProcessingAgreement_1 = __importDefault(require("./controllers/DataProcessingAgreement"));
+const DocumentController_1 = __importDefault(require("./controllers/DocumentController"));
+const EmergencyContactController_1 = __importDefault(require("./controllers/EmergencyContactController"));
+const ExternalTalkController_1 = __importDefault(require("./controllers/ExternalTalkController"));
 const FamilyController_1 = __importDefault(require("./controllers/FamilyController"));
-const gitHubCronAuth_1 = require("./middlewares/gitHubCronAuth");
-const FieldServiceTemplateController_1 = __importDefault(require("./controllers/FieldServiceTemplateController"));
 const FieldServiceExceptionController_1 = __importDefault(require("./controllers/FieldServiceExceptionController"));
 const FieldServiceScheduleController_1 = __importDefault(require("./controllers/FieldServiceScheduleController"));
+const FieldServiceTemplateController_1 = __importDefault(require("./controllers/FieldServiceTemplateController"));
+const FieldServiceTemplateLocationOverrideController_1 = __importDefault(require("./controllers/FieldServiceTemplateLocationOverrideController"));
+const FormDataController_1 = __importDefault(require("./controllers/FormDataController"));
+const GroupController_1 = __importDefault(require("./controllers/GroupController"));
+const HospitalityController_1 = __importDefault(require("./controllers/HospitalityController"));
+const HospitalityGroupController_1 = __importDefault(require("./controllers/HospitalityGroupController"));
+const MeetingAssistanceController_1 = __importDefault(require("./controllers/MeetingAssistanceController"));
+const NoticeController_1 = __importDefault(require("./controllers/NoticeController"));
+const NotificationController_1 = __importDefault(require("./controllers/NotificationController"));
+const PermissionController_1 = __importDefault(require("./controllers/PermissionController"));
+const ProfileController_1 = __importDefault(require("./controllers/ProfileController"));
 const PublicWitnessArrangementController_1 = __importDefault(require("./controllers/PublicWitnessArrangementController"));
 const PublicWitnessScheduleController_1 = __importDefault(require("./controllers/PublicWitnessScheduleController"));
-const FieldServiceTemplateLocationOverrideController_1 = __importDefault(require("./controllers/FieldServiceTemplateLocationOverrideController"));
+const PublisherControllers_1 = __importDefault(require("./controllers/PublisherControllers"));
 const PublisherReminderController_1 = __importDefault(require("./controllers/PublisherReminderController"));
+const PushNotificationController_1 = __importDefault(require("./controllers/PushNotificationController"));
+const ReportController_1 = __importDefault(require("./controllers/ReportController"));
+const RoleController_1 = __importDefault(require("./controllers/RoleController"));
+const SpeakerController_1 = __importDefault(require("./controllers/SpeakerController"));
+const TalkController_1 = __importDefault(require("./controllers/TalkController"));
+const TermsOfUseController_1 = __importDefault(require("./controllers/TermsOfUseController"));
+const TerritoryController_1 = __importDefault(require("./controllers/TerritoryController"));
+const TerritoryHistoryController_1 = __importDefault(require("./controllers/TerritoryHistoryController"));
+const TotalsReportsController_1 = __importDefault(require("./controllers/TotalsReportsController"));
+const UserController_1 = __importDefault(require("./controllers/UserController"));
+const VercelUsageController_1 = __importDefault(require("./controllers/VercelUsageController"));
+const WeekendScheduleController_1 = __importDefault(require("./controllers/WeekendScheduleController"));
+const gitHubCronAuth_1 = require("./middlewares/gitHubCronAuth");
 const routes = (0, express_1.Router)();
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
@@ -82,6 +84,8 @@ routes.get("/consent/publisher/:publisher_id", DataProcessingAgreement_1.default
 routes.get("/consent/check", DataProcessingAgreement_1.default.check);
 // Termos de uso (público)
 routes.get("/terms/active/:type", TermsOfUseController_1.default.getActive);
+// Web Push (chave pública)
+routes.get('/push/public-key', PushNotificationController_1.default.getPublicKey);
 /* =========================================================
    🔒 ROTAS PRIVADAS (com autenticação e permissões)
 ========================================================= */
@@ -108,6 +112,16 @@ routes.delete("/reminders/:reminder_id", (0, permissions_1.requirePublisher)(), 
 routes.get("/reminders/:reminder_id", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.getOne);
 routes.get("/reminders/publishers/:publisher_id", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.getActive);
 routes.get("/reminders/publishers/:publisher_id/all", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.getAll);
+/* === Notificações Push === */
+routes.post("/push/subscribe", PushNotificationController_1.default.subscribe);
+routes.post("/push/unsubscribe", PushNotificationController_1.default.unsubscribe);
+routes.get("/push/status", PushNotificationController_1.default.getStatus);
+routes.post("/push/test", PushNotificationController_1.default.testNotification);
+/* === Histórico de Notificações === */
+routes.get("/notifications", NotificationController_1.default.list);
+routes.get("/notifications/unread-count", NotificationController_1.default.getUnreadCount);
+routes.patch("/notifications/read-all", NotificationController_1.default.markAllAsRead);
+routes.patch("/notifications/:notification_id/read", NotificationController_1.default.markAsRead);
 /* === Contatos de emergência === */
 routes.get('/emergencyContacts/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController_1.default.listByCongregation);
 routes.get('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), EmergencyContactController_1.default.getEmergencyContact);
@@ -297,6 +311,8 @@ routes.delete('/cron/clean-old-territoryHistory', gitHubCronAuth_1.verifyGitHubC
 routes.delete('/cron/clean-old-schedules', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.cleanOldData);
 routes.delete("/cron/clean-field-service-overrides", gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.cleanOldFieldService);
 routes.delete("/cron/clean-publisher-reminders", gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.cleanOldPublisherReminders);
+routes.get('/cron/daily-notifications', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.dispatchDailyNotifications);
+routes.post('/cron/daily-notifications', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.dispatchDailyNotifications);
 routes.get('/reportsCleanUp', permissions_1.verifyCronSecret, CronJobController_1.default.reportsCleanUp);
 routes.get('/backup', permissions_1.verifyCronSecret, CronJobController_1.default.backup);
 routes.get("/usage", (0, permissions_1.is)(["ADMIN"]), VercelUsageController_1.default.getUsage);

@@ -1,0 +1,16 @@
+name: Daily Push Notifications
+
+on:
+  schedule:
+    - cron: '0 10 * * *' # Todos os dias às 07:00 BRT (10:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call daily notifications route
+        run: |
+          curl -s -L -X POST ${{ secrets.API_URL }}/cron/daily-notifications \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET_GITHUB }}" \
+            -H "Cache-Control: no-cache"

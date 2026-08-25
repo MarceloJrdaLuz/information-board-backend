@@ -3,10 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const dayjs_1 = __importDefault(require("dayjs"));
 const moment_1 = __importDefault(require("moment"));
 const typeorm_1 = require("typeorm");
+const Notification_1 = require("../../entities/Notification");
 const normalize_1 = require("../../functions/normalize");
 const api_errors_1 = require("../../helpers/api-errors");
+const handleWeekend_1 = require("../../helpers/handleWeekend");
 const messageErrors_1 = require("../../helpers/messageErrors");
 const months_1 = require("../../helpers/months");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
@@ -16,10 +19,10 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const speakerRepository_1 = require("../../repositories/speakerRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
-const handleWeekend_1 = require("../../helpers/handleWeekend");
+const pushNotificationService_1 = require("../../services/pushNotificationService");
 class WeekendScheduleController {
     async create(req, res) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         const { congregation_id } = req.params;
         const { schedules } = req.body;
         if (!schedules || schedules.length === 0) {
@@ -77,6 +80,34 @@ class WeekendScheduleController {
             schedulesToSave.push(newSchedule);
         }
         const savedSchedules = await weekendScheduleRepository_1.weekendScheduleRepository.save(schedulesToSave);
+        // Dispara notificações push imediatas para os designados
+        for (const schedule of savedSchedules) {
+            const dateFmt = (0, dayjs_1.default)(schedule.date).format("DD/MM/YYYY");
+            if ((_f = schedule.chairman) === null || _f === void 0 ? void 0 : _f.id) {
+                pushNotificationService_1.pushNotificationService.sendToPublisher(schedule.chairman.id, {
+                    title: "Nova Designação: Presidente",
+                    body: `Você foi designado como Presidente para a reunião de ${dateFmt}.`,
+                    type: Notification_1.NotificationType.CHAIRMAN,
+                    data: { url: "/dashboard", date: schedule.date }
+                }).catch(err => console.error("Erro ao enviar push:", err));
+            }
+            if ((_g = schedule.reader) === null || _g === void 0 ? void 0 : _g.id) {
+                pushNotificationService_1.pushNotificationService.sendToPublisher(schedule.reader.id, {
+                    title: "Nova Designação: Leitor",
+                    body: `Você foi designado como Leitor de A Sentinela para a reunião de ${dateFmt}.`,
+                    type: Notification_1.NotificationType.READING,
+                    data: { url: "/dashboard", date: schedule.date }
+                }).catch(err => console.error("Erro ao enviar push:", err));
+            }
+            if ((_j = (_h = schedule.speaker) === null || _h === void 0 ? void 0 : _h.publisher) === null || _j === void 0 ? void 0 : _j.id) {
+                pushNotificationService_1.pushNotificationService.sendToPublisher(schedule.speaker.publisher.id, {
+                    title: "Nova Designação: Orador",
+                    body: `Você foi escalado como Orador no dia ${dateFmt}.`,
+                    type: Notification_1.NotificationType.SPEAKER,
+                    data: { url: "/dashboard", date: schedule.date }
+                }).catch(err => console.error("Erro ao enviar push:", err));
+            }
+        }
         return res.status(201).json(savedSchedules);
     }
     async update(req, res) {

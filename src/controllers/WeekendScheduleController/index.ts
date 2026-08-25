@@ -1,8 +1,11 @@
+import dayjs from "dayjs"
 import { Response } from "express-serve-static-core"
 import moment from "moment"
 import { MoreThanOrEqual } from "typeorm"
+import { NotificationType } from "../../entities/Notification"
 import { normalize } from "../../functions/normalize"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
+import { filterExternalTalksForWeekend, isCurrentWeekend } from "../../helpers/handleWeekend"
 import { messageErrors } from "../../helpers/messageErrors"
 import { monthNames } from "../../helpers/months"
 import { congregationRepository } from "../../repositories/congregationRepository"
@@ -12,15 +15,15 @@ import { publisherRepository } from "../../repositories/publisherRepository"
 import { speakerRepository } from "../../repositories/speakerRepository"
 import { talkRepository } from "../../repositories/talkRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
+import { pushNotificationService } from "../../services/pushNotificationService"
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import {
-  BodyWeekendScheduleCreateTypes,
-  BodyWeekendScheduleUpdateTypes,
-  ParamsGetWeekendScheduleTypes,
-  ParamsWeekendScheduleCreateTypes,
-  ParamsWeekendScheduleTypes
+    BodyWeekendScheduleCreateTypes,
+    BodyWeekendScheduleUpdateTypes,
+    ParamsGetWeekendScheduleTypes,
+    ParamsWeekendScheduleCreateTypes,
+    ParamsWeekendScheduleTypes
 } from "./types"
-import { filterExternalTalksForWeekend, isCurrentWeekend } from "../../helpers/handleWeekend"
 
 class WeekendScheduleController {
   async create(req: CustomRequestPT<ParamsWeekendScheduleCreateTypes, BodyWeekendScheduleCreateTypes>, res: Response) {
@@ -95,6 +98,39 @@ class WeekendScheduleController {
     }
 
     const savedSchedules = await weekendScheduleRepository.save(schedulesToSave)
+
+    // Dispara notificações push imediatas para os designados
+    for (const schedule of savedSchedules) {
+      const dateFmt = dayjs(schedule.date).format("DD/MM/YYYY")
+
+      if (schedule.chairman?.id) {
+        pushNotificationService.sendToPublisher(schedule.chairman.id, {
+          title: "Nova Designação: Presidente",
+          body: `Você foi designado como Presidente para a reunião de ${dateFmt}.`,
+          type: NotificationType.CHAIRMAN,
+          data: { url: "/dashboard", date: schedule.date }
+        }).catch(err => console.error("Erro ao enviar push:", err))
+      }
+
+      if (schedule.reader?.id) {
+        pushNotificationService.sendToPublisher(schedule.reader.id, {
+          title: "Nova Designação: Leitor",
+          body: `Você foi designado como Leitor de A Sentinela para a reunião de ${dateFmt}.`,
+          type: NotificationType.READING,
+          data: { url: "/dashboard", date: schedule.date }
+        }).catch(err => console.error("Erro ao enviar push:", err))
+      }
+
+      if (schedule.speaker?.publisher?.id) {
+        pushNotificationService.sendToPublisher(schedule.speaker.publisher.id, {
+          title: "Nova Designação: Orador",
+          body: `Você foi escalado como Orador no dia ${dateFmt}.`,
+          type: NotificationType.SPEAKER,
+          data: { url: "/dashboard", date: schedule.date }
+        }).catch(err => console.error("Erro ao enviar push:", err))
+      }
+    }
+
     return res.status(201).json(savedSchedules)
   }
 

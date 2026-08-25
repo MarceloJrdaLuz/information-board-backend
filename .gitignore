@@ -5,6 +5,8 @@ google_storage_key_string.json
 google_storage_key.json
 firebasestoragecredentials.json
 storageFirebaseCredentials.json
+google_storage_key_update.json
+google_storage_key_update_string.json
 oAuthCredentials.json
 ca.pem
 permissionandroles.me

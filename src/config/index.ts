@@ -24,6 +24,9 @@ export const config: {
     db_pass: string, 
     email_backup: string,
     vercel_token: string, 
+    vapid_public_key: string,
+    vapid_private_key: string,
+    vapid_subject: string,
 } = {
     app_url: process.env.APP_URL ?? "",
     storage_type: process.env.STORAGE_TYPE ?? "",
@@ -42,5 +45,8 @@ export const config: {
     db_name: process.env.DB_NAME ?? "", 
     db_pass: process.env.DB_PASS ?? "", 
     email_backup: process.env.EMAIL_BACKUP ?? "",
-    vercel_token: process.env.VERCEL_TOKEN ?? ""
+    vercel_token: process.env.VERCEL_TOKEN ?? "",
+    vapid_public_key: process.env.VAPID_PUBLIC_KEY ?? "",
+    vapid_private_key: process.env.VAPID_PRIVATE_KEY ?? "",
+    vapid_subject: process.env.VAPID_SUBJECT ?? "mailto:contato@informationboard.com"
 }
