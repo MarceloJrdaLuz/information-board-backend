@@ -1,8 +1,10 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Congregation } from "./Congregation";
 import { Profile } from "./Profile";
 import { Publisher } from "./Publisher";
 import { Role } from "./Role";
+import { PushSubscription } from "./PushSubscription";
+import { Notification } from "./Notification";
 
 @Entity('users')
 export class User {
@@ -56,4 +58,16 @@ export class User {
     @OneToOne(() => Publisher, { nullable: true, onDelete: "SET NULL", eager: true })
     @JoinColumn({ name: 'publisher_id' })
     publisher: Publisher | null
+
+    @OneToMany(
+        () => PushSubscription,
+        subscription => subscription.user
+    )
+    pushSubscriptions: PushSubscription[]
+
+    @OneToMany(
+        () => Notification,
+        notification => notification.user
+    )
+    notifications: Notification[]
 }

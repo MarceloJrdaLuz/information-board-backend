@@ -1,17 +1,19 @@
 import dayjs from "dayjs"
 import { Response } from "express-serve-static-core"
+import { NotificationType } from "../../entities/Notification"
+import { RecurrenceType } from "../../entities/PublisherReminders"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { resolveReminderOccurrence } from "../../helpers/resolveReminderOccurrence"
 import { publisherReminderRepository } from "../../repositories/publisherReminderRepository"
 import { publisherRepository } from "../../repositories/publisherRepository"
-import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
+import { pushNotificationService } from "../../services/pushNotificationService"
+import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import {
     BodyReminderCreateTypes,
     BodyReminderUpdateTypes,
     ParamsPublisherReminderTypes,
     ParamsReminderTypes
 } from "./types"
-import { RecurrenceType } from "../../entities/PublisherReminders"
 
 class PublisherReminderController {
 
@@ -67,6 +69,18 @@ class PublisherReminderController {
         })
 
         const saved = await publisherReminderRepository.save(reminder)
+
+        if (dayjs(startDate).isSame(dayjs(), "day")) {
+            pushNotificationService
+                .sendToPublisher(publisher_id, {
+                    title: `Lembrete: ${title}`,
+                    body: description || "Você adicionou um lembrete pessoal para hoje.",
+                    type: NotificationType.REMINDER,
+                    data: { url: "/dashboard", reminderId: saved.id },
+                })
+                .catch((e) => console.error("Erro ao enviar push de lembrete:", e))
+        }
+
         return res.status(201).json(saved)
     }
 

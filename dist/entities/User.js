@@ -15,6 +15,8 @@ const Congregation_1 = require("./Congregation");
 const Profile_1 = require("./Profile");
 const Publisher_1 = require("./Publisher");
 const Role_1 = require("./Role");
+const PushSubscription_1 = require("./PushSubscription");
+const Notification_1 = require("./Notification");
 let User = class User {
 };
 __decorate([
@@ -81,6 +83,14 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'publisher_id' }),
     __metadata("design:type", Object)
 ], User.prototype, "publisher", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => PushSubscription_1.PushSubscription, subscription => subscription.user),
+    __metadata("design:type", Array)
+], User.prototype, "pushSubscriptions", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => Notification_1.Notification, notification => notification.user),
+    __metadata("design:type", Array)
+], User.prototype, "notifications", void 0);
 User = __decorate([
     (0, typeorm_1.Entity)('users')
 ], User);

@@ -1,47 +1,59 @@
-import { Response, Request } from "express"
-import { noticeRepository } from "../../repositories/noticeRepository"
-import { And, IsNull, LessThan, Not } from "typeorm"
-import { NotFoundError } from "../../helpers/api-errors"
+import { Request, Response } from "express"
 import moment from "moment-timezone"
-import { reportRepository } from "../../repositories/reportRepository"
+import { And, IsNull, LessThan, Not } from "typeorm"
 import { getMonthsOld } from "../../functions/getMonths"
 import { meetingAssistanceRepository } from "../../repositories/meetingAssistanceRepository"
+import { noticeRepository } from "../../repositories/noticeRepository"
+import { reportRepository } from "../../repositories/reportRepository"
+import { exec } from "child_process"
+import dayjs from "dayjs"
+import { config } from "../../config"
+import { NotificationType } from "../../entities/Notification"
+import { resolveReminderOccurrence } from "../../helpers/resolveReminderOccurrence"
 //@ts-expect-error
 import mailer from '../../modules/mailer'
-import { exec } from "child_process"
-import { config } from "../../config"
-import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository"
-import dayjs from "dayjs"
 import { cleaningExceptionRepository } from "../../repositories/cleaningExceptionRepository"
-import { fieldServiceTemplateLocationOverrideRepository } from "../../repositories/fieldServiceTemplateLocationOverrideRepository"
-import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
-import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
+import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository"
+import { externalTalkRepository } from "../../repositories/externalTalkRepository"
 import { fieldServiceExceptionRepository } from "../../repositories/fieldServiceExceptionRepository"
+import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
+import { fieldServiceTemplateLocationOverrideRepository } from "../../repositories/fieldServiceTemplateLocationOverrideRepository"
+import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
+import { publicWitnessAssignmentRepository } from "../../repositories/publicWitnessAssignmentRepository"
 import { publisherReminderRepository } from "../../repositories/publisherReminderRepository"
+import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
+import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
+import { pushNotificationService } from "../../services/pushNotificationService"
 
 class CronJobController {
     async deleteExpiredNotices(req: Request, res: Response) {
-
-        const startOfToday = moment().startOf('day').toDate()
-
-        const expiredNotices = await noticeRepository.find({
-            where: {
-                expired: LessThan(startOfToday)
-            }
-        })
-
-        if (expiredNotices.length === 0) {
-            throw new NotFoundError("No expired notices found")
-        }
+        const startOfToday = moment().startOf("day").toDate();
 
         try {
-            await noticeRepository.remove(expiredNotices)
-            return res.status(200).json({ message: "Expired notices deleted", notices: expiredNotices })
-        } catch (error) {
-            console.log(error)
-            throw new Error("Error deleting expired notices")
-        }
+            const expiredNotices = await noticeRepository.find({
+                where: {
+                    expired: LessThan(startOfToday),
+                },
+            });
 
+            if (expiredNotices.length === 0) {
+                return res.status(200).json({
+                    message: "No expired notices found",
+                    deleted: 0,
+                });
+            }
+
+            await noticeRepository.remove(expiredNotices);
+
+            return res.status(200).json({
+                message: "Expired notices deleted",
+                deleted: expiredNotices.length,
+                notices: expiredNotices,
+            });
+        } catch (error) {
+            console.error(error);
+            throw new Error("Error deleting expired notices");
+        }
     }
 
     async cleanOldPublisherReminders(req: Request, res: Response) {
@@ -356,6 +368,303 @@ class CronJobController {
                 message: "Error cleaning old data",
                 error: error.message
             });
+        }
+    }
+
+    /**
+     * Cron Job diário para disparar notificações push de lembretes pessoais e designações
+     */
+    async dispatchDailyNotifications(req: Request, res: Response) {
+        const today = dayjs().startOf("day")
+        const todayStr = today.format("YYYY-MM-DD")
+        const tomorrow = today.add(1, "day")
+        const tomorrowStr = tomorrow.format("YYYY-MM-DD")
+
+        let notificationsSent = 0
+        const errors: any[] = []
+
+        try {
+            // ==========================================
+            // 1. LEMBRETES PESSOAIS DO DIA
+            // ==========================================
+            const activeReminders = await publisherReminderRepository.find({
+                where: { isActive: true },
+                relations: ["publisher"]
+            })
+
+            for (const reminder of activeReminders) {
+                if (!reminder.publisher) continue
+                const occurrence = resolveReminderOccurrence(reminder, today)
+                if (occurrence) {
+                    try {
+                        const result = await pushNotificationService.sendToPublisher(reminder.publisher.id, {
+                            title: `Lembrete: ${occurrence.title}`,
+                            body: occurrence.description || "Você tem um lembrete pessoal agendado para hoje.",
+                            type: NotificationType.REMINDER,
+                            data: {
+                                url: "/dashboard",
+                                reminderId: reminder.id
+                            }
+                        })
+                        if (result) notificationsSent++
+                    } catch (err: any) {
+                        errors.push({ type: "REMINDER", reminderId: reminder.id, error: err.message })
+                    }
+                }
+            }
+
+            // ==========================================
+            // 2. DESIGNAÇÕES DE REUNIÃO DE FIM DE SEMANA (Hoje e Amanhã)
+            // ==========================================
+            const weekendSchedules = await weekendScheduleRepository.find({
+                where: [
+                    { date: todayStr },
+                    { date: tomorrowStr }
+                ],
+                relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"]
+            })
+
+            for (const s of weekendSchedules) {
+                const isToday = s.date === todayStr
+                const timeLabel = isToday ? "hoje" : "amanhã"
+
+                // Presidente
+                if (s.chairman?.id) {
+                    try {
+                        const result = await pushNotificationService.sendToPublisher(s.chairman.id, {
+                            title: "Designação de Presidente",
+                            body: `Você está designado como Presidente da Reunião ${timeLabel} (${dayjs(s.date).format("DD/MM")}).`,
+                            type: NotificationType.CHAIRMAN,
+                            data: { url: "/dashboard", date: s.date }
+                        })
+                        if (result) notificationsSent++
+                    } catch (err: any) {
+                        errors.push({ type: "CHAIRMAN", error: err.message })
+                    }
+                }
+
+                // Leitor
+                if (s.reader?.id) {
+                    try {
+                        const result = await pushNotificationService.sendToPublisher(s.reader.id, {
+                            title: "Designação de Leitor",
+                            body: `Você está designado como Leitor da revista A Sentinela ${timeLabel} (${dayjs(s.date).format("DD/MM")}).`,
+                            type: NotificationType.READING,
+                            data: { url: "/dashboard", date: s.date }
+                        })
+                        if (result) notificationsSent++
+                    } catch (err: any) {
+                        errors.push({ type: "READING", error: err.message })
+                    }
+                }
+
+                // Orador local
+                if (s.speaker?.publisher?.id) {
+                    try {
+                        const talkTitle = s.talk?.title ? ` - Tema: "${s.talk.title}"` : ""
+                        const result = await pushNotificationService.sendToPublisher(s.speaker.publisher.id, {
+                            title: "Designação de Orador",
+                            body: `Você proferirá o discurso público ${timeLabel} (${dayjs(s.date).format("DD/MM")})${talkTitle}.`,
+                            type: NotificationType.SPEAKER,
+                            data: { url: "/dashboard", date: s.date }
+                        })
+                        if (result) notificationsSent++
+                    } catch (err: any) {
+                        errors.push({ type: "SPEAKER", error: err.message })
+                    }
+                }
+            }
+
+            // ==========================================
+            // 3. DESIGNAÇÕES DE LIMPEZA DO SALÃO (Hoje e Amanhã)
+            // ==========================================
+            const cleaningSchedules = await cleaningScheduleRepository.find({
+                where: [
+                    { date: todayStr },
+                    { date: tomorrowStr }
+                ],
+                relations: ["group", "group.publishers"]
+            })
+
+            for (const c of cleaningSchedules) {
+                const isToday = c.date === todayStr
+                const timeLabel = isToday ? "hoje" : "amanhã"
+                const publishers = c.group?.publishers || []
+
+                for (const pub of publishers) {
+                    try {
+                        const result = await pushNotificationService.sendToPublisher(pub.id, {
+                            title: "Limpeza do Salão do Reino",
+                            body: `Seu grupo (${c.group?.name || "Limpeza"}) está escalado para a limpeza do salão ${timeLabel} (${dayjs(c.date).format("DD/MM")}).`,
+                            type: NotificationType.CLEANING,
+                            data: { url: "/dashboard", date: c.date }
+                        })
+                        if (result) notificationsSent++
+                    } catch (err: any) {
+                        errors.push({ type: "CLEANING", error: err.message })
+                    }
+                }
+            }
+
+            // ==========================================
+            // 4. DESIGNAÇÕES DE SAÍDA DE CAMPO (Hoje e Amanhã)
+            // ==========================================
+            const fieldServiceSchedules = await fieldServiceScheduleRepository.find({
+                where: [
+                    { date: todayStr },
+                    { date: tomorrowStr }
+                ],
+                relations: ["leader", "template"]
+            })
+
+            for (const fs of fieldServiceSchedules) {
+                if (fs.leader?.id) {
+                    const isToday = fs.date === todayStr
+                    const timeLabel = isToday ? "hoje" : "amanhã"
+                    const timeStr = fs.template?.time ? ` às ${fs.template.time}` : ""
+                    const locStr = fs.template?.location ? ` (${fs.template.location})` : ""
+
+                    try {
+                        const result = await pushNotificationService.sendToPublisher(fs.leader.id, {
+                            title: "Dirigente de Saída de Campo",
+                            body: `Você está escalado como Dirigente de Campo ${timeLabel} (${dayjs(fs.date).format("DD/MM")})${timeStr}${locStr}.`,
+                            type: NotificationType.FIELD_SERVICE,
+                            data: { url: "/dashboard", date: fs.date }
+                        })
+                        if (result) notificationsSent++
+                    } catch (err: any) {
+                        errors.push({ type: "FIELD_SERVICE", error: err.message })
+                    }
+                }
+            }
+
+            // ==========================================
+            // 5. TESTEMUNHO PÚBLICO (Hoje e Amanhã)
+            // ==========================================
+            const publicWitnessAssignments = await publicWitnessAssignmentRepository
+                .createQueryBuilder("pw")
+                .leftJoinAndSelect("pw.publishers", "allPublishers")
+                .leftJoinAndSelect("allPublishers.publisher", "publisher")
+                .leftJoinAndSelect("pw.timeSlot", "timeSlot")
+                .leftJoinAndSelect("timeSlot.arrangement", "arrangement")
+                .where("pw.date IN (:...dates)", { dates: [todayStr, tomorrowStr] })
+                .getMany()
+
+            for (const pw of publicWitnessAssignments) {
+                const isToday = pw.date === todayStr
+                const timeLabel = isToday ? "hoje" : "amanhã"
+                const title = pw.timeSlot?.arrangement?.title || "Testemunho Público"
+                const period = pw.timeSlot ? ` (${pw.timeSlot.start_time} - ${pw.timeSlot.end_time})` : ""
+
+                for (const pubRel of pw.publishers || []) {
+                    if (pubRel.publisher?.id) {
+                        try {
+                            const result = await pushNotificationService.sendToPublisher(pubRel.publisher.id, {
+                                title: "Testemunho Público",
+                                body: `Você tem designação no arranjo "${title}" ${timeLabel} (${dayjs(pw.date).format("DD/MM")})${period}.`,
+                                type: NotificationType.PUBLICWITNESS,
+                                data: { url: "/dashboard", date: pw.date }
+                            })
+                            if (result) notificationsSent++
+                        } catch (err: any) {
+                            errors.push({ type: "PUBLICWITNESS", error: err.message })
+                        }
+                    }
+                }
+            }
+
+            // ==========================================
+            // 6. DISCURSOS EXTERNOS (Hoje e Amanhã)
+            // ==========================================
+            const externalTalks = await externalTalkRepository.find({
+                where: [
+                    { date: todayStr },
+                    { date: tomorrowStr }
+                ],
+                relations: ["speaker", "speaker.publisher", "destinationCongregation", "talk"]
+            })
+
+            for (const ext of externalTalks) {
+                if (ext.speaker?.publisher?.id) {
+                    const isToday = ext.date === todayStr
+                    const timeLabel = isToday ? "hoje" : "amanhã"
+                    const cong = ext.destinationCongregation?.name ? ` na congregação ${ext.destinationCongregation.name}` : ""
+
+                    try {
+                        const result = await pushNotificationService.sendToPublisher(ext.speaker.publisher.id, {
+                            title: "Discurso Externo",
+                            body: `Você tem discurso externo agendado ${timeLabel} (${dayjs(ext.date).format("DD/MM")})${cong}.`,
+                            type: NotificationType.SPEAKER,
+                            data: { url: "/dashboard", date: ext.date }
+                        })
+                        if (result) notificationsSent++
+                    } catch (err: any) {
+                        errors.push({ type: "EXTERNAL_TALK", error: err.message })
+                    }
+                }
+            }
+
+            // ==========================================
+            // 7. HOSPITALIDADE (Hoje e Amanhã)
+            // ==========================================
+            const hospitalityAssignments = await hospitalityAssignmentRepository.find({
+                where: [
+                    { weekend: { date: todayStr } },
+                    { weekend: { date: tomorrowStr } }
+                ],
+                relations: ["group", "group.members", "group.host", "weekend"]
+            })
+
+            for (const h of hospitalityAssignments) {
+                const isToday = h.weekend?.date === todayStr
+                const timeLabel = isToday ? "hoje" : "amanhã"
+                const dateFmt = dayjs(h.weekend?.date).format("DD/MM")
+
+                // Host
+                if (h.group?.host?.id) {
+                    try {
+                        const result = await pushNotificationService.sendToPublisher(h.group.host.id, {
+                            title: "Arranjo de Hospitalidade",
+                            body: `Você é o anfitrião do arranjo de hospitalidade ${timeLabel} (${dateFmt}).`,
+                            type: NotificationType.HOSPITALITY,
+                            data: { url: "/dashboard", date: h.weekend?.date }
+                        })
+                        if (result) notificationsSent++
+                    } catch (err: any) {
+                        errors.push({ type: "HOSPITALITY_HOST", error: err.message })
+                    }
+                }
+
+                // Grupo
+                for (const member of h.group?.members || []) {
+                    if (member.id !== h.group?.host?.id) {
+                        try {
+                            const result = await pushNotificationService.sendToPublisher(member.id, {
+                                title: "Arranjo de Hospitalidade",
+                                body: `Seu grupo (${h.group?.name || ""}) está designado para o arranjo de hospitalidade ${timeLabel} (${dateFmt}).`,
+                                type: NotificationType.HOSPITALITY,
+                                data: { url: "/dashboard", date: h.weekend?.date }
+                            })
+                            if (result) notificationsSent++
+                        } catch (err: any) {
+                            errors.push({ type: "HOSPITALITY_MEMBER", error: err.message })
+                        }
+                    }
+                }
+            }
+
+            return res.json({
+                message: "Daily notifications dispatched successfully",
+                notificationsSent,
+                errorsCount: errors.length,
+                errors: errors.length > 0 ? errors : undefined,
+            })
+        } catch (error: any) {
+            console.error("Error dispatching daily notifications:", error)
+            return res.status(500).json({
+                message: "Error dispatching daily notifications",
+                error: error.message
+            })
         }
     }
 }

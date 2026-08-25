@@ -4,11 +4,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const dayjs_1 = __importDefault(require("dayjs"));
+const Notification_1 = require("../../entities/Notification");
+const PublisherReminders_1 = require("../../entities/PublisherReminders");
 const api_errors_1 = require("../../helpers/api-errors");
 const resolveReminderOccurrence_1 = require("../../helpers/resolveReminderOccurrence");
 const publisherReminderRepository_1 = require("../../repositories/publisherReminderRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
-const PublisherReminders_1 = require("../../entities/PublisherReminders");
+const pushNotificationService_1 = require("../../services/pushNotificationService");
 class PublisherReminderController {
     /* =======================
        CREATE
@@ -45,6 +47,16 @@ class PublisherReminderController {
             publisher
         });
         const saved = await publisherReminderRepository_1.publisherReminderRepository.save(reminder);
+        if ((0, dayjs_1.default)(startDate).isSame((0, dayjs_1.default)(), "day")) {
+            pushNotificationService_1.pushNotificationService
+                .sendToPublisher(publisher_id, {
+                title: `Lembrete: ${title}`,
+                body: description || "Você adicionou um lembrete pessoal para hoje.",
+                type: Notification_1.NotificationType.REMINDER,
+                data: { url: "/dashboard", reminderId: saved.id },
+            })
+                .catch((e) => console.error("Erro ao enviar push de lembrete:", e));
+        }
         return res.status(201).json(saved);
     }
     /* =======================
