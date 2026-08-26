@@ -1,4 +1,7 @@
 import { Response } from "express"
+import moment from "moment-timezone"
+import { Between } from "typeorm"
+import { NotificationType } from "../../entities/Notification"
 import { Talk } from "../../entities/Talk"
 import { BadRequestError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
@@ -6,6 +9,7 @@ import { congregationRepository } from "../../repositories/congregationRepositor
 import { externalTalkRepository } from "../../repositories/externalTalkRepository"
 import { speakerRepository } from "../../repositories/speakerRepository"
 import { talkRepository } from "../../repositories/talkRepository"
+import { pushNotificationService } from "../../services/pushNotificationService"
 import {
     CustomRequestPT,
     ParamsCustomRequest,
@@ -20,8 +24,6 @@ import {
     ParamsGetExternalTalks,
     QueryExternalTalkByPeriod
 } from "./types"
-import { Between } from "typeorm"
-import moment from "moment-timezone"
 
 class ExternalTalkController {
     async create(
@@ -50,7 +52,8 @@ class ExternalTalkController {
                 id: speaker_id,
                 creatorCongregation: { id: congregation_id },
                 originCongregation: { id: congregation_id }
-            }
+            },
+            relations: ["publisher"]
         })
 
         if (!speaker) {
@@ -68,7 +71,7 @@ class ExternalTalkController {
         })
 
         if (!destinationCongregation) { throw new BadRequestError("Destination Congregation not found") }
-        
+
         // Talk é totalmente opcional
         let talk: Talk | null = null
         if (talk_id) {
@@ -89,6 +92,17 @@ class ExternalTalkController {
         })
 
         await externalTalkRepository.save(externalTalk)
+
+        if (speaker.publisher?.id) {
+            const dateFmt = moment(externalTalk.date).format("DD/MM/YYYY")
+            pushNotificationService.sendToPublisher(speaker.publisher.id, {
+                title: "Designação: Discurso Fora",
+                body: `Você foi designado para fazer um discurso fora no dia ${dateFmt} na congregação ${destinationCongregation.name}.`,
+                type: NotificationType.SPEAKER,
+                data: { url: "/dashboard", date: externalTalk.date }
+            }).catch(err => console.error("Erro ao enviar push de discurso fora:", err))
+        }
+
         return res.status(201).json(externalTalk)
     }
 
@@ -136,16 +150,21 @@ class ExternalTalkController {
 
         const externalTalk = await externalTalkRepository.findOne({
             where: { id },
-            relations: ["speaker", "talk", "destinationCongregation"]
+            relations: ["speaker", "speaker.publisher", "talk", "destinationCongregation"]
         })
 
         if (!externalTalk) {
             throw new BadRequestError(messageErrors.notFound.externalTalk)
         }
 
-        // Campos opcionais — só atualiza se enviado
+        const oldSpeakerPubId = externalTalk.speaker?.publisher?.id
+
+        // Campos opcionais - só atualiza se enviado
         if (speaker_id) {
-            const speaker = await speakerRepository.findOneBy({ id: speaker_id })
+            const speaker = await speakerRepository.findOne({
+                where: { id: speaker_id },
+                relations: ["publisher"]
+            })
             if (!speaker) throw new BadRequestError(messageErrors.notFound.speaker)
             externalTalk.speaker = speaker
         }
@@ -156,7 +175,7 @@ class ExternalTalkController {
             externalTalk.destinationCongregation = congregation
         }
 
-        // talk é opcional — pode ser definido, removido ou substituído por manualTalk
+        // talk é opcional - pode ser definido, removido ou substituído por manualTalk
         if (talk_id) {
             const talk = await talkRepository.findOneBy({ id: talk_id })
             if (!talk) throw new BadRequestError(messageErrors.notFound.talk)
@@ -176,6 +195,29 @@ class ExternalTalkController {
         }
 
         await externalTalkRepository.save(externalTalk)
+
+        const newSpeakerPubId = externalTalk.speaker?.publisher?.id
+        const dateFmt = moment(externalTalk.date).format("DD/MM/YYYY")
+
+        if (oldSpeakerPubId !== newSpeakerPubId) {
+            if (oldSpeakerPubId) {
+                pushNotificationService.sendToPublisher(oldSpeakerPubId, {
+                    title: "Designação Cancelada",
+                    body: `Sua designação de discurso fora para o dia ${dateFmt} foi cancelada.`,
+                    type: NotificationType.SPEAKER,
+                    data: { url: "/dashboard", date: externalTalk.date }
+                }).catch(err => console.error("Erro ao enviar push:", err))
+            }
+            if (newSpeakerPubId) {
+                pushNotificationService.sendToPublisher(newSpeakerPubId, {
+                    title: "Designação: Discurso Fora",
+                    body: `Você foi designado para fazer um discurso fora no dia ${dateFmt} na congregação ${externalTalk.destinationCongregation?.name}.`,
+                    type: NotificationType.SPEAKER,
+                    data: { url: "/dashboard", date: externalTalk.date }
+                }).catch(err => console.error("Erro ao enviar push:", err))
+            }
+        }
+
         return res.json(externalTalk)
     }
 

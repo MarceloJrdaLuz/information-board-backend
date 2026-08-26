@@ -19,7 +19,7 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const speakerRepository_1 = require("../../repositories/speakerRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
-const pushNotificationService_1 = require("../../services/pushNotificationService");
+const pushHelper_1 = require("./pushHelper");
 class WeekendScheduleController {
     async create(req, res) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j;
@@ -80,50 +80,44 @@ class WeekendScheduleController {
             schedulesToSave.push(newSchedule);
         }
         const savedSchedules = await weekendScheduleRepository_1.weekendScheduleRepository.save(schedulesToSave);
-        // Dispara notificações push imediatas para os designados
+        // Dispara notificações push imediatas agregadas
+        const eventsByUser = new Map();
         for (const schedule of savedSchedules) {
             const dateFmt = (0, dayjs_1.default)(schedule.date).format("DD/MM/YYYY");
+            const strDate = String(schedule.date);
             if ((_f = schedule.chairman) === null || _f === void 0 ? void 0 : _f.id) {
-                pushNotificationService_1.pushNotificationService.sendToPublisher(schedule.chairman.id, {
-                    title: "Nova Designação: Presidente",
-                    body: `Você foi designado como Presidente para a reunião de ${dateFmt}.`,
-                    type: Notification_1.NotificationType.CHAIRMAN,
-                    data: { url: "/dashboard", date: schedule.date }
-                }).catch(err => console.error("Erro ao enviar push:", err));
+                (0, pushHelper_1.addPushEvent)(eventsByUser, schedule.chairman.id, { type: 'NEW', role: 'Presidente', dateFmt, notifType: Notification_1.NotificationType.CHAIRMAN, url: "/dashboard", date: strDate });
             }
             if ((_g = schedule.reader) === null || _g === void 0 ? void 0 : _g.id) {
-                pushNotificationService_1.pushNotificationService.sendToPublisher(schedule.reader.id, {
-                    title: "Nova Designação: Leitor",
-                    body: `Você foi designado como Leitor de A Sentinela para a reunião de ${dateFmt}.`,
-                    type: Notification_1.NotificationType.READING,
-                    data: { url: "/dashboard", date: schedule.date }
-                }).catch(err => console.error("Erro ao enviar push:", err));
+                (0, pushHelper_1.addPushEvent)(eventsByUser, schedule.reader.id, { type: 'NEW', role: 'Leitor', dateFmt, notifType: Notification_1.NotificationType.READING, url: "/dashboard", date: strDate });
             }
             if ((_j = (_h = schedule.speaker) === null || _h === void 0 ? void 0 : _h.publisher) === null || _j === void 0 ? void 0 : _j.id) {
-                pushNotificationService_1.pushNotificationService.sendToPublisher(schedule.speaker.publisher.id, {
-                    title: "Nova Designação: Orador",
-                    body: `Você foi escalado como Orador no dia ${dateFmt}.`,
-                    type: Notification_1.NotificationType.SPEAKER,
-                    data: { url: "/dashboard", date: schedule.date }
-                }).catch(err => console.error("Erro ao enviar push:", err));
+                (0, pushHelper_1.addPushEvent)(eventsByUser, schedule.speaker.publisher.id, { type: 'NEW', role: 'Orador', dateFmt, notifType: Notification_1.NotificationType.SPEAKER, url: "/dashboard", date: strDate });
             }
         }
+        await (0, pushHelper_1.dispatchAggregatedPushes)(eventsByUser);
         return res.status(201).json(savedSchedules);
     }
     async update(req, res) {
+        var _a, _b, _c, _d, _e;
         const { schedules } = req.body;
         if (!schedules || schedules.length === 0)
             throw new api_errors_1.BadRequestError("Schedules array is required");
         const schedulesToSave = [];
+        const eventsByUser = new Map();
         for (const item of schedules) {
             if (!item.id)
                 throw new api_errors_1.BadRequestError("Schedule ID is required for update");
             const schedule = await weekendScheduleRepository_1.weekendScheduleRepository.findOne({
                 where: { id: item.id },
-                relations: ["speaker", "talk", "chairman", "reader", "hospitalityGroup", "congregation"]
+                relations: ["speaker", "talk", "chairman", "reader", "hospitalityGroup", "congregation", "speaker.publisher"]
             });
             if (!schedule)
                 throw new api_errors_1.NotFoundError(`WeekendSchedule ${item.id} not found`);
+            // Armazena quem eram os antigos para comparar
+            const oldChairmanId = (_a = schedule.chairman) === null || _a === void 0 ? void 0 : _a.id;
+            const oldReaderId = (_b = schedule.reader) === null || _b === void 0 ? void 0 : _b.id;
+            const oldSpeakerPubId = (_d = (_c = schedule.speaker) === null || _c === void 0 ? void 0 : _c.publisher) === null || _d === void 0 ? void 0 : _d.id;
             if (item.date) {
                 const newDate = (0, moment_1.default)(item.date).format("YYYY-MM-DD");
                 const conflict = await weekendScheduleRepository_1.weekendScheduleRepository.findOne({
@@ -138,7 +132,7 @@ class WeekendScheduleController {
                 item.speaker_id
                     ? speakerRepository_1.speakerRepository.findOne({
                         where: { id: item.speaker_id },
-                        relations: ["originCongregation"],
+                        relations: ["originCongregation", "publisher"],
                     })
                     : null,
                 item.talk_id ? talkRepository_1.talkRepository.findOneBy({ id: item.talk_id }) : null,
@@ -182,9 +176,42 @@ class WeekendScheduleController {
             if (item.manualTalk !== undefined) {
                 schedule.manualTalk = item.manualTalk;
             }
+            // Lógica de Cancelamento vs Nova Designação
+            const dateFmt = (0, dayjs_1.default)(schedule.date).format("DD/MM/YYYY");
+            const strDate = String(schedule.date);
+            // Chairman
+            if (oldChairmanId !== (chairman === null || chairman === void 0 ? void 0 : chairman.id)) {
+                if (oldChairmanId) {
+                    (0, pushHelper_1.addPushEvent)(eventsByUser, oldChairmanId, { type: 'CANCELED', role: 'Presidente', dateFmt, notifType: Notification_1.NotificationType.CHAIRMAN, url: "/dashboard", date: strDate });
+                }
+                if (chairman === null || chairman === void 0 ? void 0 : chairman.id) {
+                    (0, pushHelper_1.addPushEvent)(eventsByUser, chairman.id, { type: 'NEW', role: 'Presidente', dateFmt, notifType: Notification_1.NotificationType.CHAIRMAN, url: "/dashboard", date: strDate });
+                }
+            }
+            // Reader
+            if (oldReaderId !== (reader === null || reader === void 0 ? void 0 : reader.id)) {
+                if (oldReaderId) {
+                    (0, pushHelper_1.addPushEvent)(eventsByUser, oldReaderId, { type: 'CANCELED', role: 'Leitor', dateFmt, notifType: Notification_1.NotificationType.READING, url: "/dashboard", date: strDate });
+                }
+                if (reader === null || reader === void 0 ? void 0 : reader.id) {
+                    (0, pushHelper_1.addPushEvent)(eventsByUser, reader.id, { type: 'NEW', role: 'Leitor', dateFmt, notifType: Notification_1.NotificationType.READING, url: "/dashboard", date: strDate });
+                }
+            }
+            // Speaker
+            const newSpeakerPubId = (_e = speaker === null || speaker === void 0 ? void 0 : speaker.publisher) === null || _e === void 0 ? void 0 : _e.id;
+            if (oldSpeakerPubId !== newSpeakerPubId) {
+                if (oldSpeakerPubId) {
+                    (0, pushHelper_1.addPushEvent)(eventsByUser, oldSpeakerPubId, { type: 'CANCELED', role: 'Orador', dateFmt, notifType: Notification_1.NotificationType.SPEAKER, url: "/dashboard", date: strDate });
+                }
+                if (newSpeakerPubId) {
+                    (0, pushHelper_1.addPushEvent)(eventsByUser, newSpeakerPubId, { type: 'NEW', role: 'Orador', dateFmt, notifType: Notification_1.NotificationType.SPEAKER, url: "/dashboard", date: strDate });
+                }
+            }
             schedulesToSave.push(schedule);
         }
         const savedSchedules = await weekendScheduleRepository_1.weekendScheduleRepository.save(schedulesToSave);
+        // Dispara em lote todas as notificações agrupadas
+        await (0, pushHelper_1.dispatchAggregatedPushes)(eventsByUser);
         return res.json(savedSchedules);
     }
     async delete(req, res) {
