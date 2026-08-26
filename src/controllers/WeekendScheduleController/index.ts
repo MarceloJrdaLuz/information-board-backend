@@ -15,7 +15,6 @@ import { publisherRepository } from "../../repositories/publisherRepository"
 import { speakerRepository } from "../../repositories/speakerRepository"
 import { talkRepository } from "../../repositories/talkRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
-import { pushNotificationService } from "../../services/pushNotificationService"
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import {
     BodyWeekendScheduleCreateTypes,
@@ -24,6 +23,8 @@ import {
     ParamsWeekendScheduleCreateTypes,
     ParamsWeekendScheduleTypes
 } from "./types"
+
+import { addPushEvent, dispatchAggregatedPushes, PushEvent } from "./pushHelper"
 
 class WeekendScheduleController {
   async create(req: CustomRequestPT<ParamsWeekendScheduleCreateTypes, BodyWeekendScheduleCreateTypes>, res: Response) {
@@ -99,37 +100,25 @@ class WeekendScheduleController {
 
     const savedSchedules = await weekendScheduleRepository.save(schedulesToSave)
 
-    // Dispara notificações push imediatas para os designados
+    // Dispara notificações push imediatas agregadas
+    const eventsByUser = new Map<string, PushEvent[]>()
+
     for (const schedule of savedSchedules) {
       const dateFmt = dayjs(schedule.date).format("DD/MM/YYYY")
+      const strDate = String(schedule.date)
 
       if (schedule.chairman?.id) {
-        pushNotificationService.sendToPublisher(schedule.chairman.id, {
-          title: "Nova Designação: Presidente",
-          body: `Você foi designado como Presidente para a reunião de ${dateFmt}.`,
-          type: NotificationType.CHAIRMAN,
-          data: { url: "/dashboard", date: schedule.date }
-        }).catch(err => console.error("Erro ao enviar push:", err))
+        addPushEvent(eventsByUser, schedule.chairman.id, { type: 'NEW', role: 'Presidente', dateFmt, notifType: NotificationType.CHAIRMAN, url: "/dashboard", date: strDate })
       }
-
       if (schedule.reader?.id) {
-        pushNotificationService.sendToPublisher(schedule.reader.id, {
-          title: "Nova Designação: Leitor",
-          body: `Você foi designado como Leitor de A Sentinela para a reunião de ${dateFmt}.`,
-          type: NotificationType.READING,
-          data: { url: "/dashboard", date: schedule.date }
-        }).catch(err => console.error("Erro ao enviar push:", err))
+        addPushEvent(eventsByUser, schedule.reader.id, { type: 'NEW', role: 'Leitor', dateFmt, notifType: NotificationType.READING, url: "/dashboard", date: strDate })
       }
-
       if (schedule.speaker?.publisher?.id) {
-        pushNotificationService.sendToPublisher(schedule.speaker.publisher.id, {
-          title: "Nova Designação: Orador",
-          body: `Você foi escalado como Orador no dia ${dateFmt}.`,
-          type: NotificationType.SPEAKER,
-          data: { url: "/dashboard", date: schedule.date }
-        }).catch(err => console.error("Erro ao enviar push:", err))
+        addPushEvent(eventsByUser, schedule.speaker.publisher.id, { type: 'NEW', role: 'Orador', dateFmt, notifType: NotificationType.SPEAKER, url: "/dashboard", date: strDate })
       }
     }
+
+    await dispatchAggregatedPushes(eventsByUser)
 
     return res.status(201).json(savedSchedules)
   }
@@ -139,15 +128,21 @@ class WeekendScheduleController {
     if (!schedules || schedules.length === 0) throw new BadRequestError("Schedules array is required")
 
     const schedulesToSave = []
+    const eventsByUser = new Map<string, PushEvent[]>()
 
     for (const item of schedules) {
       if (!item.id) throw new BadRequestError("Schedule ID is required for update")
 
       const schedule = await weekendScheduleRepository.findOne({
         where: { id: item.id },
-        relations: ["speaker", "talk", "chairman", "reader", "hospitalityGroup", "congregation"]
+        relations: ["speaker", "talk", "chairman", "reader", "hospitalityGroup", "congregation", "speaker.publisher"]
       })
       if (!schedule) throw new NotFoundError(`WeekendSchedule ${item.id} not found`)
+
+      // Armazena quem eram os antigos para comparar
+      const oldChairmanId = schedule.chairman?.id
+      const oldReaderId = schedule.reader?.id
+      const oldSpeakerPubId = schedule.speaker?.publisher?.id
 
       if (item.date) {
         const newDate = moment(item.date).format("YYYY-MM-DD")
@@ -169,7 +164,7 @@ class WeekendScheduleController {
         item.speaker_id
           ? speakerRepository.findOne({
             where: { id: item.speaker_id },
-            relations: ["originCongregation"],
+            relations: ["originCongregation", "publisher"],
           })
           : null,
         item.talk_id ? talkRepository.findOneBy({ id: item.talk_id }) : null,
@@ -216,10 +211,49 @@ class WeekendScheduleController {
         schedule.manualTalk = item.manualTalk
       }
 
+      // Lógica de Cancelamento vs Nova Designação
+      const dateFmt = dayjs(schedule.date).format("DD/MM/YYYY")
+      const strDate = String(schedule.date)
+
+      // Chairman
+      if (oldChairmanId !== chairman?.id) {
+        if (oldChairmanId) {
+          addPushEvent(eventsByUser, oldChairmanId, { type: 'CANCELED', role: 'Presidente', dateFmt, notifType: NotificationType.CHAIRMAN, url: "/dashboard", date: strDate })
+        }
+        if (chairman?.id) {
+          addPushEvent(eventsByUser, chairman.id, { type: 'NEW', role: 'Presidente', dateFmt, notifType: NotificationType.CHAIRMAN, url: "/dashboard", date: strDate })
+        }
+      }
+
+      // Reader
+      if (oldReaderId !== reader?.id) {
+        if (oldReaderId) {
+          addPushEvent(eventsByUser, oldReaderId, { type: 'CANCELED', role: 'Leitor', dateFmt, notifType: NotificationType.READING, url: "/dashboard", date: strDate })
+        }
+        if (reader?.id) {
+          addPushEvent(eventsByUser, reader.id, { type: 'NEW', role: 'Leitor', dateFmt, notifType: NotificationType.READING, url: "/dashboard", date: strDate })
+        }
+      }
+
+      // Speaker
+      const newSpeakerPubId = speaker?.publisher?.id
+      if (oldSpeakerPubId !== newSpeakerPubId) {
+        if (oldSpeakerPubId) {
+          addPushEvent(eventsByUser, oldSpeakerPubId, { type: 'CANCELED', role: 'Orador', dateFmt, notifType: NotificationType.SPEAKER, url: "/dashboard", date: strDate })
+        }
+        if (newSpeakerPubId) {
+          addPushEvent(eventsByUser, newSpeakerPubId, { type: 'NEW', role: 'Orador', dateFmt, notifType: NotificationType.SPEAKER, url: "/dashboard", date: strDate })
+        }
+      }
+
       schedulesToSave.push(schedule)
     }
 
     const savedSchedules = await weekendScheduleRepository.save(schedulesToSave)
+    
+    // Dispara em lote todas as notificações agrupadas
+    await dispatchAggregatedPushes(eventsByUser)
+    
     return res.json(savedSchedules)
   }
 
