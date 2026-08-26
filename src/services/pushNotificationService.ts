@@ -81,7 +81,7 @@ class PushNotificationService {
             title: payload.title,
             body: payload.body,
             icon: "/icons/pwa-192.png",
-            badge: "/icons/pwa-192.png",
+            badge: "/icons/badge.png",
             data: {
                 ...payload.data,
                 id: savedNotification.id,
