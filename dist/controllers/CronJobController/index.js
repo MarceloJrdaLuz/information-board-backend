@@ -316,7 +316,25 @@ class CronJobController {
         const tomorrow = today.add(1, "day");
         const tomorrowStr = tomorrow.format("YYYY-MM-DD");
         let notificationsSent = 0;
+        const sentDetails = [];
         const errors = [];
+        const sendNotification = async (pubId, payload, errorType, extraErrorData = {}) => {
+            try {
+                const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(pubId, payload);
+                if (result) {
+                    notificationsSent++;
+                    sentDetails.push({
+                        publisherId: pubId,
+                        type: payload.type,
+                        title: payload.title,
+                        body: payload.body
+                    });
+                }
+            }
+            catch (err) {
+                errors.push({ type: errorType, publisherId: pubId, error: err.message, ...extraErrorData });
+            }
+        };
         try {
             // ==========================================
             // 1. LEMBRETES PESSOAIS DO DIA
@@ -330,22 +348,12 @@ class CronJobController {
                     continue;
                 const occurrence = (0, resolveReminderOccurrence_1.resolveReminderOccurrence)(reminder, today);
                 if (occurrence) {
-                    try {
-                        const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(reminder.publisher.id, {
-                            title: `Lembrete: ${occurrence.title}`,
-                            body: occurrence.description || "Você tem um lembrete pessoal agendado para hoje.",
-                            type: Notification_1.NotificationType.REMINDER,
-                            data: {
-                                url: "/dashboard",
-                                reminderId: reminder.id
-                            }
-                        });
-                        if (result)
-                            notificationsSent++;
-                    }
-                    catch (err) {
-                        errors.push({ type: "REMINDER", reminderId: reminder.id, error: err.message });
-                    }
+                    await sendNotification(reminder.publisher.id, {
+                        title: `Lembrete: ${occurrence.title}`,
+                        body: occurrence.description || "Você tem um lembrete pessoal agendado para hoje.",
+                        type: Notification_1.NotificationType.REMINDER,
+                        data: { url: "/dashboard", reminderId: reminder.id }
+                    }, "REMINDER", { reminderId: reminder.id });
                 }
             }
             // ==========================================
@@ -363,52 +371,31 @@ class CronJobController {
                 const timeLabel = isToday ? "hoje" : "amanhã";
                 // Presidente
                 if ((_a = s.chairman) === null || _a === void 0 ? void 0 : _a.id) {
-                    try {
-                        const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(s.chairman.id, {
-                            title: "Designação de Presidente",
-                            body: `Você está designado como Presidente da Reunião ${timeLabel} (${(0, dayjs_1.default)(s.date).format("DD/MM")}).`,
-                            type: Notification_1.NotificationType.CHAIRMAN,
-                            data: { url: "/dashboard", date: s.date }
-                        });
-                        if (result)
-                            notificationsSent++;
-                    }
-                    catch (err) {
-                        errors.push({ type: "CHAIRMAN", error: err.message });
-                    }
+                    await sendNotification(s.chairman.id, {
+                        title: "Designação de Presidente",
+                        body: `Você está designado como Presidente da Reunião ${timeLabel} (${(0, dayjs_1.default)(s.date).format("DD/MM")}).`,
+                        type: Notification_1.NotificationType.CHAIRMAN,
+                        data: { url: "/dashboard", date: s.date }
+                    }, "CHAIRMAN");
                 }
                 // Leitor
                 if ((_b = s.reader) === null || _b === void 0 ? void 0 : _b.id) {
-                    try {
-                        const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(s.reader.id, {
-                            title: "Designação de Leitor",
-                            body: `Você está designado como Leitor da revista A Sentinela ${timeLabel} (${(0, dayjs_1.default)(s.date).format("DD/MM")}).`,
-                            type: Notification_1.NotificationType.READING,
-                            data: { url: "/dashboard", date: s.date }
-                        });
-                        if (result)
-                            notificationsSent++;
-                    }
-                    catch (err) {
-                        errors.push({ type: "READING", error: err.message });
-                    }
+                    await sendNotification(s.reader.id, {
+                        title: "Designação de Leitor",
+                        body: `Você está designado como Leitor da revista A Sentinela ${timeLabel} (${(0, dayjs_1.default)(s.date).format("DD/MM")}).`,
+                        type: Notification_1.NotificationType.READING,
+                        data: { url: "/dashboard", date: s.date }
+                    }, "READING");
                 }
                 // Orador local
                 if ((_d = (_c = s.speaker) === null || _c === void 0 ? void 0 : _c.publisher) === null || _d === void 0 ? void 0 : _d.id) {
-                    try {
-                        const talkTitle = ((_e = s.talk) === null || _e === void 0 ? void 0 : _e.title) ? ` - Tema: "${s.talk.title}"` : "";
-                        const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(s.speaker.publisher.id, {
-                            title: "Designação de Orador",
-                            body: `Você proferirá o discurso público ${timeLabel} (${(0, dayjs_1.default)(s.date).format("DD/MM")})${talkTitle}.`,
-                            type: Notification_1.NotificationType.SPEAKER,
-                            data: { url: "/dashboard", date: s.date }
-                        });
-                        if (result)
-                            notificationsSent++;
-                    }
-                    catch (err) {
-                        errors.push({ type: "SPEAKER", error: err.message });
-                    }
+                    const talkTitle = ((_e = s.talk) === null || _e === void 0 ? void 0 : _e.title) ? ` - Tema: "${s.talk.title}"` : "";
+                    await sendNotification(s.speaker.publisher.id, {
+                        title: "Designação de Orador",
+                        body: `Você proferirá o discurso público ${timeLabel} (${(0, dayjs_1.default)(s.date).format("DD/MM")})${talkTitle}.`,
+                        type: Notification_1.NotificationType.SPEAKER,
+                        data: { url: "/dashboard", date: s.date }
+                    }, "SPEAKER");
                 }
             }
             // ==========================================
@@ -426,19 +413,12 @@ class CronJobController {
                 const timeLabel = isToday ? "hoje" : "amanhã";
                 const publishers = ((_f = c.group) === null || _f === void 0 ? void 0 : _f.publishers) || [];
                 for (const pub of publishers) {
-                    try {
-                        const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(pub.id, {
-                            title: "Limpeza do Salão do Reino",
-                            body: `Seu grupo (${((_g = c.group) === null || _g === void 0 ? void 0 : _g.name) || "Limpeza"}) está escalado para a limpeza do salão ${timeLabel} (${(0, dayjs_1.default)(c.date).format("DD/MM")}).`,
-                            type: Notification_1.NotificationType.CLEANING,
-                            data: { url: "/dashboard", date: c.date }
-                        });
-                        if (result)
-                            notificationsSent++;
-                    }
-                    catch (err) {
-                        errors.push({ type: "CLEANING", error: err.message });
-                    }
+                    await sendNotification(pub.id, {
+                        title: "Limpeza do Salão do Reino",
+                        body: `Seu grupo (${((_g = c.group) === null || _g === void 0 ? void 0 : _g.name) || "Limpeza"}) está escalado para a limpeza do salão ${timeLabel} (${(0, dayjs_1.default)(c.date).format("DD/MM")}).`,
+                        type: Notification_1.NotificationType.CLEANING,
+                        data: { url: "/dashboard", date: c.date }
+                    }, "CLEANING");
                 }
             }
             // ==========================================
@@ -457,19 +437,12 @@ class CronJobController {
                     const timeLabel = isToday ? "hoje" : "amanhã";
                     const timeStr = ((_j = fs.template) === null || _j === void 0 ? void 0 : _j.time) ? ` às ${fs.template.time}` : "";
                     const locStr = ((_k = fs.template) === null || _k === void 0 ? void 0 : _k.location) ? ` (${fs.template.location})` : "";
-                    try {
-                        const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(fs.leader.id, {
-                            title: "Dirigente de Saída de Campo",
-                            body: `Você está escalado como Dirigente de Campo ${timeLabel} (${(0, dayjs_1.default)(fs.date).format("DD/MM")})${timeStr}${locStr}.`,
-                            type: Notification_1.NotificationType.FIELD_SERVICE,
-                            data: { url: "/dashboard", date: fs.date }
-                        });
-                        if (result)
-                            notificationsSent++;
-                    }
-                    catch (err) {
-                        errors.push({ type: "FIELD_SERVICE", error: err.message });
-                    }
+                    await sendNotification(fs.leader.id, {
+                        title: "Dirigente de Saída de Campo",
+                        body: `Você está escalado como Dirigente de Campo ${timeLabel} (${(0, dayjs_1.default)(fs.date).format("DD/MM")})${timeStr}${locStr}.`,
+                        type: Notification_1.NotificationType.FIELD_SERVICE,
+                        data: { url: "/dashboard", date: fs.date }
+                    }, "FIELD_SERVICE");
                 }
             }
             // ==========================================
@@ -490,19 +463,12 @@ class CronJobController {
                 const period = pw.timeSlot ? ` (${pw.timeSlot.start_time} - ${pw.timeSlot.end_time})` : "";
                 for (const pubRel of pw.publishers || []) {
                     if ((_o = pubRel.publisher) === null || _o === void 0 ? void 0 : _o.id) {
-                        try {
-                            const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(pubRel.publisher.id, {
-                                title: "Testemunho Público",
-                                body: `Você tem designação no arranjo "${title}" ${timeLabel} (${(0, dayjs_1.default)(pw.date).format("DD/MM")})${period}.`,
-                                type: Notification_1.NotificationType.PUBLICWITNESS,
-                                data: { url: "/dashboard", date: pw.date }
-                            });
-                            if (result)
-                                notificationsSent++;
-                        }
-                        catch (err) {
-                            errors.push({ type: "PUBLICWITNESS", error: err.message });
-                        }
+                        await sendNotification(pubRel.publisher.id, {
+                            title: "Testemunho Público",
+                            body: `Você tem designação no arranjo "${title}" ${timeLabel} (${(0, dayjs_1.default)(pw.date).format("DD/MM")})${period}.`,
+                            type: Notification_1.NotificationType.PUBLICWITNESS,
+                            data: { url: "/dashboard", date: pw.date }
+                        }, "PUBLICWITNESS");
                     }
                 }
             }
@@ -521,19 +487,12 @@ class CronJobController {
                     const isToday = ext.date === todayStr;
                     const timeLabel = isToday ? "hoje" : "amanhã";
                     const cong = ((_r = ext.destinationCongregation) === null || _r === void 0 ? void 0 : _r.name) ? ` na congregação ${ext.destinationCongregation.name}` : "";
-                    try {
-                        const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(ext.speaker.publisher.id, {
-                            title: "Discurso Externo",
-                            body: `Você tem discurso externo agendado ${timeLabel} (${(0, dayjs_1.default)(ext.date).format("DD/MM")})${cong}.`,
-                            type: Notification_1.NotificationType.SPEAKER,
-                            data: { url: "/dashboard", date: ext.date }
-                        });
-                        if (result)
-                            notificationsSent++;
-                    }
-                    catch (err) {
-                        errors.push({ type: "EXTERNAL_TALK", error: err.message });
-                    }
+                    await sendNotification(ext.speaker.publisher.id, {
+                        title: "Discurso Externo",
+                        body: `Você tem discurso externo agendado ${timeLabel} (${(0, dayjs_1.default)(ext.date).format("DD/MM")})${cong}.`,
+                        type: Notification_1.NotificationType.SPEAKER,
+                        data: { url: "/dashboard", date: ext.date }
+                    }, "EXTERNAL_TALK");
                 }
             }
             // ==========================================
@@ -552,42 +511,29 @@ class CronJobController {
                 const dateFmt = (0, dayjs_1.default)((_t = h.weekend) === null || _t === void 0 ? void 0 : _t.date).format("DD/MM");
                 // Host
                 if ((_v = (_u = h.group) === null || _u === void 0 ? void 0 : _u.host) === null || _v === void 0 ? void 0 : _v.id) {
-                    try {
-                        const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(h.group.host.id, {
-                            title: "Arranjo de Hospitalidade",
-                            body: `Você é o anfitrião do arranjo de hospitalidade ${timeLabel} (${dateFmt}).`,
-                            type: Notification_1.NotificationType.HOSPITALITY,
-                            data: { url: "/dashboard", date: (_w = h.weekend) === null || _w === void 0 ? void 0 : _w.date }
-                        });
-                        if (result)
-                            notificationsSent++;
-                    }
-                    catch (err) {
-                        errors.push({ type: "HOSPITALITY_HOST", error: err.message });
-                    }
+                    await sendNotification(h.group.host.id, {
+                        title: "Arranjo de Hospitalidade",
+                        body: `Você é o anfitrião do arranjo de hospitalidade ${timeLabel} (${dateFmt}).`,
+                        type: Notification_1.NotificationType.HOSPITALITY,
+                        data: { url: "/dashboard", date: (_w = h.weekend) === null || _w === void 0 ? void 0 : _w.date }
+                    }, "HOSPITALITY_HOST");
                 }
                 // Grupo
                 for (const member of ((_x = h.group) === null || _x === void 0 ? void 0 : _x.members) || []) {
                     if (member.id !== ((_z = (_y = h.group) === null || _y === void 0 ? void 0 : _y.host) === null || _z === void 0 ? void 0 : _z.id)) {
-                        try {
-                            const result = await pushNotificationService_1.pushNotificationService.sendToPublisher(member.id, {
-                                title: "Arranjo de Hospitalidade",
-                                body: `Seu grupo (${((_0 = h.group) === null || _0 === void 0 ? void 0 : _0.name) || ""}) está designado para o arranjo de hospitalidade ${timeLabel} (${dateFmt}).`,
-                                type: Notification_1.NotificationType.HOSPITALITY,
-                                data: { url: "/dashboard", date: (_1 = h.weekend) === null || _1 === void 0 ? void 0 : _1.date }
-                            });
-                            if (result)
-                                notificationsSent++;
-                        }
-                        catch (err) {
-                            errors.push({ type: "HOSPITALITY_MEMBER", error: err.message });
-                        }
+                        await sendNotification(member.id, {
+                            title: "Arranjo de Hospitalidade",
+                            body: `Seu grupo (${((_0 = h.group) === null || _0 === void 0 ? void 0 : _0.name) || ""}) está designado para o arranjo de hospitalidade ${timeLabel} (${dateFmt}).`,
+                            type: Notification_1.NotificationType.HOSPITALITY,
+                            data: { url: "/dashboard", date: (_1 = h.weekend) === null || _1 === void 0 ? void 0 : _1.date }
+                        }, "HOSPITALITY_MEMBER");
                     }
                 }
             }
             return res.json({
                 message: "Daily notifications dispatched successfully",
                 notificationsSent,
+                sentDetails,
                 errorsCount: errors.length,
                 errors: errors.length > 0 ? errors : undefined,
             });
