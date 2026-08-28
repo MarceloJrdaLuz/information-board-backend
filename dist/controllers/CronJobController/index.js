@@ -488,8 +488,8 @@ class CronJobController {
                     const timeLabel = isToday ? "hoje" : "amanhã";
                     const cong = ((_r = ext.destinationCongregation) === null || _r === void 0 ? void 0 : _r.name) ? ` na congregação ${ext.destinationCongregation.name}` : "";
                     await sendNotification(ext.speaker.publisher.id, {
-                        title: "Discurso Externo",
-                        body: `Você tem discurso externo agendado ${timeLabel} (${(0, dayjs_1.default)(ext.date).format("DD/MM")})${cong}.`,
+                        title: "Discurso fora",
+                        body: `Você tem discurso fora agendado ${timeLabel} (${(0, dayjs_1.default)(ext.date).format("DD/MM")})${cong}.`,
                         type: Notification_1.NotificationType.SPEAKER,
                         data: { url: "/dashboard", date: ext.date }
                     }, "EXTERNAL_TALK");

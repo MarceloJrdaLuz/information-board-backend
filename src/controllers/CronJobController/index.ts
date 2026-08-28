@@ -571,8 +571,8 @@ class CronJobController {
                     const cong = ext.destinationCongregation?.name ? ` na congregação ${ext.destinationCongregation.name}` : ""
 
                     await sendNotification(ext.speaker.publisher.id, {
-                        title: "Discurso Externo",
-                        body: `Você tem discurso externo agendado ${timeLabel} (${dayjs(ext.date).format("DD/MM")})${cong}.`,
+                        title: "Discurso fora",
+                        body: `Você tem discurso fora agendado ${timeLabel} (${dayjs(ext.date).format("DD/MM")})${cong}.`,
                         type: NotificationType.SPEAKER,
                         data: { url: "/dashboard", date: ext.date }
                     }, "EXTERNAL_TALK")
