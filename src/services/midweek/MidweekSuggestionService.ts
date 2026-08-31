@@ -300,39 +300,24 @@ export class MidweekSuggestionService {
             // 🎯 CÁLCULO DA PONTUAÇÃO COM ALGORITMO DE RODÍZIO JUSTO (LRU - Least Recently Used)
             let score = 1000;
 
-            // 1. Penalidade absoluta para indisponibilidade ou conflito na mesma semana
-            if (isUnavailable) score -= 20000;
-            if (hasConflictSameWeek) score -= 10000;
+            // 1. Penalidade para indisponibilidade ou conflito na mesma semana
+            if (isUnavailable) score -= 50000;
+            if (hasConflictSameWeek) score -= 15000;
 
             // 2. Rodízio da MESMA função/parte
             if (daysThisPart === null) {
-                // Irmão nunca fez esta função/parte antes na congregação: PRIORIDADE ALTA
-                score += 3000;
+                // Irmão nunca fez esta função/parte antes na congregação: PRIORIDADE MÁXIMA
+                score += 10000;
             } else {
-                // Quanto mais tempo se passou, mais pontos ganha
-                score += Math.min(daysThisPart * 15, 2500);
-
-                // PENALIDADE SEVERA DE CONSECUTIVIDADE (Anti-Repetição em semanas seguidas)
-                if (daysThisPart <= 7) {
-                    score -= 6000; // Fez na semana anterior: bloqueio quase total
-                } else if (daysThisPart <= 14) {
-                    score -= 3000; // Fez há 2 semanas
-                } else if (daysThisPart <= 21) {
-                    score -= 1200; // Fez há 3 semanas
-                }
+                // Quanto mais tempo se passou, mais pontos ganha linearmente
+                score += daysThisPart * 50;
             }
 
             // 3. Rodízio GERAL de qualquer parte na congregação
             if (daysAnyPart === null) {
-                score += 1500;
+                score += 500;
             } else {
-                score += Math.min(daysAnyPart * 5, 1000);
-
-                if (daysAnyPart <= 7) {
-                    score -= 1500; // Fez qualquer parte semana passada: descanso
-                } else if (daysAnyPart <= 14) {
-                    score -= 600;
-                }
+                score += Math.min(daysAnyPart * 2, 300);
             }
 
             // 4. Critérios para Ajudante de Estudante
@@ -369,18 +354,47 @@ export class MidweekSuggestionService {
             });
         }
 
-        // Ordenação decrescente de pontuação
+        // Ordenação das sugestões por histórico real (LRU):
         return suggestions.sort((a, b) => {
-            if (b.qualificationScore !== a.qualificationScore) {
-                return b.qualificationScore - a.qualificationScore;
+            // 1. Indisponíveis vão para o final
+            if (a.isUnavailable !== b.isUnavailable) {
+                return a.isUnavailable ? 1 : -1;
             }
-            // Desempate por dias da última designação geral
-            const aDays = a.daysSinceLastAnyPart ?? 9999;
-            const bDays = b.daysSinceLastAnyPart ?? 9999;
+
+            // 2. Quem NUNCA fez esta parte específica vem PRIMEIRO no topo
+            const aNeverThisPart = a.daysSinceLastThisPart === null;
+            const bNeverThisPart = b.daysSinceLastThisPart === null;
+
+            if (aNeverThisPart !== bNeverThisPart) {
+                return aNeverThisPart ? -1 : 1;
+            }
+
+            // 3. Se ambos nunca fizeram esta parte:
+            if (aNeverThisPart && bNeverThisPart) {
+                // Desempata por quem está há mais tempo sem fazer QUALQUER parte (null = nunca fez nada)
+                const aAny = a.daysSinceLastAnyPart ?? 999999;
+                const bAny = b.daysSinceLastAnyPart ?? 999999;
+                if (bAny !== aAny) {
+                    return bAny - aAny;
+                }
+                return a.fullName.localeCompare(b.fullName);
+            }
+
+            // 4. Se ambos já fizeram esta parte: ordenação estrita decrescente de dias (ex: 28 dias > 21 dias > 14 dias > 7 dias)
+            const aDays = a.daysSinceLastThisPart!;
+            const bDays = b.daysSinceLastThisPart!;
             if (bDays !== aDays) {
                 return bDays - aDays;
             }
-            // Desempate estável alfabético
+
+            // 5. Desempate por dias da última designação geral (qualquer parte)
+            const aAny = a.daysSinceLastAnyPart ?? 999999;
+            const bAny = b.daysSinceLastAnyPart ?? 999999;
+            if (bAny !== aAny) {
+                return bAny - aAny;
+            }
+
+            // 6. Desempate alfabético
             return a.fullName.localeCompare(b.fullName);
         });
     }
