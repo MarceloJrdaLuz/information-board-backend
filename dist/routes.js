@@ -28,6 +28,7 @@ const GroupController_1 = __importDefault(require("./controllers/GroupController
 const HospitalityController_1 = __importDefault(require("./controllers/HospitalityController"));
 const HospitalityGroupController_1 = __importDefault(require("./controllers/HospitalityGroupController"));
 const MeetingAssistanceController_1 = __importDefault(require("./controllers/MeetingAssistanceController"));
+const MidweekScheduleController_1 = require("./controllers/MidweekScheduleController");
 const NoticeController_1 = __importDefault(require("./controllers/NoticeController"));
 const NotificationController_1 = __importDefault(require("./controllers/NotificationController"));
 const PermissionController_1 = __importDefault(require("./controllers/PermissionController"));
@@ -50,6 +51,7 @@ const VercelUsageController_1 = __importDefault(require("./controllers/VercelUsa
 const WeekendScheduleController_1 = __importDefault(require("./controllers/WeekendScheduleController"));
 const gitHubCronAuth_1 = require("./middlewares/gitHubCronAuth");
 const routes = (0, express_1.Router)();
+const midweekController = new MidweekScheduleController_1.MidweekScheduleController();
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
 ========================================================= */
@@ -77,6 +79,8 @@ routes.get('/categories', CategoryController_1.default.getCategories);
 routes.get('/category/:category_id', CategoryController_1.default.getPermission);
 // Discurso de fim de semana (público)
 routes.get('/congregation/:congregation_id/weekendSchedules/public', WeekendScheduleController_1.default.getPublicSchedules);
+// Reunião de meio de semana (público)
+routes.get('/congregation/:congregation_id/midweekSchedules/public', midweekController.getPublicSchedules.bind(midweekController));
 // Consentimentos (público)
 routes.post("/consent/accept", DataProcessingAgreement_1.default.accept);
 routes.get("/consent", DataProcessingAgreement_1.default.list);
@@ -316,4 +320,32 @@ routes.post('/cron/daily-notifications', gitHubCronAuth_1.verifyGitHubCron, Cron
 routes.get('/reportsCleanUp', permissions_1.verifyCronSecret, CronJobController_1.default.reportsCleanUp);
 routes.get('/backup', permissions_1.verifyCronSecret, CronJobController_1.default.backup);
 routes.get("/usage", (0, permissions_1.is)(["ADMIN"]), VercelUsageController_1.default.getUsage);
+/* =========================================================
+    REUNIÃO DE MEIO DE SEMANA (MIDWEEK SCHEDULE ASSISTANT)
+========================================================= */
+// Importação do XML da Apostila
+routes.post("/midweek/import-xml", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), multer_1.uploadXml.single("file"), midweekController.importXml.bind(midweekController));
+// Programação do Mês e Detalhes da Semana
+routes.get("/midweek/schedules/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER"]), midweekController.getMonthSchedules.bind(midweekController));
+routes.get("/midweek/schedules/:schedule_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER"]), midweekController.getScheduleById.bind(midweekController));
+routes.patch("/midweek/schedules/:schedule_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updateSchedule.bind(midweekController));
+// Partes da Reunião
+routes.patch("/midweek/parts/:part_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePart.bind(midweekController));
+routes.post("/midweek/schedules/:schedule_id/parts/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.createCustomPart.bind(midweekController));
+routes.delete("/midweek/parts/:part_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.deletePart.bind(midweekController));
+routes.post("/midweek/schedules/:schedule_id/rooms/:room/duplicate/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.duplicateStudentPartsForRoom.bind(midweekController));
+routes.post("/midweek/schedules/:schedule_id/duplicate-room/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.duplicateStudentPartsForRoom.bind(midweekController));
+// Sugestões de Publicadores (Histórico e Regras)
+routes.get("/midweek/parts/:part_id/suggestions/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.getSuggestionsForPart.bind(midweekController));
+routes.get("/midweek/schedules/:schedule_id/role-suggestions/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.getSuggestionsForRole.bind(midweekController));
+// Atribuição Automática Inteligente
+routes.post("/midweek/schedules/:schedule_id/auto-assign/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.autoAssignSchedule.bind(midweekController));
+routes.post("/midweek/schedules/month-auto-assign/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.autoAssignMonth.bind(midweekController));
+// Qualificações de Publicadores
+routes.get("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.getPublisherQualification.bind(midweekController));
+routes.patch("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePublisherQualification.bind(midweekController));
+// Ausências e Indisponibilidades
+routes.get("/midweek/unavailabilities/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.getUnavailabilities.bind(midweekController));
+routes.post("/midweek/unavailabilities", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.createUnavailability.bind(midweekController));
+routes.delete("/midweek/unavailabilities/:id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.deleteUnavailability.bind(midweekController));
 exports.default = routes;

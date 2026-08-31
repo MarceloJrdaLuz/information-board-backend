@@ -1,23 +1,23 @@
 import { Response } from "express";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { messageErrors } from "../../helpers/messageErrors";
+import { congregationRepository } from "../../repositories/congregationRepository";
 import { familyRepository } from "../../repositories/familyRepository";
 import { publisherRepository } from "../../repositories/publisherRepository";
-import { congregationRepository } from "../../repositories/congregationRepository";
 
 import {
-    ParamsFamilyCreate,
     BodyFamilyCreate,
-    ParamsFamilyUpdate,
     BodyFamilyUpdate,
-    ParamsGetFamily,
+    ParamsDeleteFamily,
+    ParamsFamilyCreate,
+    ParamsFamilyUpdate,
     ParamsGetFamilies,
-    ParamsDeleteFamily
+    ParamsGetFamily
 } from "./types";
 
-import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 import { In, Not } from "typeorm";
 import { Publisher } from "../../entities/Publisher";
+import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 
 class FamilyController {
 

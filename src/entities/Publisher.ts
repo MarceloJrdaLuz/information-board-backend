@@ -1,12 +1,14 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 import { Congregation } from "./Congregation"
 import { EmergencyContact } from "./EmergencyContact"
+import { Family } from "./Family"
 import { Group } from "./Group"
 import { GroupOverseers } from "./GroupOverseers"
 import { HospitalityGroup } from "./HospitalityGroup."
-import { User } from "./User"
 import { PublisherPrivilege } from "./PublisherPrivilege"
-import { Family } from "./Family"
+import { User } from "./User"
+import { PublisherMidweekQualification } from "./PublisherMidweekQualification"
+import { PublisherUnavailability } from "./PublisherUnavailability"
 
 export enum Gender {
     Masculino = "Masculino",
@@ -44,7 +46,6 @@ export class Publisher {
 
     @Column({ type: "uuid", nullable: true })
     family_id: string | null;
-
 
     @Column({ type: "enum", enum: Hope, default: Hope.OutrasOvelhas })
     hope: Hope
@@ -97,13 +98,13 @@ export class Publisher {
     @JoinColumn({ name: 'group_id' })
     group: Group | null
 
-    @ManyToOne(() => GroupOverseers, { nullable: true, onDelete: "SET NULL" }) // Relacionamento Many-to-One opcional com GroupOverseers
+    @ManyToOne(() => GroupOverseers, { nullable: true, onDelete: "SET NULL" })
     @JoinColumn({ name: 'group_overseers_id' })
     groupOverseers: GroupOverseers | null
 
     @ManyToOne(() => EmergencyContact, emergencyContact => emergencyContact.publishers, {
         nullable: true,
-        onDelete: "SET NULL", // se o contato for deletado, o publisher continua mas sem contato
+        onDelete: "SET NULL",
     })
     emergencyContact: EmergencyContact | null
 
@@ -119,6 +120,12 @@ export class Publisher {
 
     @Column({ type: "uuid", nullable: true })
     hospitality_group_id: string | null
+
+    @OneToOne(() => PublisherMidweekQualification, q => q.publisher, { nullable: true })
+    midweekQualification?: PublisherMidweekQualification | null
+
+    @OneToMany(() => PublisherUnavailability, u => u.publisher)
+    unavailabilities?: PublisherUnavailability[]
 
     @CreateDateColumn()
     created_at: Date

@@ -16,7 +16,10 @@ import { emergencyContactRepository } from "../../repositories/emergencyContact"
 import { externalTalkRepository } from "../../repositories/externalTalkRepository"
 import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
 import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
+import { midweekMeetingPartRepository } from "../../repositories/midweekMeetingPartRepository"
+import { midweekScheduleRepository } from "../../repositories/midweekScheduleRepository"
 import { privilegeRepository } from "../../repositories/privilegeRepository"
+import { publicWitnessAssignmentRepository } from "../../repositories/publicWitnessAssignmentRepository"
 import { publisherPrivilegeRepository } from "../../repositories/publisherPrivilegeRepository"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { userRepository } from "../../repositories/userRepository"
@@ -24,19 +27,18 @@ import { weekendScheduleRepository } from "../../repositories/weekendScheduleRep
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import { Privileges } from "../../types/privileges"
 import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
-import { publicWitnessArrangementRepository } from "../../repositories/publicWitnessArrangementRepository"
-import { publicWitnessAssignmentRepository } from "../../repositories/publicWitnessAssignmentRepository"
 
 interface UnifiedAssignment {
   role: string
   date: string
+  title?: string | null
+  room?: string
+  partner?: string
+  status?: string
   eventType?: string
   fieldServiceLocation?: string
   fieldServiceHour?: string
-  talk?: {
-    number: number
-    title: string
-  } | null
+  talk?: any
   group?: {
     id?: string
     name?: string
@@ -44,7 +46,21 @@ interface UnifiedAssignment {
   destinationCongregation?: {
     name?: string
     city?: string
+    address?: string
+    latitude?: number | string
+    longitude?: number | string
+    dayMeetingPublic?: any
+    hourMeetingPublic?: string
   }
+  publishers?: {
+    id: string
+    name: string
+  }[]
+  start_time?: string
+  end_time?: string
+  section?: string
+  timeMinutes?: number
+  partType?: string
 }
 
 class PublisherControler {
@@ -506,13 +522,155 @@ class PublisherControler {
       }
     }))
 
+    // 🔹 Mapeia designações da Reunião de Meio de Semana (Funções Gerais)
+    const todayStr = dayjs().format("YYYY-MM-DD")
+
+    const midweekSchedules = await midweekScheduleRepository.find({
+      where: [
+        { chairman_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
+        { chairman_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
+        { opening_prayer_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
+        { opening_prayer_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
+        { closing_prayer_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
+        { closing_prayer_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
+        { aux_counselor_1_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
+        { aux_counselor_1_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
+        { aux_counselor_2_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
+        { aux_counselor_2_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
+        { cbs_conductor_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
+        { cbs_conductor_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
+        { cbs_reader_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
+        { cbs_reader_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
+      ],
+      relations: ["congregation"],
+      order: { meetingDate: "ASC" }
+    })
+
+    const midweekGeneralAssignments: UnifiedAssignment[] = []
+    const uniqueMidweekSchedules = Array.from(new Map(midweekSchedules.map(s => [s.id, s])).values())
+
+    for (const s of uniqueMidweekSchedules) {
+      if (s.isSpecial && s.specialType !== "NONE" && s.specialType !== "CIRCUIT_OVERSEER_VISIT") {
+        continue
+      }
+      const schedDate = s.meetingDate || s.weekDate
+      if (schedDate < todayStr) continue
+
+      if (s.chairman_id === publisher_id) {
+        midweekGeneralAssignments.push({
+          role: "Presidente",
+          title: "Reunião de Meio de Semana",
+          date: schedDate
+        })
+      }
+      if (s.opening_prayer_id === publisher_id) {
+        midweekGeneralAssignments.push({
+          role: "Oração Inicial",
+          title: "Reunião de Meio de Semana",
+          date: schedDate
+        })
+      }
+      if (s.closing_prayer_id === publisher_id) {
+        midweekGeneralAssignments.push({
+          role: "Oração Final",
+          title: "Reunião de Meio de Semana",
+          date: schedDate
+        })
+      }
+      if (s.aux_counselor_1_id === publisher_id) {
+        midweekGeneralAssignments.push({
+          role: "Conselheiro",
+          title: "Sala Auxiliar 1",
+          room: "Sala Auxiliar 1",
+          date: schedDate
+        })
+      }
+      if (s.aux_counselor_2_id === publisher_id) {
+        midweekGeneralAssignments.push({
+          role: "Conselheiro",
+          title: "Sala Auxiliar 2",
+          room: "Sala Auxiliar 2",
+          date: schedDate
+        })
+      }
+      if (s.cbs_conductor_id === publisher_id) {
+        midweekGeneralAssignments.push({
+          role: "Dirigente do Estudo Bíblico",
+          title: "Estudo Bíblico de Congregação",
+          date: schedDate
+        })
+      }
+      if (s.cbs_reader_id === publisher_id) {
+        midweekGeneralAssignments.push({
+          role: "Leitor do Estudo Bíblico",
+          title: "Estudo Bíblico de Congregação",
+          date: schedDate
+        })
+      }
+    }
+
+    // 🔹 Mapeia partes de estudantes e discursos do Meio de Semana
+    const midweekParts = await midweekMeetingPartRepository.find({
+      where: [
+        { assigned_publisher_id: publisher_id, isActive: true },
+        { assistant_publisher_id: publisher_id, isActive: true }
+      ],
+      relations: [
+        "schedule",
+        "assignedPublisher",
+        "assistantPublisher"
+      ]
+    })
+
+    const midweekPartAssignments: UnifiedAssignment[] = []
+    for (const part of midweekParts) {
+      if (!part.schedule) continue
+      if (part.schedule.isSpecial && part.schedule.specialType !== "NONE" && part.schedule.specialType !== "CIRCUIT_OVERSEER_VISIT") {
+        continue
+      }
+      const partDate = part.schedule.meetingDate || part.schedule.weekDate
+      if (partDate < todayStr) continue
+
+      const roomName = part.room === "AUXILIARY_1" ? "Sala Auxiliar 1" : part.room === "AUXILIARY_2" ? "Sala Auxiliar 2" : "Sala Principal"
+
+      if (part.assigned_publisher_id === publisher_id) {
+        const asstName = part.assistantPublisher?.nickname || part.assistantPublisher?.fullName
+        midweekPartAssignments.push({
+          role: "Meio de Semana",
+          title: part.title,
+          room: roomName,
+          partner: asstName || undefined,
+          date: partDate,
+          section: part.section,
+          timeMinutes: part.timeMinutes,
+          partType: part.partType
+        })
+      }
+
+      if (part.assistant_publisher_id === publisher_id) {
+        const studentName = part.assignedPublisher?.nickname || part.assignedPublisher?.fullName
+        midweekPartAssignments.push({
+          role: "Ajudante (Meio de Semana)",
+          title: part.title,
+          room: roomName,
+          partner: studentName || undefined,
+          date: partDate,
+          section: part.section,
+          timeMinutes: part.timeMinutes,
+          partType: part.partType
+        })
+      }
+    }
+
     const allAssignments: UnifiedAssignment[] = [
       ...assignments as UnifiedAssignment[],
       ...hospitalityAssignments as UnifiedAssignment[],
       ...externalAssignments as UnifiedAssignment[],
       ...cleaningAssignments as UnifiedAssignment[],
       ...fieldServiceRotationMapped as UnifiedAssignment[],
-      ...publicWitnessMapped as UnifiedAssignment[]
+      ...publicWitnessMapped,
+      ...midweekGeneralAssignments,
+      ...midweekPartAssignments
     ]
 
     // 🔹 Ordena por data

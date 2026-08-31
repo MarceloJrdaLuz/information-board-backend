@@ -1,16 +1,12 @@
 import multer from 'multer';
-import { v4 } from 'uuid';
 import path from 'path';
-import multerS3 from 'multer-s3'
-import { config } from '.'
+import { v4 } from 'uuid';
+import { config } from '.';
 
-// Faz o upload do arquivo para o bucket
-
-const MAX_SIZE_FILE = 10 * 1024 * 1024
-
+const MAX_SIZE_FILE = 10 * 1024 * 1024;
 
 function choiceStorage(storage: string) {
-    let storageChoice
+    let storageChoice;
     switch (storage) {
         case 'local':
             storageChoice = multer.diskStorage({
@@ -18,15 +14,13 @@ function choiceStorage(storage: string) {
                 filename: (req, file, cb) => {
                     cb(null, `${v4()}-${file.originalname.trim()}`);
                 }
-            })
+            });
             break;
-        case ('firebase'):
-            storageChoice = multer.memoryStorage()
+        case 'firebase':
+            storageChoice = multer.memoryStorage();
     }
-
-    return storageChoice
+    return storageChoice;
 }
-
 
 export const uploadFile = multer({
     storage: choiceStorage(config.storage_type),
@@ -48,5 +42,16 @@ export const uploadFile = multer({
             cb(new Error("Invalid file type."));
         }
     }
-})
+});
 
+export const uploadXml = multer({
+    storage: multer.diskStorage({
+        destination: path.resolve(__dirname, "..", "..", "tmp", "uploads"),
+        filename: (req, file, cb) => {
+            cb(null, `${v4()}-${file.originalname.trim()}`);
+        }
+    }),
+    limits: {
+        fileSize: 20 * 1024 * 1024
+    }
+});

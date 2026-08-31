@@ -3,17 +3,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const child_process_1 = require("child_process");
+const dayjs_1 = __importDefault(require("dayjs"));
 const moment_timezone_1 = __importDefault(require("moment-timezone"));
 const typeorm_1 = require("typeorm");
+const config_1 = require("../../config");
+const MidweekMeetingPart_1 = require("../../entities/MidweekMeetingPart");
+const Notification_1 = require("../../entities/Notification");
 const getMonths_1 = require("../../functions/getMonths");
+const resolveReminderOccurrence_1 = require("../../helpers/resolveReminderOccurrence");
 const meetingAssistanceRepository_1 = require("../../repositories/meetingAssistanceRepository");
 const noticeRepository_1 = require("../../repositories/noticeRepository");
 const reportRepository_1 = require("../../repositories/reportRepository");
-const child_process_1 = require("child_process");
-const dayjs_1 = __importDefault(require("dayjs"));
-const config_1 = require("../../config");
-const Notification_1 = require("../../entities/Notification");
-const resolveReminderOccurrence_1 = require("../../helpers/resolveReminderOccurrence");
 //@ts-expect-error
 const mailer_1 = __importDefault(require("../../modules/mailer"));
 const cleaningExceptionRepository_1 = require("../../repositories/cleaningExceptionRepository");
@@ -23,6 +24,7 @@ const fieldServiceExceptionRepository_1 = require("../../repositories/fieldServi
 const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 const fieldServiceTemplateLocationOverrideRepository_1 = require("../../repositories/fieldServiceTemplateLocationOverrideRepository");
 const hospitalityAssignmentRepository_1 = require("../../repositories/hospitalityAssignmentRepository");
+const midweekScheduleRepository_1 = require("../../repositories/midweekScheduleRepository");
 const publicWitnessAssignmentRepository_1 = require("../../repositories/publicWitnessAssignmentRepository");
 const publisherReminderRepository_1 = require("../../repositories/publisherReminderRepository");
 const territoryHistoryRepository_1 = require("../../repositories/territoryHistoryRepository");
@@ -310,7 +312,7 @@ class CronJobController {
      * Cron Job diário para disparar notificações push de lembretes pessoais e designações
      */
     async dispatchDailyNotifications(req, res) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16;
         const today = (0, dayjs_1.default)().startOf("day");
         const todayStr = today.format("YYYY-MM-DD");
         const tomorrow = today.add(1, "day");
@@ -527,6 +529,121 @@ class CronJobController {
                             type: Notification_1.NotificationType.HOSPITALITY,
                             data: { url: "/dashboard", date: (_1 = h.weekend) === null || _1 === void 0 ? void 0 : _1.date }
                         }, "HOSPITALITY_MEMBER");
+                    }
+                }
+            }
+            // ==========================================
+            // 8. NOTIFICAÇÃO CONSOLIDADA DA REUNIÃO DE MEIO DE SEMANA (Toda Segunda-feira)
+            // ==========================================
+            const isMonday = today.day() === 1 || ((_2 = req.query) === null || _2 === void 0 ? void 0 : _2.forceMidweek) === "true" || ((_3 = req.body) === null || _3 === void 0 ? void 0 : _3.forceMidweek) === true;
+            if (isMonday) {
+                // Início (segunda) e fim (domingo) da semana atual
+                const weekMonday = today.day() === 0 ? today.subtract(6, "day") : today.subtract(today.day() - 1, "day");
+                const mondayStr = weekMonday.format("YYYY-MM-DD");
+                const sundayStr = weekMonday.add(6, "day").format("YYYY-MM-DD");
+                const midweekSchedules = await midweekScheduleRepository_1.midweekScheduleRepository.find({
+                    where: [
+                        { weekDate: mondayStr },
+                        { weekDate: (0, typeorm_1.Between)(mondayStr, sundayStr) },
+                        { meetingDate: (0, typeorm_1.Between)(mondayStr, sundayStr) }
+                    ],
+                    relations: [
+                        "congregation",
+                        "chairman",
+                        "openingPrayer",
+                        "closingPrayer",
+                        "auxCounselor1",
+                        "auxCounselor2",
+                        "cbsConductor",
+                        "cbsReader",
+                        "parts",
+                        "parts.assignedPublisher",
+                        "parts.assistantPublisher"
+                    ],
+                    order: {
+                        parts: {
+                            orderIndex: "ASC"
+                        }
+                    }
+                });
+                // Deduplica programações caso correspondam a mais de uma condição
+                const uniqueSchedules = Array.from(new Map(midweekSchedules.map(s => [s.id, s])).values());
+                const getRoomSuffix = (room) => {
+                    if (room === MidweekMeetingPart_1.MidweekRoom.AUXILIARY_1)
+                        return " (Sala Auxiliar 1)";
+                    if (room === MidweekMeetingPart_1.MidweekRoom.AUXILIARY_2)
+                        return " (Sala Auxiliar 2)";
+                    return "";
+                };
+                for (const schedule of uniqueSchedules) {
+                    const meetingDateObj = schedule.meetingDate ? (0, dayjs_1.default)(schedule.meetingDate) : (0, dayjs_1.default)(schedule.weekDate);
+                    const meetingDateFmt = meetingDateObj.format("DD/MM");
+                    // Mapeia designações por publicador para agrupar em uma só notificação
+                    const pubMap = new Map();
+                    const addAssignment = (pub, desc) => {
+                        if (!(pub === null || pub === void 0 ? void 0 : pub.id))
+                            return;
+                        if (!pubMap.has(pub.id)) {
+                            pubMap.set(pub.id, { id: pub.id, name: pub.name, items: [] });
+                        }
+                        pubMap.get(pub.id).items.push(desc);
+                    };
+                    if ((_4 = schedule.chairman) === null || _4 === void 0 ? void 0 : _4.id)
+                        addAssignment(schedule.chairman, "Presidente da Reunião");
+                    if ((_5 = schedule.openingPrayer) === null || _5 === void 0 ? void 0 : _5.id)
+                        addAssignment(schedule.openingPrayer, "Oração Inicial");
+                    if ((_6 = schedule.closingPrayer) === null || _6 === void 0 ? void 0 : _6.id)
+                        addAssignment(schedule.closingPrayer, "Oração Final");
+                    if ((_7 = schedule.auxCounselor1) === null || _7 === void 0 ? void 0 : _7.id)
+                        addAssignment(schedule.auxCounselor1, "Conselheiro - Sala Auxiliar 1");
+                    if ((_8 = schedule.auxCounselor2) === null || _8 === void 0 ? void 0 : _8.id)
+                        addAssignment(schedule.auxCounselor2, "Conselheiro - Sala Auxiliar 2");
+                    if ((_9 = schedule.cbsConductor) === null || _9 === void 0 ? void 0 : _9.id)
+                        addAssignment(schedule.cbsConductor, "Dirigente do Estudo Bíblico de Congregação");
+                    if ((_10 = schedule.cbsReader) === null || _10 === void 0 ? void 0 : _10.id)
+                        addAssignment(schedule.cbsReader, "Leitor do Estudo Bíblico de Congregação");
+                    const activeParts = (schedule.parts || [])
+                        .filter(p => p.isActive !== false)
+                        .sort((a, b) => { var _a, _b; return ((_a = a.orderIndex) !== null && _a !== void 0 ? _a : 0) - ((_b = b.orderIndex) !== null && _b !== void 0 ? _b : 0); });
+                    for (const part of activeParts) {
+                        const roomSuffix = getRoomSuffix(part.room);
+                        // Titular da parte
+                        if ((_11 = part.assignedPublisher) === null || _11 === void 0 ? void 0 : _11.id) {
+                            let desc = part.title || "Parte";
+                            const assistantName = ((_12 = part.assistantPublisher) === null || _12 === void 0 ? void 0 : _12.nickname) || ((_13 = part.assistantPublisher) === null || _13 === void 0 ? void 0 : _13.fullName);
+                            if (assistantName) {
+                                desc += ` (com ${assistantName})`;
+                            }
+                            desc += roomSuffix;
+                            addAssignment(part.assignedPublisher, desc);
+                        }
+                        // Ajudante da parte
+                        if ((_14 = part.assistantPublisher) === null || _14 === void 0 ? void 0 : _14.id) {
+                            let desc = `${part.title || "Parte"} - Ajudante`;
+                            const titularName = ((_15 = part.assignedPublisher) === null || _15 === void 0 ? void 0 : _15.nickname) || ((_16 = part.assignedPublisher) === null || _16 === void 0 ? void 0 : _16.fullName);
+                            if (titularName) {
+                                desc += ` de ${titularName}`;
+                            }
+                            desc += roomSuffix;
+                            addAssignment(part.assistantPublisher, desc);
+                        }
+                    }
+                    for (const [pubId, digest] of pubMap.entries()) {
+                        const itemsList = digest.items.map(item => `• ${item}`).join("\n");
+                        const title = `Reunião Meio de Semana (${meetingDateFmt})`;
+                        const body = digest.items.length === 1
+                            ? `Você tem 1 designação nesta semana:\n${itemsList}`
+                            : `Você tem ${digest.items.length} designações nesta semana:\n${itemsList}`;
+                        await sendNotification(pubId, {
+                            title,
+                            body,
+                            type: Notification_1.NotificationType.REMINDER,
+                            data: {
+                                url: "/dashboard",
+                                scheduleId: schedule.id,
+                                meetingDate: schedule.meetingDate || schedule.weekDate
+                            }
+                        }, "MIDWEEK_WEEKLY_DIGEST", { scheduleId: schedule.id });
                     }
                 }
             }

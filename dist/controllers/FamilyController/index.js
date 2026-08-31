@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_errors_1 = require("../../helpers/api-errors");
 const messageErrors_1 = require("../../helpers/messageErrors");
+const congregationRepository_1 = require("../../repositories/congregationRepository");
 const familyRepository_1 = require("../../repositories/familyRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
-const congregationRepository_1 = require("../../repositories/congregationRepository");
 const typeorm_1 = require("typeorm");
 class FamilyController {
     // -------------------------------------------------

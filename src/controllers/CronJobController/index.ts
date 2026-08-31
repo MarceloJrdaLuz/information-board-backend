@@ -1,15 +1,16 @@
+import { exec } from "child_process"
+import dayjs from "dayjs"
 import { Request, Response } from "express"
 import moment from "moment-timezone"
-import { And, IsNull, LessThan, Not } from "typeorm"
+import { And, Between, IsNull, LessThan, Not } from "typeorm"
+import { config } from "../../config"
+import { MidweekRoom } from "../../entities/MidweekMeetingPart"
+import { NotificationType } from "../../entities/Notification"
 import { getMonthsOld } from "../../functions/getMonths"
+import { resolveReminderOccurrence } from "../../helpers/resolveReminderOccurrence"
 import { meetingAssistanceRepository } from "../../repositories/meetingAssistanceRepository"
 import { noticeRepository } from "../../repositories/noticeRepository"
 import { reportRepository } from "../../repositories/reportRepository"
-import { exec } from "child_process"
-import dayjs from "dayjs"
-import { config } from "../../config"
-import { NotificationType } from "../../entities/Notification"
-import { resolveReminderOccurrence } from "../../helpers/resolveReminderOccurrence"
 //@ts-expect-error
 import mailer from '../../modules/mailer'
 import { cleaningExceptionRepository } from "../../repositories/cleaningExceptionRepository"
@@ -19,6 +20,7 @@ import { fieldServiceExceptionRepository } from "../../repositories/fieldService
 import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
 import { fieldServiceTemplateLocationOverrideRepository } from "../../repositories/fieldServiceTemplateLocationOverrideRepository"
 import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
+import { midweekScheduleRepository } from "../../repositories/midweekScheduleRepository"
 import { publicWitnessAssignmentRepository } from "../../repositories/publicWitnessAssignmentRepository"
 import { publisherReminderRepository } from "../../repositories/publisherReminderRepository"
 import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
@@ -614,6 +616,125 @@ class CronJobController {
                             type: NotificationType.HOSPITALITY,
                             data: { url: "/dashboard", date: h.weekend?.date }
                         }, "HOSPITALITY_MEMBER")
+                    }
+                }
+            }
+
+            // ==========================================
+            // 8. NOTIFICAÇÃO CONSOLIDADA DA REUNIÃO DE MEIO DE SEMANA (Toda Segunda-feira)
+            // ==========================================
+            const isMonday = today.day() === 1 || req.query?.forceMidweek === "true" || req.body?.forceMidweek === true
+            if (isMonday) {
+                // Início (segunda) e fim (domingo) da semana atual
+                const weekMonday = today.day() === 0 ? today.subtract(6, "day") : today.subtract(today.day() - 1, "day")
+                const mondayStr = weekMonday.format("YYYY-MM-DD")
+                const sundayStr = weekMonday.add(6, "day").format("YYYY-MM-DD")
+
+                const midweekSchedules = await midweekScheduleRepository.find({
+                    where: [
+                        { weekDate: mondayStr },
+                        { weekDate: Between(mondayStr, sundayStr) },
+                        { meetingDate: Between(mondayStr, sundayStr) }
+                    ],
+                    relations: [
+                        "congregation",
+                        "chairman",
+                        "openingPrayer",
+                        "closingPrayer",
+                        "auxCounselor1",
+                        "auxCounselor2",
+                        "cbsConductor",
+                        "cbsReader",
+                        "parts",
+                        "parts.assignedPublisher",
+                        "parts.assistantPublisher"
+                    ],
+                    order: {
+                        parts: {
+                            orderIndex: "ASC"
+                        }
+                    }
+                })
+
+                // Deduplica programações caso correspondam a mais de uma condição
+                const uniqueSchedules = Array.from(new Map(midweekSchedules.map(s => [s.id, s])).values())
+
+                const getRoomSuffix = (room?: MidweekRoom) => {
+                    if (room === MidweekRoom.AUXILIARY_1) return " (Sala Auxiliar 1)"
+                    if (room === MidweekRoom.AUXILIARY_2) return " (Sala Auxiliar 2)"
+                    return ""
+                }
+
+                for (const schedule of uniqueSchedules) {
+                    const meetingDateObj = schedule.meetingDate ? dayjs(schedule.meetingDate) : dayjs(schedule.weekDate)
+                    const meetingDateFmt = meetingDateObj.format("DD/MM")
+
+                    // Mapeia designações por publicador para agrupar em uma só notificação
+                    const pubMap = new Map<string, { id: string; name?: string; items: string[] }>()
+
+                    const addAssignment = (pub: { id: string; name?: string } | null | undefined, desc: string) => {
+                        if (!pub?.id) return
+                        if (!pubMap.has(pub.id)) {
+                            pubMap.set(pub.id, { id: pub.id, name: pub.name, items: [] })
+                        }
+                        pubMap.get(pub.id)!.items.push(desc)
+                    }
+
+                    if (schedule.chairman?.id) addAssignment(schedule.chairman, "Presidente da Reunião")
+                    if (schedule.openingPrayer?.id) addAssignment(schedule.openingPrayer, "Oração Inicial")
+                    if (schedule.closingPrayer?.id) addAssignment(schedule.closingPrayer, "Oração Final")
+                    if (schedule.auxCounselor1?.id) addAssignment(schedule.auxCounselor1, "Conselheiro - Sala Auxiliar 1")
+                    if (schedule.auxCounselor2?.id) addAssignment(schedule.auxCounselor2, "Conselheiro - Sala Auxiliar 2")
+                    if (schedule.cbsConductor?.id) addAssignment(schedule.cbsConductor, "Dirigente do Estudo Bíblico de Congregação")
+                    if (schedule.cbsReader?.id) addAssignment(schedule.cbsReader, "Leitor do Estudo Bíblico de Congregação")
+
+                    const activeParts = (schedule.parts || [])
+                        .filter(p => p.isActive !== false)
+                        .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
+
+                    for (const part of activeParts) {
+                        const roomSuffix = getRoomSuffix(part.room)
+
+                        // Titular da parte
+                        if (part.assignedPublisher?.id) {
+                            let desc = part.title || "Parte"
+                            const assistantName = part.assistantPublisher?.nickname || part.assistantPublisher?.fullName
+                            if (assistantName) {
+                                desc += ` (com ${assistantName})`
+                            }
+                            desc += roomSuffix
+                            addAssignment(part.assignedPublisher, desc)
+                        }
+
+                        // Ajudante da parte
+                        if (part.assistantPublisher?.id) {
+                            let desc = `${part.title || "Parte"} - Ajudante`
+                            const titularName = part.assignedPublisher?.nickname || part.assignedPublisher?.fullName
+                            if (titularName) {
+                                desc += ` de ${titularName}`
+                            }
+                            desc += roomSuffix
+                            addAssignment(part.assistantPublisher, desc)
+                        }
+                    }
+
+                    for (const [pubId, digest] of pubMap.entries()) {
+                        const itemsList = digest.items.map(item => `• ${item}`).join("\n")
+                        const title = `Reunião Meio de Semana (${meetingDateFmt})`
+                        const body = digest.items.length === 1
+                            ? `Você tem 1 designação nesta semana:\n${itemsList}`
+                            : `Você tem ${digest.items.length} designações nesta semana:\n${itemsList}`
+
+                        await sendNotification(pubId, {
+                            title,
+                            body,
+                            type: NotificationType.REMINDER,
+                            data: {
+                                url: "/dashboard",
+                                scheduleId: schedule.id,
+                                meetingDate: schedule.meetingDate || schedule.weekDate
+                            }
+                        }, "MIDWEEK_WEEKLY_DIGEST", { scheduleId: schedule.id })
                     }
                 }
             }

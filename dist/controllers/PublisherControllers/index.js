@@ -20,13 +20,15 @@ const emergencyContact_1 = require("../../repositories/emergencyContact");
 const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
 const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 const hospitalityAssignmentRepository_1 = require("../../repositories/hospitalityAssignmentRepository");
+const midweekMeetingPartRepository_1 = require("../../repositories/midweekMeetingPartRepository");
+const midweekScheduleRepository_1 = require("../../repositories/midweekScheduleRepository");
 const privilegeRepository_1 = require("../../repositories/privilegeRepository");
+const publicWitnessAssignmentRepository_1 = require("../../repositories/publicWitnessAssignmentRepository");
 const publisherPrivilegeRepository_1 = require("../../repositories/publisherPrivilegeRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 const privileges_1 = require("../../types/privileges");
-const publicWitnessAssignmentRepository_1 = require("../../repositories/publicWitnessAssignmentRepository");
 class PublisherControler {
     async create(req, res) {
         const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContact_id } = req.body;
@@ -263,6 +265,7 @@ class PublisherControler {
         return res.status(200).json(publisher);
     }
     async getAssignmentPublisher(req, res) {
+        var _a, _b, _c, _d;
         const { publisher_id } = req.params;
         const publisher = await publisherRepository_1.publisherRepository.findOne({
             where: {
@@ -429,13 +432,148 @@ class PublisherControler {
                 }
             });
         });
+        // 🔹 Mapeia designações da Reunião de Meio de Semana (Funções Gerais)
+        const todayStr = (0, dayjs_1.default)().format("YYYY-MM-DD");
+        const midweekSchedules = await midweekScheduleRepository_1.midweekScheduleRepository.find({
+            where: [
+                { chairman_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { chairman_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { opening_prayer_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { opening_prayer_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { closing_prayer_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { closing_prayer_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { aux_counselor_1_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { aux_counselor_1_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { aux_counselor_2_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { aux_counselor_2_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { cbs_conductor_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { cbs_conductor_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { cbs_reader_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { cbs_reader_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+            ],
+            relations: ["congregation"],
+            order: { meetingDate: "ASC" }
+        });
+        const midweekGeneralAssignments = [];
+        const uniqueMidweekSchedules = Array.from(new Map(midweekSchedules.map(s => [s.id, s])).values());
+        for (const s of uniqueMidweekSchedules) {
+            if (s.isSpecial && s.specialType !== "NONE" && s.specialType !== "CIRCUIT_OVERSEER_VISIT") {
+                continue;
+            }
+            const schedDate = s.meetingDate || s.weekDate;
+            if (schedDate < todayStr)
+                continue;
+            if (s.chairman_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Presidente",
+                    title: "Reunião de Meio de Semana",
+                    date: schedDate
+                });
+            }
+            if (s.opening_prayer_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Oração Inicial",
+                    title: "Reunião de Meio de Semana",
+                    date: schedDate
+                });
+            }
+            if (s.closing_prayer_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Oração Final",
+                    title: "Reunião de Meio de Semana",
+                    date: schedDate
+                });
+            }
+            if (s.aux_counselor_1_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Conselheiro",
+                    title: "Sala Auxiliar 1",
+                    room: "Sala Auxiliar 1",
+                    date: schedDate
+                });
+            }
+            if (s.aux_counselor_2_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Conselheiro",
+                    title: "Sala Auxiliar 2",
+                    room: "Sala Auxiliar 2",
+                    date: schedDate
+                });
+            }
+            if (s.cbs_conductor_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Dirigente do Estudo Bíblico",
+                    title: "Estudo Bíblico de Congregação",
+                    date: schedDate
+                });
+            }
+            if (s.cbs_reader_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Leitor do Estudo Bíblico",
+                    title: "Estudo Bíblico de Congregação",
+                    date: schedDate
+                });
+            }
+        }
+        // 🔹 Mapeia partes de estudantes e discursos do Meio de Semana
+        const midweekParts = await midweekMeetingPartRepository_1.midweekMeetingPartRepository.find({
+            where: [
+                { assigned_publisher_id: publisher_id, isActive: true },
+                { assistant_publisher_id: publisher_id, isActive: true }
+            ],
+            relations: [
+                "schedule",
+                "assignedPublisher",
+                "assistantPublisher"
+            ]
+        });
+        const midweekPartAssignments = [];
+        for (const part of midweekParts) {
+            if (!part.schedule)
+                continue;
+            if (part.schedule.isSpecial && part.schedule.specialType !== "NONE" && part.schedule.specialType !== "CIRCUIT_OVERSEER_VISIT") {
+                continue;
+            }
+            const partDate = part.schedule.meetingDate || part.schedule.weekDate;
+            if (partDate < todayStr)
+                continue;
+            const roomName = part.room === "AUXILIARY_1" ? "Sala Auxiliar 1" : part.room === "AUXILIARY_2" ? "Sala Auxiliar 2" : "Sala Principal";
+            if (part.assigned_publisher_id === publisher_id) {
+                const asstName = ((_a = part.assistantPublisher) === null || _a === void 0 ? void 0 : _a.nickname) || ((_b = part.assistantPublisher) === null || _b === void 0 ? void 0 : _b.fullName);
+                midweekPartAssignments.push({
+                    role: "Meio de Semana",
+                    title: part.title,
+                    room: roomName,
+                    partner: asstName || undefined,
+                    date: partDate,
+                    section: part.section,
+                    timeMinutes: part.timeMinutes,
+                    partType: part.partType
+                });
+            }
+            if (part.assistant_publisher_id === publisher_id) {
+                const studentName = ((_c = part.assignedPublisher) === null || _c === void 0 ? void 0 : _c.nickname) || ((_d = part.assignedPublisher) === null || _d === void 0 ? void 0 : _d.fullName);
+                midweekPartAssignments.push({
+                    role: "Ajudante (Meio de Semana)",
+                    title: part.title,
+                    room: roomName,
+                    partner: studentName || undefined,
+                    date: partDate,
+                    section: part.section,
+                    timeMinutes: part.timeMinutes,
+                    partType: part.partType
+                });
+            }
+        }
         const allAssignments = [
             ...assignments,
             ...hospitalityAssignments,
             ...externalAssignments,
             ...cleaningAssignments,
             ...fieldServiceRotationMapped,
-            ...publicWitnessMapped
+            ...publicWitnessMapped,
+            ...midweekGeneralAssignments,
+            ...midweekPartAssignments
         ];
         // 🔹 Ordena por data
         allAssignments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
