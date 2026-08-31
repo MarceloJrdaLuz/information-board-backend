@@ -45,12 +45,7 @@ export const uploadFile = multer({
 });
 
 export const uploadXml = multer({
-    storage: multer.diskStorage({
-        destination: path.resolve(__dirname, "..", "..", "tmp", "uploads"),
-        filename: (req, file, cb) => {
-            cb(null, `${v4()}-${file.originalname.trim()}`);
-        }
-    }),
+    storage: multer.memoryStorage(),
     limits: {
         fileSize: 20 * 1024 * 1024
     }
