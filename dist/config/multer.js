@@ -47,7 +47,12 @@ exports.uploadFile = (0, multer_1.default)({
     }
 });
 exports.uploadXml = (0, multer_1.default)({
-    storage: multer_1.default.memoryStorage(),
+    storage: multer_1.default.diskStorage({
+        destination: path_1.default.resolve(__dirname, "..", "..", "tmp", "uploads"),
+        filename: (req, file, cb) => {
+            cb(null, `${(0, uuid_1.v4)()}-${file.originalname.trim()}`);
+        }
+    }),
     limits: {
         fileSize: 20 * 1024 * 1024
     }
