@@ -184,6 +184,30 @@ export class MidweekXmlParserService {
                     partsToInsert.push(studentPart);
                 }
 
+                // O que você diria? (Sempre a última parte da seção Faça Seu Melhor no Ministério)
+                if (studentSource && studentSource.WhatWouldYouSay && studentSource.WhatWouldYouSay["@_Included"] === "1") {
+                    const wwys = studentSource.WhatWouldYouSay;
+                    const wwysPart = new MidweekWorkbookPart();
+                    wwysPart.workbook_week_id = savedWeek.id;
+                    wwysPart.section = MidweekSection.MINISTRY;
+                    wwysPart.partType = MidweekPartType.WHAT_WOULD_YOU_SAY;
+                    wwysPart.title = wwys.Theme || "O que você diria?";
+                    wwysPart.sourceMaterial = wwys.SourceMaterial || null;
+                    wwysPart.timeMinutes = wwys["@_Time"] ? parseInt(wwys["@_Time"], 10) : 6;
+                    wwysPart.method = "Consideração com a assistência";
+                    wwysPart.requiresAssistant = false;
+
+                    if (wwys.Prompts && wwys.Prompts.Prompt) {
+                        const promptList = Array.isArray(wwys.Prompts.Prompt) ? wwys.Prompts.Prompt : [wwys.Prompts.Prompt];
+                        wwysPart.prompts = promptList
+                            .filter((p: any) => p["@_Included"] === "1")
+                            .map((p: any) => (typeof p === "object" ? p["#text"] || "" : p));
+                    }
+
+                    wwysPart.orderIndex = order++;
+                    partsToInsert.push(wwysPart);
+                }
+
                 if (weekData.LivingAsChristians && weekData.LivingAsChristians.Item) {
                     const items = Array.isArray(weekData.LivingAsChristians.Item)
                         ? weekData.LivingAsChristians.Item
