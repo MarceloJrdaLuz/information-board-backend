@@ -481,6 +481,12 @@ routes.patch(
     midweekController.updatePublisherQualification.bind(midweekController)
 );
 
+routes.put(
+    "/midweek/publishers/:publisher_id/qualification",
+    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]),
+    midweekController.updatePublisherQualification.bind(midweekController)
+);
+
 // Ausências e Indisponibilidades
 routes.get(
     "/midweek/unavailabilities/congregation/:congregation_id",

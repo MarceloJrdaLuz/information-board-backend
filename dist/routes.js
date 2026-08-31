@@ -344,6 +344,7 @@ routes.post("/midweek/schedules/month-auto-assign/congregation/:congregation_id"
 // Qualificações de Publicadores
 routes.get("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.getPublisherQualification.bind(midweekController));
 routes.patch("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePublisherQualification.bind(midweekController));
+routes.put("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePublisherQualification.bind(midweekController));
 // Ausências e Indisponibilidades
 routes.get("/midweek/unavailabilities/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.getUnavailabilities.bind(midweekController));
 routes.post("/midweek/unavailabilities", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.createUnavailability.bind(midweekController));
