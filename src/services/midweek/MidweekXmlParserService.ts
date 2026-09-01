@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { AppDataSource } from "../../data-source";
-import { MidweekMeetingPart } from "../../entities/MidweekMeetingPart";
+import { MidweekMeetingPart, MidweekRoom } from "../../entities/MidweekMeetingPart";
 import { MidweekSchedule } from "../../entities/MidweekSchedule";
 import { MidweekPartType, MidweekSection, MidweekWorkbookPart } from "../../entities/MidweekWorkbookPart";
 import { MidweekWorkbookWeek } from "../../entities/MidweekWorkbookWeek";
@@ -83,30 +83,30 @@ export class MidweekXmlParserService {
                     treasuresTalkPart.requiresAssistant = false;
                     treasuresTalkPart.orderIndex = order++;
                     partsToInsert.push(treasuresTalkPart);
+
+                    const gemsPart = new MidweekWorkbookPart();
+                    gemsPart.workbook_week_id = savedWeek.id;
+                    gemsPart.section = MidweekSection.TREASURES;
+                    gemsPart.partType = MidweekPartType.GEMS;
+                    gemsPart.title = "Joias Espirituais";
+                    gemsPart.timeMinutes = 10;
+                    gemsPart.method = "Perguntas e respostas";
+                    gemsPart.requiresAssistant = false;
+                    gemsPart.orderIndex = order++;
+                    partsToInsert.push(gemsPart);
                 }
 
-                const gemsPart = new MidweekWorkbookPart();
-                gemsPart.workbook_week_id = savedWeek.id;
-                gemsPart.section = MidweekSection.TREASURES;
-                gemsPart.partType = MidweekPartType.GEMS;
-                gemsPart.title = "Joias Espirituais";
-                gemsPart.sourceMaterial = savedWeek.weeklyBibleReading;
-                gemsPart.timeMinutes = 10;
-                gemsPart.method = "Perguntas e respostas";
-                gemsPart.requiresAssistant = false;
-                gemsPart.orderIndex = order++;
-                partsToInsert.push(gemsPart);
-
                 const studentSource = weekData.StudentSourceMaterial;
-                if (studentSource && studentSource.BibleReadingMaterial) {
-                    const br = studentSource.BibleReadingMaterial;
-                    const brText = typeof br === "object" ? br["#text"] || "" : br;
-                    const studyPoint = br["@_StudyPoint"] ? parseInt(br["@_StudyPoint"], 10) : null;
-                    const brochure = br["@_Brochure"] || "Teaching";
-                    const time = br["@_Time"] ? parseInt(br["@_Time"], 10) : 4;
-                    const studyDesc = br["@_StudyPointDescription"] || null;
 
-                    if (brText || brText === "") {
+                if (studentSource) {
+                    const brMat = studentSource.BibleReadingMaterial;
+                    if (brMat) {
+                        const brText = typeof brMat === "object" ? brMat["#text"] || "" : brMat;
+                        const studyPoint = brMat["@_StudyPoint"] ? parseInt(brMat["@_StudyPoint"], 10) : null;
+                        const studyDesc = brMat["@_StudyPointDescription"] || null;
+                        const brochure = brMat["@_Brochure"] || "Teaching";
+                        const time = brMat["@_Time"] ? parseInt(brMat["@_Time"], 10) : 4;
+
                         const bibleReadingPart = new MidweekWorkbookPart();
                         bibleReadingPart.workbook_week_id = savedWeek.id;
                         bibleReadingPart.section = MidweekSection.TREASURES;
@@ -186,30 +186,6 @@ export class MidweekXmlParserService {
                     partsToInsert.push(studentPart);
                 }
 
-                // O que você diria? (Sempre a última parte da seção Faça Seu Melhor no Ministério)
-                if (studentSource && studentSource.WhatWouldYouSay && studentSource.WhatWouldYouSay["@_Included"] === "1") {
-                    const wwys = studentSource.WhatWouldYouSay;
-                    const wwysPart = new MidweekWorkbookPart();
-                    wwysPart.workbook_week_id = savedWeek.id;
-                    wwysPart.section = MidweekSection.MINISTRY;
-                    wwysPart.partType = MidweekPartType.WHAT_WOULD_YOU_SAY;
-                    wwysPart.title = wwys.Theme || "O que você diria?";
-                    wwysPart.sourceMaterial = wwys.SourceMaterial || null;
-                    wwysPart.timeMinutes = wwys["@_Time"] ? parseInt(wwys["@_Time"], 10) : 6;
-                    wwysPart.method = "Consideração com a assistência";
-                    wwysPart.requiresAssistant = false;
-
-                    if (wwys.Prompts && wwys.Prompts.Prompt) {
-                        const promptList = Array.isArray(wwys.Prompts.Prompt) ? wwys.Prompts.Prompt : [wwys.Prompts.Prompt];
-                        wwysPart.prompts = promptList
-                            .filter((p: any) => p["@_Included"] === "1")
-                            .map((p: any) => (typeof p === "object" ? p["#text"] || "" : p));
-                    }
-
-                    wwysPart.orderIndex = order++;
-                    partsToInsert.push(wwysPart);
-                }
-
                 if (weekData.LivingAsChristians && weekData.LivingAsChristians.Item) {
                     const items = Array.isArray(weekData.LivingAsChristians.Item)
                         ? weekData.LivingAsChristians.Item
@@ -254,7 +230,7 @@ export class MidweekXmlParserService {
                     totalPartsCount += partsToInsert.length;
                 }
 
-                // Sincroniza metadados (prompts com acentuação correta, temas, ordem) nas congregações que já abriram a semana, preservando 100% os publicadores designados
+                // Sincroniza metadados nas congregações que já abriram a semana, preservando 100% os publicadores designados
                 const existingSchedules = await transactionalEntityManager.find(MidweekSchedule, {
                     where: { weekDate: savedWeek.weekDate },
                     relations: ["parts"]
@@ -269,46 +245,61 @@ export class MidweekXmlParserService {
                     await transactionalEntityManager.save(MidweekSchedule, sched);
 
                     if (sched.parts && sched.parts.length > 0) {
-                        // Limpa partes duplicadas de 'O que você diria' que foram criadas em importações anteriores
-                        const wwysParts = sched.parts.filter(mp =>
-                            mp.partType === MidweekPartType.WHAT_WOULD_YOU_SAY ||
-                            mp.title.toLowerCase().includes("o que você diria") ||
-                            mp.title.toLowerCase().includes("o que voce diria")
-                        );
+                        // Sincroniza cada seção de forma ordenada por posição relativa
+                        for (const section of [MidweekSection.TREASURES, MidweekSection.MINISTRY, MidweekSection.LIVING]) {
+                            const sectionWbParts = partsToInsert
+                                .filter(wp => wp.section === section)
+                                .sort((a, b) => a.orderIndex - b.orderIndex);
 
-                        if (wwysParts.length > 1) {
-                            const keepPart = wwysParts.find(p => p.assigned_publisher_id) ||
-                                             wwysParts.find(p => p.partType === MidweekPartType.WHAT_WOULD_YOU_SAY) ||
-                                             wwysParts[0];
+                            const sectionMainSchedParts = sched.parts
+                                .filter(mp => mp.section === section && mp.room === MidweekRoom.MAIN && mp.partType !== MidweekPartType.CUSTOM && !mp.title.toLowerCase().includes("discurso de serviço"))
+                                .sort((a, b) => a.orderIndex - b.orderIndex);
 
-                            for (const extraPart of wwysParts) {
-                                if (extraPart.id !== keepPart.id) {
-                                    await transactionalEntityManager.remove(MidweekMeetingPart, extraPart);
-                                    sched.parts = sched.parts.filter(p => p.id !== extraPart.id);
+                            for (let idx = 0; idx < sectionWbParts.length; idx++) {
+                                const wbPart = sectionWbParts[idx];
+                                const schedPart = sectionMainSchedParts[idx];
+
+                                if (schedPart) {
+                                    schedPart.workbook_part_id = wbPart.id;
+                                    schedPart.title = wbPart.title;
+                                    schedPart.prompts = wbPart.prompts;
+                                    schedPart.sourceMaterial = wbPart.sourceMaterial;
+                                    schedPart.lessonNumber = wbPart.lessonNumber;
+                                    schedPart.studyPoint = wbPart.studyPoint;
+                                    schedPart.studyPointDescription = wbPart.studyPointDescription;
+                                    schedPart.brochure = wbPart.brochure;
+                                    schedPart.orderIndex = wbPart.orderIndex;
+                                    schedPart.timeMinutes = wbPart.timeMinutes;
+                                    schedPart.method = wbPart.method;
+                                    schedPart.requiresAssistant = wbPart.requiresAssistant;
+                                    schedPart.partType = wbPart.partType;
+                                    await transactionalEntityManager.save(MidweekMeetingPart, schedPart);
                                 }
-                            }
-                            keepPart.partType = MidweekPartType.WHAT_WOULD_YOU_SAY;
-                            keepPart.title = "O que você diria?";
-                            keepPart.method = "Consideração com a assistência";
-                            keepPart.requiresAssistant = false;
-                        }
 
-                        for (const wbPart of partsToInsert) {
-                            const filteredParts = sched.parts.filter(mp =>
-                                mp.partType === wbPart.partType &&
-                                mp.partType !== MidweekPartType.CUSTOM &&
-                                !mp.title.toLowerCase().includes("discurso de serviço")
-                            );
-                            for (const mp of filteredParts) {
-                                mp.title = wbPart.title;
-                                mp.prompts = wbPart.prompts;
-                                mp.sourceMaterial = wbPart.sourceMaterial;
-                                mp.lessonNumber = wbPart.lessonNumber;
-                                mp.studyPoint = wbPart.studyPoint;
-                                mp.studyPointDescription = wbPart.studyPointDescription;
-                                mp.brochure = wbPart.brochure;
-                                mp.orderIndex = wbPart.orderIndex;
-                                await transactionalEntityManager.save(MidweekMeetingPart, mp);
+                                // Atualiza também as salas auxiliares na mesma posição
+                                const auxRooms = [MidweekRoom.AUXILIARY_1, MidweekRoom.AUXILIARY_2];
+                                for (const room of auxRooms) {
+                                    const roomParts = sched.parts
+                                        .filter(mp => mp.section === section && mp.room === room && mp.partType !== MidweekPartType.CUSTOM)
+                                        .sort((a, b) => a.orderIndex - b.orderIndex);
+
+                                    const auxPart = roomParts[idx];
+                                    if (auxPart) {
+                                        auxPart.workbook_part_id = wbPart.id;
+                                        auxPart.title = wbPart.title;
+                                        auxPart.prompts = wbPart.prompts;
+                                        auxPart.sourceMaterial = wbPart.sourceMaterial;
+                                        auxPart.lessonNumber = wbPart.lessonNumber;
+                                        auxPart.studyPoint = wbPart.studyPoint;
+                                        auxPart.studyPointDescription = wbPart.studyPointDescription;
+                                        auxPart.brochure = wbPart.brochure;
+                                        auxPart.timeMinutes = wbPart.timeMinutes;
+                                        auxPart.method = wbPart.method;
+                                        auxPart.requiresAssistant = wbPart.requiresAssistant;
+                                        auxPart.partType = wbPart.partType;
+                                        await transactionalEntityManager.save(MidweekMeetingPart, auxPart);
+                                    }
+                                }
                             }
                         }
                     }
