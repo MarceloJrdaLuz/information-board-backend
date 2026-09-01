@@ -266,7 +266,7 @@ class PublisherControler {
         return res.status(200).json(publisher);
     }
     async getAssignmentPublisher(req, res) {
-        var _a, _b, _c, _d, _e, _f;
+        var _a, _b, _c, _d, _e;
         const { publisher_id } = req.params;
         const publisher = await publisherRepository_1.publisherRepository.findOne({
             where: {
@@ -277,213 +277,169 @@ class PublisherControler {
         if (!publisher) {
             throw new api_errors_1.BadRequestError(messageErrors_1.messageErrors.notFound.publisher);
         }
-        const todayStr = (0, dayjs_1.default)().format("YYYY-MM-DD");
-        // 1️⃣ Designações de Reunião de Fim de Semana
-        let assignments = [];
-        try {
-            const assignmentsMeeting = await weekendScheduleRepository_1.weekendScheduleRepository.find({
-                where: [
-                    { chairman: { id: publisher_id }, date: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { reader: { id: publisher_id }, date: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { speaker: { publisher: { id: publisher_id } }, date: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                ],
-                relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
-                order: { date: "ASC" }
+        const assignmentsMeeting = await weekendScheduleRepository_1.weekendScheduleRepository.find({
+            where: [
+                { chairman: { id: publisher_id }, date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD")) },
+                { reader: { id: publisher_id }, date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD")) },
+                { speaker: { publisher: { id: publisher_id } }, date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD")) },
+            ],
+            relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
+            order: { date: "ASC" }
+        });
+        const cleaningSchedules = await cleaningScheduleRepository_1.cleaningScheduleRepository.find({
+            where: {
+                date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD")),
+                group: {
+                    publishers: {
+                        id: publisher_id
+                    }
+                }
+            },
+            relations: [
+                "group",
+                "group.publishers"
+            ],
+            order: {
+                date: "ASC"
+            }
+        });
+        const publicWitnessAssignments = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository
+            .createQueryBuilder("pw")
+            .innerJoin("pw.publishers", "pp")
+            .innerJoin("pp.publisher", "publisherFilter")
+            .leftJoinAndSelect("pw.publishers", "allPublishers")
+            .leftJoinAndSelect("allPublishers.publisher", "publisher")
+            .leftJoinAndSelect("pw.timeSlot", "timeSlot")
+            .leftJoinAndSelect("timeSlot.arrangement", "arrangement")
+            .where("publisherFilter.id = :publisher_id", { publisher_id })
+            .andWhere("pw.date >= :today", {
+            today: (0, dayjs_1.default)().format("YYYY-MM-DD")
+        })
+            .orderBy("pw.date", "ASC")
+            .getMany();
+        const hospitality = await hospitalityAssignmentRepository_1.hospitalityAssignmentRepository.find({
+            where: {
+                weekend: {
+                    date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD"))
+                }
+            },
+            relations: ['group', 'group.members', 'group.host', 'weekend']
+        });
+        const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
+            where: {
+                speaker: {
+                    publisher: {
+                        id: publisher_id
+                    }
+                },
+                date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD"))
+            },
+            relations: ['destinationCongregation', 'talk']
+        });
+        const fieldServiceRotationAssignments = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository.find({
+            where: {
+                leader: { id: publisher_id },
+                date: (0, typeorm_1.MoreThanOrEqual)((0, dayjs_1.default)().format("YYYY-MM-DD")),
+            },
+            order: {
+                date: "ASC",
+            },
+            relations: ["template", "leader"],
+        });
+        const filteredHospitality = hospitality.filter(h => {
+            var _a, _b, _c, _d;
+            // Verifica se o publisher é host OU membro do grupo
+            return ((_b = (_a = h.group) === null || _a === void 0 ? void 0 : _a.host) === null || _b === void 0 ? void 0 : _b.id) === publisher_id ||
+                ((_d = (_c = h.group) === null || _c === void 0 ? void 0 : _c.members) === null || _d === void 0 ? void 0 : _d.some(member => member.id === publisher_id));
+        });
+        const publicWitnessMapped = publicWitnessAssignments.map(pw => ({
+            role: "Testemunho Público",
+            date: pw.date,
+            title: pw.timeSlot.arrangement.title,
+            start_time: pw.timeSlot.start_time,
+            end_time: pw.timeSlot.end_time,
+            publishers: pw.publishers.map(p => {
+                var _a, _b;
+                return ({
+                    id: p.publisher.id,
+                    name: (_b = (_a = p.publisher.nickname) !== null && _a !== void 0 ? _a : p.publisher.fullName) !== null && _b !== void 0 ? _b : "-"
+                });
+            })
+        }));
+        // 4️⃣ Mapeia as designações de hospitalidade
+        const hospitalityAssignments = filteredHospitality.map((h) => {
+            var _a, _b, _c, _d;
+            return ({
+                role: ((_b = (_a = h.group) === null || _a === void 0 ? void 0 : _a.host) === null || _b === void 0 ? void 0 : _b.id) === publisher_id ? "Anfitrião" : "Hospitalidade",
+                eventType: h.eventType,
+                date: h.weekend.date,
+                group: {
+                    id: (_c = h.group) === null || _c === void 0 ? void 0 : _c.id,
+                    name: (_d = h.group) === null || _d === void 0 ? void 0 : _d.name,
+                },
             });
+        });
+        const assignments = assignmentsMeeting.map((s) => {
+            var _a, _b, _c, _d, _e, _f;
             const pubCongId = (_a = publisher.congregation) === null || _a === void 0 ? void 0 : _a.id;
-            assignments = assignmentsMeeting.map((s) => {
-                var _a, _b, _c, _d, _e;
-                const sCongId = (_a = s.congregation) === null || _a === void 0 ? void 0 : _a.id;
-                if (((_b = s.chairman) === null || _b === void 0 ? void 0 : _b.id) === publisher_id && sCongId && pubCongId && sCongId === pubCongId) {
-                    return {
-                        role: "Presidente",
-                        date: s.date,
-                    };
-                }
-                if (((_c = s.reader) === null || _c === void 0 ? void 0 : _c.id) === publisher_id && sCongId && pubCongId && sCongId === pubCongId) {
-                    return {
-                        role: "Leitor",
-                        date: s.date,
-                    };
-                }
-                if (((_e = (_d = s.speaker) === null || _d === void 0 ? void 0 : _d.publisher) === null || _e === void 0 ? void 0 : _e.id) === publisher_id) {
-                    return {
-                        role: "Orador",
-                        date: s.date,
-                        destinationCongregation: s.congregation ? {
-                            name: s.congregation.name,
-                            city: s.congregation.city,
-                            address: s.congregation.address,
-                            latitude: s.congregation.latitude,
-                            longitude: s.congregation.longitude,
-                            dayMeetingPublic: s.congregation.dayMeetingPublic,
-                            hourMeetingPublic: s.congregation.hourMeetingPublic,
-                        } : undefined,
-                        talk: s.talk ? { number: s.talk.number, title: s.talk.title } : null,
-                    };
-                }
-                return undefined;
-            }).filter(Boolean);
-        }
-        catch (err) {
-            console.error("Error fetching weekend assignments:", err);
-        }
-        // 2️⃣ Designações de Limpeza
-        let cleaningAssignments = [];
-        try {
-            const cleaningSchedules = await cleaningScheduleRepository_1.cleaningScheduleRepository.find({
-                where: {
-                    date: (0, typeorm_1.MoreThanOrEqual)(todayStr),
-                    group: {
-                        publishers: {
-                            id: publisher_id
-                        }
-                    }
-                },
-                relations: [
-                    "group",
-                    "group.publishers"
-                ],
-                order: {
-                    date: "ASC"
-                }
+            const sCongId = (_b = s.congregation) === null || _b === void 0 ? void 0 : _b.id;
+            if (((_c = s.chairman) === null || _c === void 0 ? void 0 : _c.id) === publisher_id && sCongId && pubCongId && sCongId === pubCongId) {
+                return {
+                    role: "Presidente",
+                    date: s.date,
+                };
+            }
+            if (((_d = s.reader) === null || _d === void 0 ? void 0 : _d.id) === publisher_id && sCongId && pubCongId && sCongId === pubCongId) {
+                return {
+                    role: "Leitor",
+                    date: s.date,
+                };
+            }
+            if (((_f = (_e = s.speaker) === null || _e === void 0 ? void 0 : _e.publisher) === null || _f === void 0 ? void 0 : _f.id) === publisher_id) {
+                return {
+                    role: "Orador",
+                    date: s.date,
+                    destinationCongregation: s.congregation,
+                    talk: s.talk ? { number: s.talk.number, title: s.talk.title } : null,
+                };
+            }
+            return undefined;
+        }).filter(Boolean);
+        // 🔹 Mapeia designações de limpeza
+        const cleaningAssignments = cleaningSchedules.map((c) => ({
+            role: "Limpeza do Salão",
+            date: c.date
+        }));
+        const fieldServiceRotationMapped = fieldServiceRotationAssignments.map(fs => {
+            var _a, _b;
+            return ({
+                role: "Dirigente de Campo",
+                date: fs.date,
+                fieldServiceHour: (_a = fs.template) === null || _a === void 0 ? void 0 : _a.time,
+                fieldServiceLocation: (_b = fs.template) === null || _b === void 0 ? void 0 : _b.location,
             });
-            cleaningAssignments = cleaningSchedules.map((c) => ({
-                role: "Limpeza do Salão",
-                date: c.date
-            }));
-        }
-        catch (err) {
-            console.error("Error fetching cleaning assignments:", err);
-        }
-        // 3️⃣ Testemunho Público
-        let publicWitnessMapped = [];
-        try {
-            const publicWitnessAssignments = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository
-                .createQueryBuilder("pw")
-                .innerJoin("pw.publishers", "pp")
-                .innerJoin("pp.publisher", "publisherFilter")
-                .leftJoinAndSelect("pw.publishers", "allPublishers")
-                .leftJoinAndSelect("allPublishers.publisher", "publisher")
-                .leftJoinAndSelect("pw.timeSlot", "timeSlot")
-                .leftJoinAndSelect("timeSlot.arrangement", "arrangement")
-                .where("publisherFilter.id = :publisher_id", { publisher_id })
-                .andWhere("pw.date >= :today", { today: todayStr })
-                .orderBy("pw.date", "ASC")
-                .getMany();
-            publicWitnessMapped = publicWitnessAssignments.map(pw => {
-                var _a, _b, _c, _d;
-                return ({
-                    role: "Testemunho Público",
-                    date: pw.date,
-                    title: (_b = (_a = pw.timeSlot) === null || _a === void 0 ? void 0 : _a.arrangement) === null || _b === void 0 ? void 0 : _b.title,
-                    start_time: (_c = pw.timeSlot) === null || _c === void 0 ? void 0 : _c.start_time,
-                    end_time: (_d = pw.timeSlot) === null || _d === void 0 ? void 0 : _d.end_time,
-                    publishers: (pw.publishers || []).map(p => {
-                        var _a, _b, _c, _d, _e;
-                        return ({
-                            id: (_a = p.publisher) === null || _a === void 0 ? void 0 : _a.id,
-                            name: (_e = (_c = (_b = p.publisher) === null || _b === void 0 ? void 0 : _b.nickname) !== null && _c !== void 0 ? _c : (_d = p.publisher) === null || _d === void 0 ? void 0 : _d.fullName) !== null && _e !== void 0 ? _e : "-"
-                        });
-                    })
-                });
-            });
-        }
-        catch (err) {
-            console.error("Error fetching public witness assignments:", err);
-        }
-        // 4️⃣ Hospitalidade
-        let hospitalityAssignments = [];
-        try {
-            const hospitality = await hospitalityAssignmentRepository_1.hospitalityAssignmentRepository.find({
-                where: {
-                    weekend: {
-                        date: (0, typeorm_1.MoreThanOrEqual)(todayStr)
-                    }
-                },
-                relations: ['group', 'group.members', 'group.host', 'weekend']
-            });
-            const filteredHospitality = hospitality.filter(h => {
-                var _a, _b, _c, _d;
-                return ((_b = (_a = h.group) === null || _a === void 0 ? void 0 : _a.host) === null || _b === void 0 ? void 0 : _b.id) === publisher_id ||
-                    ((_d = (_c = h.group) === null || _c === void 0 ? void 0 : _c.members) === null || _d === void 0 ? void 0 : _d.some(member => member.id === publisher_id));
-            });
-            hospitalityAssignments = filteredHospitality.map((h) => {
-                var _a, _b, _c, _d, _e;
-                return ({
-                    role: ((_b = (_a = h.group) === null || _a === void 0 ? void 0 : _a.host) === null || _b === void 0 ? void 0 : _b.id) === publisher_id ? "Anfitrião" : "Hospitalidade",
-                    eventType: h.eventType,
-                    date: ((_c = h.weekend) === null || _c === void 0 ? void 0 : _c.date) || todayStr,
-                    group: {
-                        id: (_d = h.group) === null || _d === void 0 ? void 0 : _d.id,
-                        name: (_e = h.group) === null || _e === void 0 ? void 0 : _e.name,
-                    },
-                });
-            });
-        }
-        catch (err) {
-            console.error("Error fetching hospitality assignments:", err);
-        }
-        // 5️⃣ Discursos Externos
-        let externalAssignments = [];
-        try {
-            const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
-                where: {
-                    speaker: {
-                        publisher: {
-                            id: publisher_id
-                        }
-                    },
-                    date: (0, typeorm_1.MoreThanOrEqual)(todayStr)
-                },
-                relations: ['destinationCongregation', 'talk']
-            });
-            externalAssignments = externalTalks.map(e => ({
+        });
+        // 🔹 Mapeia designações externas
+        const externalAssignments = externalTalks.map(e => {
+            var _a, _b, _c, _d, _e, _f, _g;
+            return ({
                 role: "Discurso Externo",
                 date: e.date,
                 status: e.status,
                 talk: e.talk ? e.talk : e.manualTalk,
                 destinationCongregation: e.destinationCongregation ? {
-                    name: e.destinationCongregation.name,
-                    city: e.destinationCongregation.city,
-                    address: e.destinationCongregation.address,
-                    latitude: e.destinationCongregation.latitude,
-                    longitude: e.destinationCongregation.longitude,
-                    dayMeetingPublic: e.destinationCongregation.dayMeetingPublic,
-                    hourMeetingPublic: e.destinationCongregation.hourMeetingPublic,
+                    name: (_a = e.destinationCongregation) === null || _a === void 0 ? void 0 : _a.name,
+                    city: (_b = e.destinationCongregation) === null || _b === void 0 ? void 0 : _b.city,
+                    address: (_c = e.destinationCongregation) === null || _c === void 0 ? void 0 : _c.address,
+                    latitude: (_d = e.destinationCongregation) === null || _d === void 0 ? void 0 : _d.latitude,
+                    longitude: (_e = e.destinationCongregation) === null || _e === void 0 ? void 0 : _e.longitude,
+                    dayMeetingPublic: (_f = e.destinationCongregation) === null || _f === void 0 ? void 0 : _f.dayMeetingPublic,
+                    hourMeetingPublic: (_g = e.destinationCongregation) === null || _g === void 0 ? void 0 : _g.hourMeetingPublic,
                 } : undefined
-            }));
-        }
-        catch (err) {
-            console.error("Error fetching external talks:", err);
-        }
-        // 6️⃣ Saídas de Campo
-        let fieldServiceRotationMapped = [];
-        try {
-            const fieldServiceRotationAssignments = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository.find({
-                where: {
-                    leader: { id: publisher_id },
-                    date: (0, typeorm_1.MoreThanOrEqual)(todayStr),
-                },
-                order: {
-                    date: "ASC",
-                },
-                relations: ["template", "leader"],
             });
-            fieldServiceRotationMapped = fieldServiceRotationAssignments.map(fs => {
-                var _a, _b;
-                return ({
-                    role: "Dirigente de Campo",
-                    date: fs.date,
-                    fieldServiceHour: (_a = fs.template) === null || _a === void 0 ? void 0 : _a.time,
-                    fieldServiceLocation: (_b = fs.template) === null || _b === void 0 ? void 0 : _b.location,
-                });
-            });
-        }
-        catch (err) {
-            console.error("Error fetching field service assignments:", err);
-        }
-        // 7️⃣ Reunião de Meio de Semana
+        });
+        // 🔹 Mapeia designações da Reunião de Meio de Semana (Funções Gerais)
+        const todayStr = (0, dayjs_1.default)().format("YYYY-MM-DD");
         const getMidweekMeetingDate = (weekDate, explicitMeetingDate, cong) => {
             var _a;
             if (explicitMeetingDate && explicitMeetingDate !== weekDate) {
@@ -496,150 +452,140 @@ class PublisherControler {
             }
             return explicitMeetingDate || weekDate;
         };
+        const midweekSchedules = await midweekScheduleRepository_1.midweekScheduleRepository.find({
+            where: [
+                { chairman_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { chairman_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { opening_prayer_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { opening_prayer_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { closing_prayer_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { closing_prayer_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { aux_counselor_1_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { aux_counselor_1_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { aux_counselor_2_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { aux_counselor_2_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { cbs_conductor_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { cbs_conductor_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { cbs_reader_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { cbs_reader_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+            ],
+            relations: ["congregation"],
+            order: { meetingDate: "ASC" }
+        });
         const midweekGeneralAssignments = [];
-        try {
-            const midweekSchedules = await midweekScheduleRepository_1.midweekScheduleRepository.find({
-                where: [
-                    { chairman_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { chairman_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { opening_prayer_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { opening_prayer_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { closing_prayer_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { closing_prayer_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { aux_counselor_1_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { aux_counselor_1_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { aux_counselor_2_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { aux_counselor_2_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { cbs_conductor_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { cbs_conductor_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { cbs_reader_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                    { cbs_reader_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                ],
-                relations: ["congregation"],
-                order: { meetingDate: "ASC" }
-            });
-            const uniqueMidweekSchedules = Array.from(new Map(midweekSchedules.map(s => [s.id, s])).values());
-            for (const s of uniqueMidweekSchedules) {
-                if (s.isSpecial && s.specialType !== "NONE" && s.specialType !== "CIRCUIT_OVERSEER_VISIT") {
-                    continue;
-                }
-                const schedDate = getMidweekMeetingDate(s.weekDate, s.meetingDate, s.congregation);
-                if (schedDate < todayStr)
-                    continue;
-                if (s.chairman_id === publisher_id) {
-                    midweekGeneralAssignments.push({
-                        role: "Presidente",
-                        title: "Reunião de Meio de Semana",
-                        date: schedDate
-                    });
-                }
-                if (s.opening_prayer_id === publisher_id) {
-                    midweekGeneralAssignments.push({
-                        role: "Oração Inicial",
-                        title: "Reunião de Meio de Semana",
-                        date: schedDate
-                    });
-                }
-                if (s.closing_prayer_id === publisher_id) {
-                    midweekGeneralAssignments.push({
-                        role: "Oração Final",
-                        title: "Reunião de Meio de Semana",
-                        date: schedDate
-                    });
-                }
-                if (s.aux_counselor_1_id === publisher_id) {
-                    midweekGeneralAssignments.push({
-                        role: "Conselheiro",
-                        title: "Sala Auxiliar 1",
-                        room: "Sala Auxiliar 1",
-                        date: schedDate
-                    });
-                }
-                if (s.aux_counselor_2_id === publisher_id) {
-                    midweekGeneralAssignments.push({
-                        role: "Conselheiro",
-                        title: "Sala Auxiliar 2",
-                        room: "Sala Auxiliar 2",
-                        date: schedDate
-                    });
-                }
-                if (s.cbs_conductor_id === publisher_id) {
-                    midweekGeneralAssignments.push({
-                        role: "Dirigente do Estudo Bíblico",
-                        title: "Estudo Bíblico de Congregação",
-                        date: schedDate
-                    });
-                }
-                if (s.cbs_reader_id === publisher_id) {
-                    midweekGeneralAssignments.push({
-                        role: "Leitor do Estudo Bíblico",
-                        title: "Estudo Bíblico de Congregação",
-                        date: schedDate
-                    });
-                }
+        const uniqueMidweekSchedules = Array.from(new Map(midweekSchedules.map(s => [s.id, s])).values());
+        for (const s of uniqueMidweekSchedules) {
+            if (s.isSpecial && s.specialType !== "NONE" && s.specialType !== "CIRCUIT_OVERSEER_VISIT") {
+                continue;
+            }
+            const schedDate = getMidweekMeetingDate(s.weekDate, s.meetingDate, s.congregation);
+            if (schedDate < todayStr)
+                continue;
+            if (s.chairman_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Presidente",
+                    title: "Reunião de Meio de Semana",
+                    date: schedDate
+                });
+            }
+            if (s.opening_prayer_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Oração Inicial",
+                    title: "Reunião de Meio de Semana",
+                    date: schedDate
+                });
+            }
+            if (s.closing_prayer_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Oração Final",
+                    title: "Reunião de Meio de Semana",
+                    date: schedDate
+                });
+            }
+            if (s.aux_counselor_1_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Conselheiro",
+                    title: "Sala Auxiliar 1",
+                    room: "Sala Auxiliar 1",
+                    date: schedDate
+                });
+            }
+            if (s.aux_counselor_2_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Conselheiro",
+                    title: "Sala Auxiliar 2",
+                    room: "Sala Auxiliar 2",
+                    date: schedDate
+                });
+            }
+            if (s.cbs_conductor_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Dirigente do Estudo Bíblico",
+                    title: "Estudo Bíblico de Congregação",
+                    date: schedDate
+                });
+            }
+            if (s.cbs_reader_id === publisher_id) {
+                midweekGeneralAssignments.push({
+                    role: "Leitor do Estudo Bíblico",
+                    title: "Estudo Bíblico de Congregação",
+                    date: schedDate
+                });
             }
         }
-        catch (err) {
-            console.error("Error fetching midweek general assignments:", err);
-        }
-        // 8️⃣ Partes de Estudantes / Ministério
+        // 🔹 Mapeia partes de estudantes e discursos do Meio de Semana
+        const midweekParts = await midweekMeetingPartRepository_1.midweekMeetingPartRepository.find({
+            where: [
+                { assigned_publisher_id: publisher_id, isActive: true },
+                { assistant_publisher_id: publisher_id, isActive: true }
+            ],
+            relations: [
+                "schedule",
+                "schedule.congregation",
+                "assignedPublisher",
+                "assistantPublisher"
+            ]
+        });
         const midweekPartAssignments = [];
-        try {
-            const midweekParts = await midweekMeetingPartRepository_1.midweekMeetingPartRepository.find({
-                where: [
-                    { assigned_publisher_id: publisher_id, isActive: true },
-                    { assistant_publisher_id: publisher_id, isActive: true }
-                ],
-                relations: [
-                    "schedule",
-                    "schedule.congregation",
-                    "assignedPublisher",
-                    "assistantPublisher"
-                ]
-            });
-            for (const part of midweekParts) {
-                if (!part.schedule)
-                    continue;
-                if (part.schedule.isSpecial && part.schedule.specialType !== "NONE" && part.schedule.specialType !== "CIRCUIT_OVERSEER_VISIT") {
-                    continue;
-                }
-                if (part.partType === "CBS" || ((_b = part.title) === null || _b === void 0 ? void 0 : _b.toLowerCase().includes("estudo bíblico"))) {
-                    continue;
-                }
-                const partDate = getMidweekMeetingDate(part.schedule.weekDate, part.schedule.meetingDate, part.schedule.congregation);
-                if (partDate < todayStr)
-                    continue;
-                const roomName = part.room === "AUXILIARY_1" ? "Sala Auxiliar 1" : part.room === "AUXILIARY_2" ? "Sala Auxiliar 2" : "Sala Principal";
-                if (part.assigned_publisher_id === publisher_id) {
-                    const asstName = ((_c = part.assistantPublisher) === null || _c === void 0 ? void 0 : _c.nickname) || ((_d = part.assistantPublisher) === null || _d === void 0 ? void 0 : _d.fullName);
-                    midweekPartAssignments.push({
-                        role: "Meio de Semana",
-                        title: part.title,
-                        room: roomName,
-                        partner: asstName || undefined,
-                        date: partDate,
-                        section: part.section,
-                        timeMinutes: part.timeMinutes,
-                        partType: part.partType
-                    });
-                }
-                if (part.assistant_publisher_id === publisher_id) {
-                    const studentName = ((_e = part.assignedPublisher) === null || _e === void 0 ? void 0 : _e.nickname) || ((_f = part.assignedPublisher) === null || _f === void 0 ? void 0 : _f.fullName);
-                    midweekPartAssignments.push({
-                        role: "Ajudante (Meio de Semana)",
-                        title: part.title,
-                        room: roomName,
-                        partner: studentName || undefined,
-                        date: partDate,
-                        section: part.section,
-                        timeMinutes: part.timeMinutes,
-                        partType: part.partType
-                    });
-                }
+        for (const part of midweekParts) {
+            if (!part.schedule)
+                continue;
+            if (part.schedule.isSpecial && part.schedule.specialType !== "NONE" && part.schedule.specialType !== "CIRCUIT_OVERSEER_VISIT") {
+                continue;
             }
-        }
-        catch (err) {
-            console.error("Error fetching midweek parts assignments:", err);
+            if (part.partType === "CBS" || ((_a = part.title) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes("estudo bíblico"))) {
+                continue;
+            }
+            const partDate = getMidweekMeetingDate(part.schedule.weekDate, part.schedule.meetingDate, part.schedule.congregation);
+            if (partDate < todayStr)
+                continue;
+            const roomName = part.room === "AUXILIARY_1" ? "Sala Auxiliar 1" : part.room === "AUXILIARY_2" ? "Sala Auxiliar 2" : "Sala Principal";
+            if (part.assigned_publisher_id === publisher_id) {
+                const asstName = ((_b = part.assistantPublisher) === null || _b === void 0 ? void 0 : _b.nickname) || ((_c = part.assistantPublisher) === null || _c === void 0 ? void 0 : _c.fullName);
+                midweekPartAssignments.push({
+                    role: "Meio de Semana",
+                    title: part.title,
+                    room: roomName,
+                    partner: asstName || undefined,
+                    date: partDate,
+                    section: part.section,
+                    timeMinutes: part.timeMinutes,
+                    partType: part.partType
+                });
+            }
+            if (part.assistant_publisher_id === publisher_id) {
+                const studentName = ((_d = part.assignedPublisher) === null || _d === void 0 ? void 0 : _d.nickname) || ((_e = part.assignedPublisher) === null || _e === void 0 ? void 0 : _e.fullName);
+                midweekPartAssignments.push({
+                    role: "Ajudante (Meio de Semana)",
+                    title: part.title,
+                    room: roomName,
+                    partner: studentName || undefined,
+                    date: partDate,
+                    section: part.section,
+                    timeMinutes: part.timeMinutes,
+                    partType: part.partType
+                });
+            }
         }
         const allAssignments = [
             ...assignments,
@@ -651,6 +597,7 @@ class PublisherControler {
             ...midweekGeneralAssignments,
             ...midweekPartAssignments
         ];
+        // 🔹 Ordena por data
         allAssignments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         return res.status(200).json(allAssignments);
     }

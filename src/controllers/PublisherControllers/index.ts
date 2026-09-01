@@ -7,10 +7,10 @@ import { HospitalityGroup } from "../../entities/HospitalityGroup."
 import { Publisher } from "../../entities/Publisher"
 import { Speaker } from "../../entities/Speaker"
 import { User } from "../../entities/User"
+import { convertMeetingDayPortugueseToIso } from "../../functions/cleaningFunctions"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
 import { privilegePTtoEN, translatePrivilegesPTToEN } from "../../helpers/privilegesTranslations"
-import { convertMeetingDayPortugueseToIso } from "../../functions/cleaningFunctions"
 import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { emergencyContactRepository } from "../../repositories/emergencyContact"
@@ -366,7 +366,6 @@ class PublisherControler {
       relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
       order: { date: "ASC" }
     })
-    const todayStr = dayjs().format("YYYY-MM-DD")
 
     const cleaningSchedules = await cleaningScheduleRepository.find({
       where: {
@@ -385,18 +384,6 @@ class PublisherControler {
         date: "ASC"
       }
     });
-    // 1️⃣ Designações de Reunião de Fim de Semana
-    let assignments: UnifiedAssignment[] = []
-    try {
-      const assignmentsMeeting = await weekendScheduleRepository.find({
-        where: [
-          { chairman: { id: publisher_id }, date: MoreThanOrEqual(todayStr) },
-          { reader: { id: publisher_id }, date: MoreThanOrEqual(todayStr) },
-          { speaker: { publisher: { id: publisher_id } }, date: MoreThanOrEqual(todayStr) },
-        ],
-        relations: ["chairman", "reader", "speaker", "speaker.publisher", "talk", "congregation"],
-        order: { date: "ASC" }
-      })
 
     const publicWitnessAssignments =
       await publicWitnessAssignmentRepository
@@ -413,20 +400,12 @@ class PublisherControler {
         })
         .orderBy("pw.date", "ASC")
         .getMany()
-      const pubCongId = publisher.congregation?.id
 
 
     const hospitality = await hospitalityAssignmentRepository.find({
       where: {
         weekend: {
           date: MoreThanOrEqual(dayjs().format("YYYY-MM-DD"))
-      assignments = assignmentsMeeting.map((s) => {
-        const sCongId = s.congregation?.id
-        if (s.chairman?.id === publisher_id && sCongId && pubCongId && sCongId === pubCongId) {
-          return {
-            role: "Presidente",
-            date: s.date,
-          }
         }
       },
       relations: ['group', 'group.members', 'group.host', 'weekend']
@@ -437,102 +416,34 @@ class PublisherControler {
         speaker: {
           publisher: {
             id: publisher_id
-        if (s.reader?.id === publisher_id && sCongId && pubCongId && sCongId === pubCongId) {
-          return {
-            role: "Leitor",
-            date: s.date,
           }
         },
         date: MoreThanOrEqual(dayjs().format("YYYY-MM-DD"))
       },
       relations: ['destinationCongregation', 'talk']
     })
-        }
-        if (s.speaker?.publisher?.id === publisher_id) {
-          return {
-            role: "Orador",
-            date: s.date,
-            destinationCongregation: s.congregation ? {
-              name: s.congregation.name,
-              city: s.congregation.city,
-              address: s.congregation.address,
-              latitude: s.congregation.latitude,
-              longitude: s.congregation.longitude,
-              dayMeetingPublic: s.congregation.dayMeetingPublic,
-              hourMeetingPublic: s.congregation.hourMeetingPublic,
-            } : undefined,
-            talk: s.talk ? { number: s.talk.number, title: s.talk.title } : null,
-          }
-        }
 
     const fieldServiceRotationAssignments =
       await fieldServiceScheduleRepository.find({
-        return undefined
-      }).filter(Boolean) as UnifiedAssignment[]
-    } catch (err) {
-      console.error("Error fetching weekend assignments:", err)
-    }
-
-    // 2️⃣ Designações de Limpeza
-    let cleaningAssignments: UnifiedAssignment[] = []
-    try {
-      const cleaningSchedules = await cleaningScheduleRepository.find({
         where: {
           leader: { id: publisher_id },
           date: MoreThanOrEqual(dayjs().format("YYYY-MM-DD")),
-          date: MoreThanOrEqual(todayStr),
-          group: {
-            publishers: {
-              id: publisher_id
-            }
-          }
         },
-        relations: [
-          "group",
-          "group.publishers"
-        ],
         order: {
           date: "ASC",
         },
         relations: ["template", "leader"],
       })
-          date: "ASC"
-        }
-      });
 
-      cleaningAssignments = cleaningSchedules.map((c) => ({
-        role: "Limpeza do Salão",
-        date: c.date
-      }));
-    } catch (err) {
-      console.error("Error fetching cleaning assignments:", err)
-    }
 
     const filteredHospitality = hospitality.filter(h =>
       // Verifica se o publisher é host OU membro do grupo
       h.group?.host?.id === publisher_id ||
       h.group?.members?.some(member => member.id === publisher_id)
     )
-    // 3️⃣ Testemunho Público
-    let publicWitnessMapped: UnifiedAssignment[] = []
-    try {
-      const publicWitnessAssignments =
-        await publicWitnessAssignmentRepository
-          .createQueryBuilder("pw")
-          .innerJoin("pw.publishers", "pp")
-          .innerJoin("pp.publisher", "publisherFilter")
-          .leftJoinAndSelect("pw.publishers", "allPublishers")
-          .leftJoinAndSelect("allPublishers.publisher", "publisher")
-          .leftJoinAndSelect("pw.timeSlot", "timeSlot")
-          .leftJoinAndSelect("timeSlot.arrangement", "arrangement")
-          .where("publisherFilter.id = :publisher_id", { publisher_id })
-          .andWhere("pw.date >= :today", { today: todayStr })
-          .orderBy("pw.date", "ASC")
-          .getMany()
 
     const publicWitnessMapped: UnifiedAssignment[] =
       publicWitnessAssignments.map(pw => ({
-      publicWitnessMapped = publicWitnessAssignments.map(pw => ({
         role: "Testemunho Público",
         date: pw.date,
         title: pw.timeSlot.arrangement.title,
@@ -541,29 +452,9 @@ class PublisherControler {
         publishers: pw.publishers.map(p => ({
           id: p.publisher.id,
           name: p.publisher.nickname ?? p.publisher.fullName ?? "-"
-        title: pw.timeSlot?.arrangement?.title,
-        start_time: pw.timeSlot?.start_time,
-        end_time: pw.timeSlot?.end_time,
-        publishers: (pw.publishers || []).map(p => ({
-          id: p.publisher?.id,
-          name: p.publisher?.nickname ?? p.publisher?.fullName ?? "-"
         }))
       }))
-    } catch (err) {
-      console.error("Error fetching public witness assignments:", err)
-    }
 
-    // 4️⃣ Hospitalidade
-    let hospitalityAssignments: UnifiedAssignment[] = []
-    try {
-      const hospitality = await hospitalityAssignmentRepository.find({
-        where: {
-          weekend: {
-            date: MoreThanOrEqual(todayStr)
-          }
-        },
-        relations: ['group', 'group.members', 'group.host', 'weekend']
-      })
 
     // 4️⃣ Mapeia as designações de hospitalidade
     const hospitalityAssignments = filteredHospitality.map((h) => ({
@@ -575,19 +466,17 @@ class PublisherControler {
         name: h.group?.name,
       },
     }))
-      const filteredHospitality = hospitality.filter(h =>
-        h.group?.host?.id === publisher_id ||
-        h.group?.members?.some(member => member.id === publisher_id)
-      )
 
     const assignments = assignmentsMeeting.map((s) => {
-      if (s.chairman?.id === publisher_id && s.congregation.id === publisher.congregation.id) {
+      const pubCongId = publisher.congregation?.id;
+      const sCongId = s.congregation?.id;
+      if (s.chairman?.id === publisher_id && sCongId && pubCongId && sCongId === pubCongId) {
         return {
           role: "Presidente",
           date: s.date,
         }
       }
-      if (s.reader?.id === publisher_id && s.congregation.id === publisher.congregation.id) {
+      if (s.reader?.id === publisher_id && sCongId && pubCongId && sCongId === pubCongId) {
         return {
           role: "Leitor",
           date: s.date,
@@ -601,88 +490,23 @@ class PublisherControler {
           talk: s.talk ? { number: s.talk.number, title: s.talk.title } : null,
         }
       }
-      hospitalityAssignments = filteredHospitality.map((h) => ({
-        role: h.group?.host?.id === publisher_id ? "Anfitrião" : "Hospitalidade",
-        eventType: h.eventType,
-        date: h.weekend?.date || todayStr,
-        group: {
-          id: h.group?.id,
-          name: h.group?.name,
-        },
-      }))
-    } catch (err) {
-      console.error("Error fetching hospitality assignments:", err)
-    }
 
       return undefined
     }).filter(Boolean)
-    // 5️⃣ Discursos Externos
-    let externalAssignments: UnifiedAssignment[] = []
-    try {
-      const externalTalks = await externalTalkRepository.find({
-        where: {
-          speaker: {
-            publisher: {
-              id: publisher_id
-            }
-          },
-          date: MoreThanOrEqual(todayStr)
-        },
-        relations: ['destinationCongregation', 'talk']
-      })
 
     // 🔹 Mapeia designações de limpeza
     const cleaningAssignments = cleaningSchedules.map((c) => ({
       role: "Limpeza do Salão",
       date: c.date
     }));
-      externalAssignments = externalTalks.map(e => ({
-        role: "Discurso Externo",
-        date: e.date,
-        status: e.status,
-        talk: e.talk ? e.talk : e.manualTalk,
-        destinationCongregation: e.destinationCongregation ? {
-          name: e.destinationCongregation.name,
-          city: e.destinationCongregation.city,
-          address: e.destinationCongregation.address,
-          latitude: e.destinationCongregation.latitude,
-          longitude: e.destinationCongregation.longitude,
-          dayMeetingPublic: e.destinationCongregation.dayMeetingPublic,
-          hourMeetingPublic: e.destinationCongregation.hourMeetingPublic,
-        } : undefined
-      }))
-    } catch (err) {
-      console.error("Error fetching external talks:", err)
-    }
 
     const fieldServiceRotationMapped: UnifiedAssignment[] =
       fieldServiceRotationAssignments.map(fs => ({
-    // 6️⃣ Saídas de Campo
-    let fieldServiceRotationMapped: UnifiedAssignment[] = []
-    try {
-      const fieldServiceRotationAssignments =
-        await fieldServiceScheduleRepository.find({
-          where: {
-            leader: { id: publisher_id },
-            date: MoreThanOrEqual(todayStr),
-          },
-          order: {
-            date: "ASC",
-          },
-          relations: ["template", "leader"],
-        })
-
-      fieldServiceRotationMapped = fieldServiceRotationAssignments.map(fs => ({
         role: "Dirigente de Campo",
         date: fs.date,
         fieldServiceHour: fs.template.time,
         fieldServiceLocation: fs.template.location,
-        fieldServiceHour: fs.template?.time,
-        fieldServiceLocation: fs.template?.location,
       }))
-    } catch (err) {
-      console.error("Error fetching field service assignments:", err)
-    }
 
     // 🔹 Mapeia designações externas
     const externalAssignments = externalTalks.map(e => ({
@@ -690,21 +514,19 @@ class PublisherControler {
       date: e.date,
       status: e.status,
       talk: e.talk ? e.talk : e.manualTalk,
-      destinationCongregation: {
+      destinationCongregation: e.destinationCongregation ? {
         name: e.destinationCongregation?.name,
         city: e.destinationCongregation?.city,
-        address: e.destinationCongregation.address,
+        address: e.destinationCongregation?.address,
         latitude: e.destinationCongregation?.latitude,
         longitude: e.destinationCongregation?.longitude,
         dayMeetingPublic: e.destinationCongregation?.dayMeetingPublic,
         hourMeetingPublic: e.destinationCongregation?.hourMeetingPublic,
-      }
     }))
 
     // 🔹 Mapeia designações da Reunião de Meio de Semana (Funções Gerais)
     const todayStr = dayjs().format("YYYY-MM-DD")
 
-    // 7️⃣ Reunião de Meio de Semana
     const getMidweekMeetingDate = (weekDate: string, explicitMeetingDate?: string | null, cong?: any | null) => {
       if (explicitMeetingDate && explicitMeetingDate !== weekDate) {
         return explicitMeetingDate;
@@ -740,27 +562,6 @@ class PublisherControler {
 
     const midweekGeneralAssignments: UnifiedAssignment[] = []
     const uniqueMidweekSchedules = Array.from(new Map(midweekSchedules.map(s => [s.id, s])).values())
-    try {
-      const midweekSchedules = await midweekScheduleRepository.find({
-        where: [
-          { chairman_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-          { chairman_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-          { opening_prayer_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-          { opening_prayer_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-          { closing_prayer_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-          { closing_prayer_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-          { aux_counselor_1_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-          { aux_counselor_1_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-          { aux_counselor_2_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-          { aux_counselor_2_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-          { cbs_conductor_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-          { cbs_conductor_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-          { cbs_reader_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-          { cbs_reader_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-        ],
-        relations: ["congregation"],
-        order: { meetingDate: "ASC" }
-      })
 
     for (const s of uniqueMidweekSchedules) {
       if (s.isSpecial && s.specialType !== "NONE" && s.specialType !== "CIRCUIT_OVERSEER_VISIT") {
@@ -768,7 +569,6 @@ class PublisherControler {
       }
       const schedDate = getMidweekMeetingDate(s.weekDate, s.meetingDate, s.congregation);
       if (schedDate < todayStr) continue
-      const uniqueMidweekSchedules = Array.from(new Map(midweekSchedules.map(s => [s.id, s])).values())
 
       if (s.chairman_id === publisher_id) {
         midweekGeneralAssignments.push({
@@ -776,64 +576,6 @@ class PublisherControler {
           title: "Reunião de Meio de Semana",
           date: schedDate
         })
-      for (const s of uniqueMidweekSchedules) {
-        if (s.isSpecial && s.specialType !== "NONE" && s.specialType !== "CIRCUIT_OVERSEER_VISIT") {
-          continue
-        }
-        const schedDate = getMidweekMeetingDate(s.weekDate, s.meetingDate, s.congregation);
-        if (schedDate < todayStr) continue
-
-        if (s.chairman_id === publisher_id) {
-          midweekGeneralAssignments.push({
-            role: "Presidente",
-            title: "Reunião de Meio de Semana",
-            date: schedDate
-          })
-        }
-        if (s.opening_prayer_id === publisher_id) {
-          midweekGeneralAssignments.push({
-            role: "Oração Inicial",
-            title: "Reunião de Meio de Semana",
-            date: schedDate
-          })
-        }
-        if (s.closing_prayer_id === publisher_id) {
-          midweekGeneralAssignments.push({
-            role: "Oração Final",
-            title: "Reunião de Meio de Semana",
-            date: schedDate
-          })
-        }
-        if (s.aux_counselor_1_id === publisher_id) {
-          midweekGeneralAssignments.push({
-            role: "Conselheiro",
-            title: "Sala Auxiliar 1",
-            room: "Sala Auxiliar 1",
-            date: schedDate
-          })
-        }
-        if (s.aux_counselor_2_id === publisher_id) {
-          midweekGeneralAssignments.push({
-            role: "Conselheiro",
-            title: "Sala Auxiliar 2",
-            room: "Sala Auxiliar 2",
-            date: schedDate
-          })
-        }
-        if (s.cbs_conductor_id === publisher_id) {
-          midweekGeneralAssignments.push({
-            role: "Dirigente do Estudo Bíblico",
-            title: "Estudo Bíblico de Congregação",
-            date: schedDate
-          })
-        }
-        if (s.cbs_reader_id === publisher_id) {
-          midweekGeneralAssignments.push({
-            role: "Leitor do Estudo Bíblico",
-            title: "Estudo Bíblico de Congregação",
-            date: schedDate
-          })
-        }
       }
       if (s.opening_prayer_id === publisher_id) {
         midweekGeneralAssignments.push({
@@ -879,8 +621,6 @@ class PublisherControler {
           date: schedDate
         })
       }
-    } catch (err) {
-      console.error("Error fetching midweek general assignments:", err)
     }
 
     // 🔹 Mapeia partes de estudantes e discursos do Meio de Semana
@@ -897,7 +637,6 @@ class PublisherControler {
       ]
     })
 
-    // 8️⃣ Partes de Estudantes / Ministério
     const midweekPartAssignments: UnifiedAssignment[] = []
     for (const part of midweekParts) {
       if (!part.schedule) continue
@@ -906,31 +645,8 @@ class PublisherControler {
       }
       const partDate = getMidweekMeetingDate(part.schedule.weekDate, part.schedule.meetingDate, part.schedule.congregation);
       if (partDate < todayStr) continue
-    try {
-      const midweekParts = await midweekMeetingPartRepository.find({
-        where: [
-          { assigned_publisher_id: publisher_id, isActive: true },
-          { assistant_publisher_id: publisher_id, isActive: true }
-        ],
-        relations: [
-          "schedule",
-          "schedule.congregation",
-          "assignedPublisher",
-          "assistantPublisher"
-        ]
-      })
 
       const roomName = part.room === "AUXILIARY_1" ? "Sala Auxiliar 1" : part.room === "AUXILIARY_2" ? "Sala Auxiliar 2" : "Sala Principal"
-      for (const part of midweekParts) {
-        if (!part.schedule) continue
-        if (part.schedule.isSpecial && part.schedule.specialType !== "NONE" && part.schedule.specialType !== "CIRCUIT_OVERSEER_VISIT") {
-          continue
-        }
-        if (part.partType === "CBS" || part.title?.toLowerCase().includes("estudo bíblico")) {
-          continue
-        }
-        const partDate = getMidweekMeetingDate(part.schedule.weekDate, part.schedule.meetingDate, part.schedule.congregation);
-        if (partDate < todayStr) continue
 
       if (part.assigned_publisher_id === publisher_id) {
         const asstName = part.assistantPublisher?.nickname || part.assistantPublisher?.fullName
@@ -945,7 +661,6 @@ class PublisherControler {
           partType: part.partType
         })
       }
-        const roomName = part.room === "AUXILIARY_1" ? "Sala Auxiliar 1" : part.room === "AUXILIARY_2" ? "Sala Auxiliar 2" : "Sala Principal"
 
       if (part.assistant_publisher_id === publisher_id) {
         const studentName = part.assignedPublisher?.nickname || part.assignedPublisher?.fullName
@@ -959,36 +674,7 @@ class PublisherControler {
           timeMinutes: part.timeMinutes,
           partType: part.partType
         })
-        if (part.assigned_publisher_id === publisher_id) {
-          const asstName = part.assistantPublisher?.nickname || part.assistantPublisher?.fullName
-          midweekPartAssignments.push({
-            role: "Meio de Semana",
-            title: part.title,
-            room: roomName,
-            partner: asstName || undefined,
-            date: partDate,
-            section: part.section,
-            timeMinutes: part.timeMinutes,
-            partType: part.partType
-          })
-        }
-
-        if (part.assistant_publisher_id === publisher_id) {
-          const studentName = part.assignedPublisher?.nickname || part.assignedPublisher?.fullName
-          midweekPartAssignments.push({
-            role: "Ajudante (Meio de Semana)",
-            title: part.title,
-            room: roomName,
-            partner: studentName || undefined,
-            date: partDate,
-            section: part.section,
-            timeMinutes: part.timeMinutes,
-            partType: part.partType
-          })
-        }
       }
-    } catch (err) {
-      console.error("Error fetching midweek parts assignments:", err)
     }
 
     const allAssignments: UnifiedAssignment[] = [
@@ -997,11 +683,6 @@ class PublisherControler {
       ...externalAssignments as UnifiedAssignment[],
       ...cleaningAssignments as UnifiedAssignment[],
       ...fieldServiceRotationMapped as UnifiedAssignment[],
-      ...assignments,
-      ...hospitalityAssignments,
-      ...externalAssignments,
-      ...cleaningAssignments,
-      ...fieldServiceRotationMapped,
       ...publicWitnessMapped,
       ...midweekGeneralAssignments,
       ...midweekPartAssignments
