@@ -90,6 +90,16 @@ class FamilyController {
                 throw new NotFoundError("Responsible publisher not found");
         }
 
+        // Garantir que o responsável também esteja nos members (para receber family_id)
+        if (responsiblePublisher && !members.some(m => m.id === responsiblePublisher.id)) {
+            members.push(responsiblePublisher);
+        if (responsiblePublisher) {
+            const respId = responsiblePublisher.id;
+            if (!members.some(m => m.id === respId)) {
+                members.push(responsiblePublisher);
+            }
+        }
+
         const newFamily = familyRepository.create({
             name,
             congregation,
@@ -181,6 +191,16 @@ class FamilyController {
                 : [];
 
             family.members = members;
+        }
+
+        // Garantir que o responsável também esteja nos members (para receber family_id)
+        if (family.responsible && !family.members.some(m => m.id === family.responsible!.id)) {
+            family.members.push(family.responsible);
+        if (family.responsible) {
+            const respId = family.responsible.id;
+            if (!family.members.some(m => m.id === respId)) {
+                family.members.push(family.responsible);
+            }
         }
 
         await familyRepository.save(family);

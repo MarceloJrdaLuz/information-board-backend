@@ -432,7 +432,7 @@ class PublisherControler {
                     longitude: (_e = e.destinationCongregation) === null || _e === void 0 ? void 0 : _e.longitude,
                     dayMeetingPublic: (_f = e.destinationCongregation) === null || _f === void 0 ? void 0 : _f.dayMeetingPublic,
                     hourMeetingPublic: (_g = e.destinationCongregation) === null || _g === void 0 ? void 0 : _g.hourMeetingPublic,
-                } : undefined
+                } : null,
             });
         });
         // 🔹 Mapeia designações da Reunião de Meio de Semana (Funções Gerais)
