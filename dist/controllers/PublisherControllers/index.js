@@ -434,6 +434,18 @@ class PublisherControler {
         });
         // 🔹 Mapeia designações da Reunião de Meio de Semana (Funções Gerais)
         const todayStr = (0, dayjs_1.default)().format("YYYY-MM-DD");
+        const getMidweekMeetingDate = (weekDate, explicitMeetingDate, cong) => {
+            var _a;
+            if (explicitMeetingDate && explicitMeetingDate !== weekDate) {
+                return explicitMeetingDate;
+            }
+            const congMeetingDay = (cong === null || cong === void 0 ? void 0 : cong.dayMeetingLifeAndMinistary) || ((_a = publisher.congregation) === null || _a === void 0 ? void 0 : _a.dayMeetingLifeAndMinistary);
+            if (congMeetingDay) {
+                const isoDay = convertMeetingDayPortugueseToIso(congMeetingDay);
+                return (0, dayjs_1.default)(weekDate).add(isoDay - 1, "day").format("YYYY-MM-DD");
+            }
+            return explicitMeetingDate || weekDate;
+        };
         const midweekSchedules = await midweekScheduleRepository_1.midweekScheduleRepository.find({
             where: [
                 { chairman_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
@@ -460,7 +472,7 @@ class PublisherControler {
             if (s.isSpecial && s.specialType !== "NONE" && s.specialType !== "CIRCUIT_OVERSEER_VISIT") {
                 continue;
             }
-            const schedDate = s.meetingDate || s.weekDate;
+            const schedDate = getMidweekMeetingDate(s.weekDate, s.meetingDate, s.congregation);
             if (schedDate < todayStr)
                 continue;
             if (s.chairman_id === publisher_id) {
@@ -523,6 +535,7 @@ class PublisherControler {
             ],
             relations: [
                 "schedule",
+                "schedule.congregation",
                 "assignedPublisher",
                 "assistantPublisher"
             ]
@@ -534,7 +547,7 @@ class PublisherControler {
             if (part.schedule.isSpecial && part.schedule.specialType !== "NONE" && part.schedule.specialType !== "CIRCUIT_OVERSEER_VISIT") {
                 continue;
             }
-            const partDate = part.schedule.meetingDate || part.schedule.weekDate;
+            const partDate = getMidweekMeetingDate(part.schedule.weekDate, part.schedule.meetingDate, part.schedule.congregation);
             if (partDate < todayStr)
                 continue;
             const roomName = part.room === "AUXILIARY_1" ? "Sala Auxiliar 1" : part.room === "AUXILIARY_2" ? "Sala Auxiliar 2" : "Sala Principal";

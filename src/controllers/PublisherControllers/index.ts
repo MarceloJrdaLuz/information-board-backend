@@ -10,6 +10,7 @@ import { User } from "../../entities/User"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
 import { privilegePTtoEN, translatePrivilegesPTToEN } from "../../helpers/privilegesTranslations"
+import { convertMeetingDayPortugueseToIso } from "../../functions/cleaningFunctions"
 import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { emergencyContactRepository } from "../../repositories/emergencyContact"
@@ -525,6 +526,18 @@ class PublisherControler {
     // 🔹 Mapeia designações da Reunião de Meio de Semana (Funções Gerais)
     const todayStr = dayjs().format("YYYY-MM-DD")
 
+    const getMidweekMeetingDate = (weekDate: string, explicitMeetingDate?: string | null, cong?: any | null) => {
+      if (explicitMeetingDate && explicitMeetingDate !== weekDate) {
+        return explicitMeetingDate;
+      }
+      const congMeetingDay = cong?.dayMeetingLifeAndMinistary || publisher.congregation?.dayMeetingLifeAndMinistary;
+      if (congMeetingDay) {
+        const isoDay = convertMeetingDayPortugueseToIso(congMeetingDay);
+        return dayjs(weekDate).add(isoDay - 1, "day").format("YYYY-MM-DD");
+      }
+      return explicitMeetingDate || weekDate;
+    };
+
     const midweekSchedules = await midweekScheduleRepository.find({
       where: [
         { chairman_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
@@ -553,7 +566,7 @@ class PublisherControler {
       if (s.isSpecial && s.specialType !== "NONE" && s.specialType !== "CIRCUIT_OVERSEER_VISIT") {
         continue
       }
-      const schedDate = s.meetingDate || s.weekDate
+      const schedDate = getMidweekMeetingDate(s.weekDate, s.meetingDate, s.congregation);
       if (schedDate < todayStr) continue
 
       if (s.chairman_id === publisher_id) {
@@ -617,6 +630,7 @@ class PublisherControler {
       ],
       relations: [
         "schedule",
+        "schedule.congregation",
         "assignedPublisher",
         "assistantPublisher"
       ]
@@ -628,7 +642,7 @@ class PublisherControler {
       if (part.schedule.isSpecial && part.schedule.specialType !== "NONE" && part.schedule.specialType !== "CIRCUIT_OVERSEER_VISIT") {
         continue
       }
-      const partDate = part.schedule.meetingDate || part.schedule.weekDate
+      const partDate = getMidweekMeetingDate(part.schedule.weekDate, part.schedule.meetingDate, part.schedule.congregation);
       if (partDate < todayStr) continue
 
       const roomName = part.room === "AUXILIARY_1" ? "Sala Auxiliar 1" : part.room === "AUXILIARY_2" ? "Sala Auxiliar 2" : "Sala Principal"
