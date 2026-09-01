@@ -210,25 +210,6 @@ class MidweekXmlParserService {
                     sched.songEnd = savedWeek.songEnd;
                     await transactionalEntityManager.save(MidweekSchedule_1.MidweekSchedule, sched);
                     if (sched.parts && sched.parts.length > 0) {
-                        // Limpa partes duplicadas de 'O que você diria' que foram criadas em importações anteriores
-                        const wwysParts = sched.parts.filter(mp => mp.partType === MidweekWorkbookPart_1.MidweekPartType.WHAT_WOULD_YOU_SAY ||
-                            mp.title.toLowerCase().includes("o que você diria") ||
-                            mp.title.toLowerCase().includes("o que voce diria"));
-                        if (wwysParts.length > 1) {
-                            const keepPart = wwysParts.find(p => p.assigned_publisher_id) ||
-                                wwysParts.find(p => p.partType === MidweekWorkbookPart_1.MidweekPartType.WHAT_WOULD_YOU_SAY) ||
-                                wwysParts[0];
-                            for (const extraPart of wwysParts) {
-                                if (extraPart.id !== keepPart.id) {
-                                    await transactionalEntityManager.remove(MidweekMeetingPart_1.MidweekMeetingPart, extraPart);
-                                    sched.parts = sched.parts.filter(p => p.id !== extraPart.id);
-                                }
-                            }
-                            keepPart.partType = MidweekWorkbookPart_1.MidweekPartType.WHAT_WOULD_YOU_SAY;
-                            keepPart.title = "O que você diria?";
-                            keepPart.method = "Consideração com a assistência";
-                            keepPart.requiresAssistant = false;
-                        }
                         // Sincroniza cada seção de forma ordenada por posição relativa
                         for (const section of [MidweekWorkbookPart_1.MidweekSection.TREASURES, MidweekWorkbookPart_1.MidweekSection.MINISTRY, MidweekWorkbookPart_1.MidweekSection.LIVING]) {
                             const sectionWbParts = partsToInsert
