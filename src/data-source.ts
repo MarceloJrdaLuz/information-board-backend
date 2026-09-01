@@ -35,6 +35,10 @@ export const AppDataSource = new DataSource({
         : [join(__dirname, '../dist/**/migrations/*.{ts,js}')],
     extra: {
         max: 10, // limite de conexões no pool
+        max: 5, // limite enxuto de conexões por instância
+        min: 1,
+        idleTimeoutMillis: 10000, // fecha conexões ociosas após 10s
+        connectionTimeoutMillis: 10000, // timeout de 10s para adquirir conexão
     },
 });
 
