@@ -305,7 +305,8 @@ class MidweekScheduleService {
     async duplicateStudentPartsForRoom(scheduleId, congregationId, targetRoom) {
         const schedule = await this.getScheduleById(scheduleId, congregationId);
         const mainStudentParts = schedule.parts.filter(p => (p.section === MidweekWorkbookPart_1.MidweekSection.MINISTRY || p.partType === MidweekWorkbookPart_1.MidweekPartType.BIBLE_READING) &&
-            p.room === MidweekMeetingPart_1.MidweekRoom.MAIN);
+            p.room === MidweekMeetingPart_1.MidweekRoom.MAIN &&
+            p.partType !== MidweekWorkbookPart_1.MidweekPartType.WHAT_WOULD_YOU_SAY);
         const createdParts = [];
         for (const mainPart of mainStudentParts) {
             const exists = schedule.parts.some(p => p.room === targetRoom && p.orderIndex === mainPart.orderIndex && p.title === mainPart.title);

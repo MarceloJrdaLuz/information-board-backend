@@ -314,7 +314,8 @@ export class MidweekScheduleService {
 
         const mainStudentParts = schedule.parts.filter(
             p => (p.section === MidweekSection.MINISTRY || p.partType === MidweekPartType.BIBLE_READING) &&
-                 p.room === MidweekRoom.MAIN
+                 p.room === MidweekRoom.MAIN &&
+                 p.partType !== MidweekPartType.WHAT_WOULD_YOU_SAY
         );
 
         const createdParts: MidweekMeetingPart[] = [];
