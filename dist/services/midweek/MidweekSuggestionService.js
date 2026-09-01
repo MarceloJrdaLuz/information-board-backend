@@ -31,7 +31,6 @@ class MidweekSuggestionService {
                 targetPublisherGender = student.gender;
                 targetPublisherFamilyId = ((_a = student.family) === null || _a === void 0 ? void 0 : _a.id) || null;
             }
-            console.log("student family:", student === null || student === void 0 ? void 0 : student.family, "targetFamilyId:", targetPublisherFamilyId);
         }
         const meetingDate = part.schedule.meetingDate || part.schedule.weekDate;
         return await this.calculateSuggestions({

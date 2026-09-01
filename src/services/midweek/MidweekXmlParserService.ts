@@ -1,5 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { AppDataSource } from "../../data-source";
+import { MidweekMeetingPart } from "../../entities/MidweekMeetingPart";
+import { MidweekSchedule } from "../../entities/MidweekSchedule";
 import { MidweekPartType, MidweekSection, MidweekWorkbookPart } from "../../entities/MidweekWorkbookPart";
 import { MidweekWorkbookWeek } from "../../entities/MidweekWorkbookWeek";
 
@@ -250,6 +252,66 @@ export class MidweekXmlParserService {
                 if (partsToInsert.length > 0) {
                     await transactionalEntityManager.save(MidweekWorkbookPart, partsToInsert);
                     totalPartsCount += partsToInsert.length;
+                }
+
+                // Sincroniza metadados (prompts com acentuação correta, temas, ordem) nas congregações que já abriram a semana, preservando 100% os publicadores designados
+                const existingSchedules = await transactionalEntityManager.find(MidweekSchedule, {
+                    where: { weekDate: savedWeek.weekDate },
+                    relations: ["parts"]
+                });
+
+                for (const sched of existingSchedules) {
+                    sched.weeklyBibleReading = savedWeek.weeklyBibleReading;
+                    sched.watchtowerStudyTheme = savedWeek.watchtowerStudyTheme;
+                    sched.songOpen = savedWeek.songOpen;
+                    sched.songMiddle = savedWeek.songMiddle;
+                    sched.songEnd = savedWeek.songEnd;
+                    await transactionalEntityManager.save(MidweekSchedule, sched);
+
+                    if (sched.parts && sched.parts.length > 0) {
+                        // Limpa partes duplicadas de 'O que você diria' que foram criadas em importações anteriores
+                        const wwysParts = sched.parts.filter(mp =>
+                            mp.partType === MidweekPartType.WHAT_WOULD_YOU_SAY ||
+                            mp.title.toLowerCase().includes("o que você diria") ||
+                            mp.title.toLowerCase().includes("o que voce diria")
+                        );
+
+                        if (wwysParts.length > 1) {
+                            const keepPart = wwysParts.find(p => p.assigned_publisher_id) ||
+                                             wwysParts.find(p => p.partType === MidweekPartType.WHAT_WOULD_YOU_SAY) ||
+                                             wwysParts[0];
+
+                            for (const extraPart of wwysParts) {
+                                if (extraPart.id !== keepPart.id) {
+                                    await transactionalEntityManager.remove(MidweekMeetingPart, extraPart);
+                                    sched.parts = sched.parts.filter(p => p.id !== extraPart.id);
+                                }
+                            }
+                            keepPart.partType = MidweekPartType.WHAT_WOULD_YOU_SAY;
+                            keepPart.title = "O que você diria?";
+                            keepPart.method = "Consideração com a assistência";
+                            keepPart.requiresAssistant = false;
+                        }
+
+                        for (const wbPart of partsToInsert) {
+                            const filteredParts = sched.parts.filter(mp =>
+                                mp.partType === wbPart.partType &&
+                                mp.partType !== MidweekPartType.CUSTOM &&
+                                !mp.title.toLowerCase().includes("discurso de serviço")
+                            );
+                            for (const mp of filteredParts) {
+                                mp.title = wbPart.title;
+                                mp.prompts = wbPart.prompts;
+                                mp.sourceMaterial = wbPart.sourceMaterial;
+                                mp.lessonNumber = wbPart.lessonNumber;
+                                mp.studyPoint = wbPart.studyPoint;
+                                mp.studyPointDescription = wbPart.studyPointDescription;
+                                mp.brochure = wbPart.brochure;
+                                mp.orderIndex = wbPart.orderIndex;
+                                await transactionalEntityManager.save(MidweekMeetingPart, mp);
+                            }
+                        }
+                    }
                 }
             });
 

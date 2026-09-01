@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MidweekXmlParserService = void 0;
 const fast_xml_parser_1 = require("fast-xml-parser");
 const data_source_1 = require("../../data-source");
+const MidweekMeetingPart_1 = require("../../entities/MidweekMeetingPart");
+const MidweekSchedule_1 = require("../../entities/MidweekSchedule");
 const MidweekWorkbookPart_1 = require("../../entities/MidweekWorkbookPart");
 const MidweekWorkbookWeek_1 = require("../../entities/MidweekWorkbookWeek");
 class MidweekXmlParserService {
@@ -104,6 +106,26 @@ class MidweekXmlParserService {
                         partsToInsert.push(bibleReadingPart);
                     }
                 }
+                if (studentSource && studentSource.WhatWouldYouSay && studentSource.WhatWouldYouSay["@_Included"] === "1") {
+                    const wwys = studentSource.WhatWouldYouSay;
+                    const wwysPart = new MidweekWorkbookPart_1.MidweekWorkbookPart();
+                    wwysPart.workbook_week_id = savedWeek.id;
+                    wwysPart.section = MidweekWorkbookPart_1.MidweekSection.MINISTRY;
+                    wwysPart.partType = MidweekWorkbookPart_1.MidweekPartType.WHAT_WOULD_YOU_SAY;
+                    wwysPart.title = wwys.Theme || "O que você diria?";
+                    wwysPart.sourceMaterial = wwys.SourceMaterial || null;
+                    wwysPart.timeMinutes = wwys["@_Time"] ? parseInt(wwys["@_Time"], 10) : 6;
+                    wwysPart.method = "Consideração com a assistência";
+                    wwysPart.requiresAssistant = false;
+                    if (wwys.Prompts && wwys.Prompts.Prompt) {
+                        const promptList = Array.isArray(wwys.Prompts.Prompt) ? wwys.Prompts.Prompt : [wwys.Prompts.Prompt];
+                        wwysPart.prompts = promptList
+                            .filter((p) => p["@_Included"] === "1")
+                            .map((p) => (typeof p === "object" ? p["#text"] || "" : p));
+                    }
+                    wwysPart.orderIndex = order++;
+                    partsToInsert.push(wwysPart);
+                }
                 const assignTypes = weekData.StudentAssignTypes || {};
                 for (let i = 1; i <= 4; i++) {
                     const matKey = `StudentTalk${i}Material`;
@@ -196,6 +218,56 @@ class MidweekXmlParserService {
                 if (partsToInsert.length > 0) {
                     await transactionalEntityManager.save(MidweekWorkbookPart_1.MidweekWorkbookPart, partsToInsert);
                     totalPartsCount += partsToInsert.length;
+                }
+                // Sincroniza metadados (prompts com acentuação correta, temas, ordem) nas congregações que já abriram a semana, preservando 100% os publicadores designados
+                const existingSchedules = await transactionalEntityManager.find(MidweekSchedule_1.MidweekSchedule, {
+                    where: { weekDate: savedWeek.weekDate },
+                    relations: ["parts"]
+                });
+                for (const sched of existingSchedules) {
+                    sched.weeklyBibleReading = savedWeek.weeklyBibleReading;
+                    sched.watchtowerStudyTheme = savedWeek.watchtowerStudyTheme;
+                    sched.songOpen = savedWeek.songOpen;
+                    sched.songMiddle = savedWeek.songMiddle;
+                    sched.songEnd = savedWeek.songEnd;
+                    await transactionalEntityManager.save(MidweekSchedule_1.MidweekSchedule, sched);
+                    if (sched.parts && sched.parts.length > 0) {
+                        // Limpa partes duplicadas de 'O que você diria' que foram criadas em importações anteriores
+                        const wwysParts = sched.parts.filter(mp => mp.partType === MidweekWorkbookPart_1.MidweekPartType.WHAT_WOULD_YOU_SAY ||
+                            mp.title.toLowerCase().includes("o que você diria") ||
+                            mp.title.toLowerCase().includes("o que voce diria"));
+                        if (wwysParts.length > 1) {
+                            const keepPart = wwysParts.find(p => p.assigned_publisher_id) ||
+                                wwysParts.find(p => p.partType === MidweekWorkbookPart_1.MidweekPartType.WHAT_WOULD_YOU_SAY) ||
+                                wwysParts[0];
+                            for (const extraPart of wwysParts) {
+                                if (extraPart.id !== keepPart.id) {
+                                    await transactionalEntityManager.remove(MidweekMeetingPart_1.MidweekMeetingPart, extraPart);
+                                    sched.parts = sched.parts.filter(p => p.id !== extraPart.id);
+                                }
+                            }
+                            keepPart.partType = MidweekWorkbookPart_1.MidweekPartType.WHAT_WOULD_YOU_SAY;
+                            keepPart.title = "O que você diria?";
+                            keepPart.method = "Consideração com a assistência";
+                            keepPart.requiresAssistant = false;
+                        }
+                        for (const wbPart of partsToInsert) {
+                            const filteredParts = sched.parts.filter(mp => mp.partType === wbPart.partType &&
+                                mp.partType !== MidweekWorkbookPart_1.MidweekPartType.CUSTOM &&
+                                !mp.title.toLowerCase().includes("discurso de serviço"));
+                            for (const mp of filteredParts) {
+                                mp.title = wbPart.title;
+                                mp.prompts = wbPart.prompts;
+                                mp.sourceMaterial = wbPart.sourceMaterial;
+                                mp.lessonNumber = wbPart.lessonNumber;
+                                mp.studyPoint = wbPart.studyPoint;
+                                mp.studyPointDescription = wbPart.studyPointDescription;
+                                mp.brochure = wbPart.brochure;
+                                mp.orderIndex = wbPart.orderIndex;
+                                await transactionalEntityManager.save(MidweekMeetingPart_1.MidweekMeetingPart, mp);
+                            }
+                        }
+                    }
                 }
             });
             importedWeeksCount++;

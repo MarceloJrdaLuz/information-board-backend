@@ -49,7 +49,6 @@ export class MidweekSuggestionService {
                 targetPublisherGender = student.gender;
                 targetPublisherFamilyId = student.family?.id || null;
             }
-            console.log("student family:", student?.family, "targetFamilyId:", targetPublisherFamilyId);
         }
 
 
