@@ -11,10 +11,10 @@ const HospitalityGroup_1 = require("../../entities/HospitalityGroup.");
 const Publisher_1 = require("../../entities/Publisher");
 const Speaker_1 = require("../../entities/Speaker");
 const User_1 = require("../../entities/User");
+const cleaningFunctions_1 = require("../../functions/cleaningFunctions");
 const api_errors_1 = require("../../helpers/api-errors");
 const messageErrors_1 = require("../../helpers/messageErrors");
 const privilegesTranslations_1 = require("../../helpers/privilegesTranslations");
-const cleaningFunctions_1 = require("../../functions/cleaningFunctions");
 const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const emergencyContact_1 = require("../../repositories/emergencyContact");
@@ -266,7 +266,7 @@ class PublisherControler {
         return res.status(200).json(publisher);
     }
     async getAssignmentPublisher(req, res) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d;
         const { publisher_id } = req.params;
         const publisher = await publisherRepository_1.publisherRepository.findOne({
             where: {
@@ -410,15 +410,12 @@ class PublisherControler {
             role: "Limpeza do Salão",
             date: c.date
         }));
-        const fieldServiceRotationMapped = fieldServiceRotationAssignments.map(fs => {
-            var _a, _b;
-            return ({
-                role: "Dirigente de Campo",
-                date: fs.date,
-                fieldServiceHour: (_a = fs.template) === null || _a === void 0 ? void 0 : _a.time,
-                fieldServiceLocation: (_b = fs.template) === null || _b === void 0 ? void 0 : _b.location,
-            });
-        });
+        const fieldServiceRotationMapped = fieldServiceRotationAssignments.map(fs => ({
+            role: "Dirigente de Campo",
+            date: fs.date,
+            fieldServiceHour: fs.template.time,
+            fieldServiceLocation: fs.template.location,
+        }));
         // 🔹 Mapeia designações externas
         const externalAssignments = externalTalks.map(e => {
             var _a, _b, _c, _d, _e, _f, _g;
@@ -553,15 +550,12 @@ class PublisherControler {
             if (part.schedule.isSpecial && part.schedule.specialType !== "NONE" && part.schedule.specialType !== "CIRCUIT_OVERSEER_VISIT") {
                 continue;
             }
-            if (part.partType === "CBS" || ((_a = part.title) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes("estudo bíblico"))) {
-                continue;
-            }
             const partDate = getMidweekMeetingDate(part.schedule.weekDate, part.schedule.meetingDate, part.schedule.congregation);
             if (partDate < todayStr)
                 continue;
             const roomName = part.room === "AUXILIARY_1" ? "Sala Auxiliar 1" : part.room === "AUXILIARY_2" ? "Sala Auxiliar 2" : "Sala Principal";
             if (part.assigned_publisher_id === publisher_id) {
-                const asstName = ((_b = part.assistantPublisher) === null || _b === void 0 ? void 0 : _b.nickname) || ((_c = part.assistantPublisher) === null || _c === void 0 ? void 0 : _c.fullName);
+                const asstName = ((_a = part.assistantPublisher) === null || _a === void 0 ? void 0 : _a.nickname) || ((_b = part.assistantPublisher) === null || _b === void 0 ? void 0 : _b.fullName);
                 midweekPartAssignments.push({
                     role: "Meio de Semana",
                     title: part.title,
@@ -574,7 +568,7 @@ class PublisherControler {
                 });
             }
             if (part.assistant_publisher_id === publisher_id) {
-                const studentName = ((_d = part.assignedPublisher) === null || _d === void 0 ? void 0 : _d.nickname) || ((_e = part.assignedPublisher) === null || _e === void 0 ? void 0 : _e.fullName);
+                const studentName = ((_c = part.assignedPublisher) === null || _c === void 0 ? void 0 : _c.nickname) || ((_d = part.assignedPublisher) === null || _d === void 0 ? void 0 : _d.fullName);
                 midweekPartAssignments.push({
                     role: "Ajudante (Meio de Semana)",
                     title: part.title,
