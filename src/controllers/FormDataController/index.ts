@@ -1,16 +1,16 @@
 import { Request, Response } from "express"
 import { CongregationType } from "../../entities/Congregation"
 import { decoder } from "../../middlewares/permissions"
+import { cleaningGroupRepository } from "../../repositories/cleaningGroupRepository"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { externalTalkRepository } from "../../repositories/externalTalkRepository"
+import { familyRepository } from "../../repositories/familyRepository"
+import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupRepository"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { speakerRepository } from "../../repositories/speakerRepository"
 import { talkRepository } from "../../repositories/talkRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
-import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupRepository"
-import { cleaningGroupRepository } from "../../repositories/cleaningGroupRepository"
-import { familyRepository } from "../../repositories/familyRepository"
 
 class FormDataController {
     async getFormData(req: Request, res: Response) {
