@@ -11,6 +11,7 @@ import { speakerRepository } from "../../repositories/speakerRepository"
 import { talkRepository } from "../../repositories/talkRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
+import { midweekWorkbookWeekRepository } from "../../repositories/midweekWorkbookWeekRepository"
 
 class FormDataController {
     async getFormData(req: Request, res: Response) {
@@ -185,8 +186,11 @@ class FormDataController {
                         ...auxiliaryCongregations
                     ]
 
+                    const workbookWeeks = await midweekWorkbookWeekRepository.find({
+                        select: ["weekDate", "watchtowerStudyTheme"]
+                    })
 
-                    return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules })
+                    return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules, workbookWeeks })
                 }
 
                 case "hospitalityGroup": {
