@@ -191,6 +191,7 @@ class FormDataController {
                     })
 
                     return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules, workbookWeeks })
+
                 }
 
                 case "hospitalityGroup": {
