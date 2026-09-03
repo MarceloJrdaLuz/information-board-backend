@@ -49,6 +49,36 @@ function getPairPenalty(
   return penalty
 }
 
+function getGenderNormalized(gender?: string): "M" | "F" {
+  if (!gender) return "M"
+  const g = gender.trim().toLowerCase()
+  if (g.startsWith("f")) return "F"
+  return "M"
+}
+
+/**
+ * Regra: Um homem e uma mulher só podem ficar juntos se forem da mesma família!
+ */
+function areGendersCompatible(
+  pubA: { gender?: string; family_id?: string | null },
+  pubB: { gender?: string; family_id?: string | null }
+): boolean {
+  const genderA = getGenderNormalized(pubA.gender)
+  const genderB = getGenderNormalized(pubB.gender)
+
+  // Mesmo gênero (homem com homem, ou mulher com mulher) -> sempre permitido
+  if (genderA === genderB) return true
+
+  // Gêneros diferentes (homem com mulher):
+  // Somente permitidos se pertencerem comprovadamente à mesma família
+  if (pubA.family_id && pubB.family_id && pubA.family_id === pubB.family_id) {
+    return true
+  }
+
+  // Caso contrário, homem e mulher não podem ficar juntos
+  return false
+}
+
 export async function generatePublicWitnessSchedules({
   arrangement_id,
   startDate,
@@ -329,7 +359,7 @@ export async function generatePublicWitnessSchedules({
   }
 
   /* =========================================================
-   * 10. Geração do Rodízio com Diversificação de Pares
+   * 10. Geração do Rodízio com Diversificação e Regra Familiar
    * ========================================================= */
   let totalAssignmentsCreated = 0
 
@@ -380,9 +410,18 @@ export async function generatePublicWitnessSchedules({
       if (neededCount === 0) continue
 
       const selected: typeof eligiblePublishers = []
-      const currentSelectedIds = [...currentPublishers]
+      const currentSelectedPublishers: typeof eligiblePublishers = []
 
-      // Seleciona um a um para cada vaga do slot, otimizando o parceiro/dupla dinamicamente
+      if (existingAssignment && mode === "append" && existingAssignment.publishers?.length) {
+        for (const ep of existingAssignment.publishers) {
+          const foundPub = eligiblePublishers.find(p => p.id === ep.publisher_id)
+          if (foundPub) {
+            currentSelectedPublishers.push(foundPub)
+          }
+        }
+      }
+
+      // Seleciona um a um para cada vaga do slot, respeitando preferências, compatibilidade de gênero e diversificação
       for (let slotPos = 0; slotPos < neededCount; slotPos++) {
         const candidates = eligiblePublishers.filter(pub => {
           // 1. Não pode estar indisponível na data
@@ -392,15 +431,31 @@ export async function generatePublicWitnessSchedules({
           if (assignedOnDate.has(pub.id)) return false
 
           // 3. Não pode já estar selecionado nesta vaga
-          if (currentSelectedIds.includes(pub.id)) return false
+          if (currentSelectedPublishers.some(p => p.id === pub.id)) return false
 
           // 4. Regra estrita de preferência de horários
           if (!canPublisherTakeSlot(pub.id, slot.id)) return false
+
+          // 5. REGRA ESTRITA DE GÊNERO / FAMÍLIA:
+          // Homem e mulher só podem ficar juntos se forem da mesma família!
+          if (currentSelectedPublishers.length > 0) {
+            const isCompatibleWithAll = currentSelectedPublishers.every(existing =>
+              areGendersCompatible(pub, existing)
+            )
+            if (!isCompatibleWithAll) return false
+          }
 
           return true
         })
 
         if (candidates.length === 0) break
+
+        const currentSelectedIds = currentSelectedPublishers.map(p => p.id)
+
+        // Auxiliar: verifica se um publicador tem pelo menos um parceiro compatível no restante dos candidatos
+        const hasCompatiblePartnerAvailable = (c: typeof eligiblePublishers[0]) => {
+          return candidates.some(other => other.id !== c.id && areGendersCompatible(c, other))
+        }
 
         candidates.sort((a, b) => {
           // 1. MENOS DESIGNAÇÕES NO PERÍODO ATUAL (Equilíbrio e rodízio justo)
@@ -410,25 +465,32 @@ export async function generatePublicWitnessSchedules({
           if (countA !== countB) return countA - countB
 
           // 2. DIVERSIFICAÇÃO DE PARES / DUPLAS (EVITA REPETIR OS MESMOS IRMÃOS JUNTOS)
-          // Se já há alguém selecionado para este horário (currentSelectedIds.length > 0),
-          // quem NUNCA foi par dele (menor penalidade de repetição) tem PRIORIDADE ABSOLUTA!
+          // Se já há alguém selecionado para este horário, quem nunca foi par dele tem prioridade máxima
           if (currentSelectedIds.length > 0) {
             const pairPenaltyA = getPairPenalty(a.id, currentSelectedIds, pairCountMap)
             const pairPenaltyB = getPairPenalty(b.id, currentSelectedIds, pairCountMap)
             if (pairPenaltyA !== pairPenaltyB) return pairPenaltyA - pairPenaltyB
           }
 
-          // 3. PREFERÊNCIA POR ESTE HORÁRIO (Entre quem tem a mesma quantidade de saídas e mesmo histórico de duplas)
+          // 3. SE ESTIVER ESCOLHENDO O 1º PUBLICADOR DE UMA VAGA DUPLA:
+          // Prioriza quem tem parceiro compatível por gênero/família disponível para não deixar o slot incompleto
+          if (currentSelectedPublishers.length === 0 && neededCount >= 2) {
+            const partnerA = hasCompatiblePartnerAvailable(a) ? 1 : 0
+            const partnerB = hasCompatiblePartnerAvailable(b) ? 1 : 0
+            if (partnerA !== partnerB) return partnerB - partnerA
+          }
+
+          // 4. PREFERÊNCIA POR ESTE HORÁRIO (Entre quem tem a mesma quantidade de saídas e mesma novidade de dupla)
           const aHasPref = publisherSlotPreferences.get(a.id)?.has(slot.id) ? 1 : 0
           const bHasPref = publisherSlotPreferences.get(b.id)?.has(slot.id) ? 1 : 0
           if (aHasPref !== bHasPref) return bHasPref - aHasPref
 
-          // 4. GRAU DE RESTRIÇÃO / FLEXIBILIDADE (Quem tem MENOS opções de horários entra primeiro quando o horário dele estiver disponível)
+          // 5. GRAU DE RESTRIÇÃO / FLEXIBILIDADE (Quem tem MENOS opções de horários entra primeiro quando o horário dele estiver disponível)
           const aSlotOptions = publisherSlotPreferences.get(a.id)?.size || 999
           const bSlotOptions = publisherSlotPreferences.get(b.id)?.size || 999
           if (aSlotOptions !== bSlotOptions) return aSlotOptions - bSlotOptions
 
-          // 5. HISTÓRICO PASSADO INDIVIDUAL (Quem está há mais tempo sem participar tem prioridade)
+          // 6. HISTÓRICO PASSADO INDIVIDUAL (Quem está há mais tempo sem participar tem prioridade)
           const lastA = lastAssignedDateMap.get(a.id)
           const lastB = lastAssignedDateMap.get(b.id)
           if (!lastA && lastB) return -1
@@ -438,7 +500,7 @@ export async function generatePublicWitnessSchedules({
             if (diff !== 0) return diff
           }
 
-          // 6. DESEMPATE BALANCEADO POR DATA
+          // 7. DESEMPATE BALANCEADO POR DATA
           const hashA = stringHash(a.id + date + slot.id + slotPos)
           const hashB = stringHash(b.id + date + slot.id + slotPos)
           return hashA - hashB
@@ -446,7 +508,7 @@ export async function generatePublicWitnessSchedules({
 
         const chosen = candidates[0]
         selected.push(chosen)
-        currentSelectedIds.push(chosen.id)
+        currentSelectedPublishers.push(chosen)
         assignedOnDate.add(chosen.id)
       }
 
