@@ -159,7 +159,7 @@ class FieldServiceTemplateController {
 
         const templates = await fieldServiceTemplateRepository.find({
             where: { congregation: { id: congregation_id } },
-            relations: ["leader"],
+            relations: ["leader", "rotation_members", "rotation_members.publisher", "location_overrides"],
             order: { weekday: "ASC", time: "ASC" },
         });
 
