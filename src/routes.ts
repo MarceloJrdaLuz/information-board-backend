@@ -495,21 +495,18 @@ routes.put(
 // Ausências e Indisponibilidades
 routes.get(
     "/midweek/unavailabilities/congregation/:congregation_id",
-    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]),
     is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER", "TALK_MANAGER"]),
     midweekController.getUnavailabilities.bind(midweekController)
 );
 
 routes.post(
     "/midweek/unavailabilities",
-    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]),
     is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER", "TALK_MANAGER"]),
     midweekController.createUnavailability.bind(midweekController)
 );
 
 routes.delete(
     "/midweek/unavailabilities/:unavailability_id",
-    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]),
     is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER", "TALK_MANAGER"]),
     midweekController.deleteUnavailability.bind(midweekController)
 );
