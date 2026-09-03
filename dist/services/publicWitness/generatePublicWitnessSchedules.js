@@ -27,6 +27,17 @@ function stringHash(str) {
     }
     return hash;
 }
+function getPairKey(id1, id2) {
+    return id1 < id2 ? `${id1}:${id2}` : `${id2}:${id1}`;
+}
+function getPairPenalty(candId, currentSelectedIds, pairCountMap) {
+    let penalty = 0;
+    for (const existingId of currentSelectedIds) {
+        const key = getPairKey(candId, existingId);
+        penalty += pairCountMap.get(key) || 0;
+    }
+    return penalty;
+}
 async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDate, mode = "reconcile", publishersPerSlot = 2 }) {
     var _a, _b, _c, _d, _e, _f;
     /* =========================================================
@@ -175,7 +186,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
         return preferences.has(slotId);
     };
     /* =========================================================
-     * 8. Histórico passado e contadores para rodízio justo
+     * 8. Histórico passado, pares e contadores para rodízio justo
      * ========================================================= */
     const pastAssignments = await publicWitnessAssignmentPublisherRepository_1.publicWitnessAssignmentPublisherRepository.find({
         where: {
@@ -190,9 +201,26 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
         order: { assignment: { date: "DESC" } }
     });
     const lastAssignedDateMap = new Map();
+    const pastAssignmentsGroupMap = new Map();
+    const pairCountMap = new Map(); // pairKey -> count
     for (const pa of pastAssignments) {
         if (((_b = pa.assignment) === null || _b === void 0 ? void 0 : _b.date) && !lastAssignedDateMap.has(pa.publisher_id)) {
             lastAssignedDateMap.set(pa.publisher_id, pa.assignment.date);
+        }
+        if (pa.assignment_id && pa.publisher_id) {
+            if (!pastAssignmentsGroupMap.has(pa.assignment_id)) {
+                pastAssignmentsGroupMap.set(pa.assignment_id, []);
+            }
+            pastAssignmentsGroupMap.get(pa.assignment_id).push(pa.publisher_id);
+        }
+    }
+    // Preenche pares prévios vindos do histórico anterior
+    for (const pubs of pastAssignmentsGroupMap.values()) {
+        for (let i = 0; i < pubs.length; i++) {
+            for (let j = i + 1; j < pubs.length; j++) {
+                const key = getPairKey(pubs[i], pubs[j]);
+                pairCountMap.set(key, (pairCountMap.get(key) || 0) + 1);
+            }
         }
     }
     // Contador de designações no período gerado para manter equilíbrio
@@ -224,7 +252,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
         }
     }
     else if (mode === "append" && rotativeSlotIds.length > 0) {
-        // Pré-computa o total de designações já existentes no período para balanceamento justo
+        // Pré-computa o total de designações já existentes no período e os pares já formados
         const existingInPeriod = await publicWitnessAssignmentPublisherRepository_1.publicWitnessAssignmentPublisherRepository.find({
             where: {
                 assignment: {
@@ -234,12 +262,27 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
             },
             relations: ["assignment"]
         });
+        const existingPeriodGroupMap = new Map();
         for (const ep of existingInPeriod) {
             periodCountMap.set(ep.publisher_id, (periodCountMap.get(ep.publisher_id) || 0) + 1);
+            if (ep.assignment_id && ep.publisher_id) {
+                if (!existingPeriodGroupMap.has(ep.assignment_id)) {
+                    existingPeriodGroupMap.set(ep.assignment_id, []);
+                }
+                existingPeriodGroupMap.get(ep.assignment_id).push(ep.publisher_id);
+            }
+        }
+        for (const pubs of existingPeriodGroupMap.values()) {
+            for (let i = 0; i < pubs.length; i++) {
+                for (let j = i + 1; j < pubs.length; j++) {
+                    const key = getPairKey(pubs[i], pubs[j]);
+                    pairCountMap.set(key, (pairCountMap.get(key) || 0) + 1);
+                }
+            }
         }
     }
     /* =========================================================
-     * 10. Geração do Rodízio
+     * 10. Geração do Rodízio com Diversificação de Pares
      * ========================================================= */
     let totalAssignmentsCreated = 0;
     for (const date of validDates) {
@@ -283,59 +326,76 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
             const neededCount = Math.max(0, publishersPerSlot - currentPublishers.length);
             if (neededCount === 0)
                 continue;
-            // Filtra candidatos elegíveis para este slot nesta data
-            const candidates = eligiblePublishers.filter(pub => {
-                // 1. Não pode estar indisponível na data
-                if (isPublisherUnavailable(pub.id, date))
-                    return false;
-                // 2. Não pode estar designado para outro slot ou saída no mesmo dia
-                if (assignedOnDate.has(pub.id))
-                    return false;
-                // 3. Regra estrita de preferência de horários:
-                // Se o publicador definiu preferência(s), só pode entrar nos slots de sua preferência
-                if (!canPublisherTakeSlot(pub.id, slot.id))
-                    return false;
-                return true;
-            });
-            // Ordena candidatos de acordo com prioridade e rodízio justo
-            candidates.sort((a, b) => {
-                var _a, _b, _c, _d;
-                // 1. MENOS DESIGNAÇÕES NO PERÍODO ATUAL (Equilíbrio e rodízio justo)
-                // Regra primária: todos os publicadores devem ser mesclados antes de qualquer um repetir
-                const countA = periodCountMap.get(a.id) || 0;
-                const countB = periodCountMap.get(b.id) || 0;
-                if (countA !== countB)
-                    return countA - countB;
-                // 2. PREFERÊNCIA POR ESTE HORÁRIO (Entre candidatos com a MESMA quantidade de saídas)
-                // Quem tem preferência expressa por este slot é alocado nele preferencialmente
-                const aHasPref = ((_a = publisherSlotPreferences.get(a.id)) === null || _a === void 0 ? void 0 : _a.has(slot.id)) ? 1 : 0;
-                const bHasPref = ((_b = publisherSlotPreferences.get(b.id)) === null || _b === void 0 ? void 0 : _b.has(slot.id)) ? 1 : 0;
-                if (aHasPref !== bHasPref)
-                    return bHasPref - aHasPref;
-                // 3. GRAU DE RESTRIÇÃO / FLEXIBILIDADE (Quem tem MENOS opções de horários entra primeiro quando o horário dele estiver disponível)
-                const aSlotOptions = ((_c = publisherSlotPreferences.get(a.id)) === null || _c === void 0 ? void 0 : _c.size) || 999;
-                const bSlotOptions = ((_d = publisherSlotPreferences.get(b.id)) === null || _d === void 0 ? void 0 : _d.size) || 999;
-                if (aSlotOptions !== bSlotOptions)
-                    return aSlotOptions - bSlotOptions;
-                // 4. HISTÓRICO PASSADO (Quem está há mais tempo sem participar tem prioridade)
-                const lastA = lastAssignedDateMap.get(a.id);
-                const lastB = lastAssignedDateMap.get(b.id);
-                if (!lastA && lastB)
-                    return -1;
-                if (lastA && !lastB)
-                    return 1;
-                if (lastA && lastB) {
-                    const diff = (0, dayjs_1.default)(lastA).valueOf() - (0, dayjs_1.default)(lastB).valueOf();
-                    if (diff !== 0)
-                        return diff;
-                }
-                // 5. DESEMPATE BALANCEADO POR DATA
-                // Garante distribuição variada e sem vício na ordem alfabética
-                const hashA = stringHash(a.id + date);
-                const hashB = stringHash(b.id + date);
-                return hashA - hashB;
-            });
-            const selected = candidates.slice(0, neededCount);
+            const selected = [];
+            const currentSelectedIds = [...currentPublishers];
+            // Seleciona um a um para cada vaga do slot, otimizando o parceiro/dupla dinamicamente
+            for (let slotPos = 0; slotPos < neededCount; slotPos++) {
+                const candidates = eligiblePublishers.filter(pub => {
+                    // 1. Não pode estar indisponível na data
+                    if (isPublisherUnavailable(pub.id, date))
+                        return false;
+                    // 2. Não pode estar designado para outro slot ou saída no mesmo dia
+                    if (assignedOnDate.has(pub.id))
+                        return false;
+                    // 3. Não pode já estar selecionado nesta vaga
+                    if (currentSelectedIds.includes(pub.id))
+                        return false;
+                    // 4. Regra estrita de preferência de horários
+                    if (!canPublisherTakeSlot(pub.id, slot.id))
+                        return false;
+                    return true;
+                });
+                if (candidates.length === 0)
+                    break;
+                candidates.sort((a, b) => {
+                    var _a, _b, _c, _d;
+                    // 1. MENOS DESIGNAÇÕES NO PERÍODO ATUAL (Equilíbrio e rodízio justo)
+                    // Todos os publicadores devem ser mesclados antes de qualquer um repetir
+                    const countA = periodCountMap.get(a.id) || 0;
+                    const countB = periodCountMap.get(b.id) || 0;
+                    if (countA !== countB)
+                        return countA - countB;
+                    // 2. DIVERSIFICAÇÃO DE PARES / DUPLAS (EVITA REPETIR OS MESMOS IRMÃOS JUNTOS)
+                    // Se já há alguém selecionado para este horário (currentSelectedIds.length > 0),
+                    // quem NUNCA foi par dele (menor penalidade de repetição) tem PRIORIDADE ABSOLUTA!
+                    if (currentSelectedIds.length > 0) {
+                        const pairPenaltyA = getPairPenalty(a.id, currentSelectedIds, pairCountMap);
+                        const pairPenaltyB = getPairPenalty(b.id, currentSelectedIds, pairCountMap);
+                        if (pairPenaltyA !== pairPenaltyB)
+                            return pairPenaltyA - pairPenaltyB;
+                    }
+                    // 3. PREFERÊNCIA POR ESTE HORÁRIO (Entre quem tem a mesma quantidade de saídas e mesmo histórico de duplas)
+                    const aHasPref = ((_a = publisherSlotPreferences.get(a.id)) === null || _a === void 0 ? void 0 : _a.has(slot.id)) ? 1 : 0;
+                    const bHasPref = ((_b = publisherSlotPreferences.get(b.id)) === null || _b === void 0 ? void 0 : _b.has(slot.id)) ? 1 : 0;
+                    if (aHasPref !== bHasPref)
+                        return bHasPref - aHasPref;
+                    // 4. GRAU DE RESTRIÇÃO / FLEXIBILIDADE (Quem tem MENOS opções de horários entra primeiro quando o horário dele estiver disponível)
+                    const aSlotOptions = ((_c = publisherSlotPreferences.get(a.id)) === null || _c === void 0 ? void 0 : _c.size) || 999;
+                    const bSlotOptions = ((_d = publisherSlotPreferences.get(b.id)) === null || _d === void 0 ? void 0 : _d.size) || 999;
+                    if (aSlotOptions !== bSlotOptions)
+                        return aSlotOptions - bSlotOptions;
+                    // 5. HISTÓRICO PASSADO INDIVIDUAL (Quem está há mais tempo sem participar tem prioridade)
+                    const lastA = lastAssignedDateMap.get(a.id);
+                    const lastB = lastAssignedDateMap.get(b.id);
+                    if (!lastA && lastB)
+                        return -1;
+                    if (lastA && !lastB)
+                        return 1;
+                    if (lastA && lastB) {
+                        const diff = (0, dayjs_1.default)(lastA).valueOf() - (0, dayjs_1.default)(lastB).valueOf();
+                        if (diff !== 0)
+                            return diff;
+                    }
+                    // 6. DESEMPATE BALANCEADO POR DATA
+                    const hashA = stringHash(a.id + date + slot.id + slotPos);
+                    const hashB = stringHash(b.id + date + slot.id + slotPos);
+                    return hashA - hashB;
+                });
+                const chosen = candidates[0];
+                selected.push(chosen);
+                currentSelectedIds.push(chosen.id);
+                assignedOnDate.add(chosen.id);
+            }
             if (selected.length === 0)
                 continue;
             // Cria ou atualiza assignment
@@ -355,10 +415,17 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                     order
                 });
                 await publicWitnessAssignmentPublisherRepository_1.publicWitnessAssignmentPublisherRepository.save(assignmentPub);
-                assignedOnDate.add(pub.id);
                 periodCountMap.set(pub.id, (periodCountMap.get(pub.id) || 0) + 1);
                 lastAssignedDateMap.set(pub.id, date);
                 totalAssignmentsCreated++;
+            }
+            // Registra a nova dupla no pairCountMap para não repeti-la no futuro
+            const allInSlot = [...currentPublishers, ...selected.map(s => s.id)];
+            for (let i = 0; i < allInSlot.length; i++) {
+                for (let j = i + 1; j < allInSlot.length; j++) {
+                    const key = getPairKey(allInSlot[i], allInSlot[j]);
+                    pairCountMap.set(key, (pairCountMap.get(key) || 0) + 1);
+                }
             }
         }
     }
