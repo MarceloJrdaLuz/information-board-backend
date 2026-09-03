@@ -14,3 +14,12 @@ export interface BodyScheduleCreateMultiple {
 export type ParamsSchedule = {
   arrangement_id: string;
 }
+
+export interface BodyGeneratePublicWitnessSchedule {
+  startDate: string;
+  endDate: string;
+  mode?: "append" | "reconcile";
+  publishersPerSlot?: number;
+}
+
+

@@ -347,13 +347,16 @@ routes.post("/public-witness/arrangements/congregation/:congregation_id", is(["A
 routes.get("/public-witness/arrangements/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.getByCongregation)
 routes.get("/public-witness/arrangements/:arrangement_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.getOne)
 routes.patch("/public-witness/arrangements/:arrangement_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.update)
+routes.patch("/public-witness/arrangements/:arrangement_id/slot-preferences", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.updateSlotPreferences)
 routes.delete("/public-witness/arrangements/:arrangement_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.delete)
 
 /* === Public Witness Schedules === */
 routes.post("/public-witness/arrangements/:arrangement_id/schedules", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.createMultiple)
+routes.post("/public-witness/arrangements/:arrangement_id/generate-schedules", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.generate)
 routes.get("/public-witness/arrangements/:arrangement_id/schedules", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.getByDateRange)
 routes.get("/public-witness/schedules/pdf/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.getPdfByCongregation)
 routes.get("/public-witness/schedules/congregation/:congregation_id/history", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController.getAssignmentsHistory)
+
 
 
 /* === Termos de uso (administração) === */

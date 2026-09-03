@@ -17,6 +17,7 @@ export interface BodyArrangementCreate {
         order: number
         is_rotative: boolean
         defaultPublishers?: { publisher_id: string, order?: number }[]
+        preferences?: { publisher_id: string }[]
     }[]
 }
 
@@ -26,12 +27,21 @@ export interface BodyArrangementUpdate {
     date?: string | null
     title?: string | null
     timeSlots?: {
-        id: string
+        id?: string
         start_time: string
         end_time: string
         order: number
         is_rotative: boolean
         defaultPublishers?: { publisher_id: string, order?: number }[]
+        preferences?: { publisher_id: string }[]
     }[]
 }
+
+export interface BodyUpdateSlotPreferences {
+    preferences: {
+        time_slot_id: string
+        publisher_ids: string[]
+    }[]
+}
+
 

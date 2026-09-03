@@ -13,6 +13,7 @@ exports.PublicWitnessTimeSlot = void 0;
 const typeorm_1 = require("typeorm");
 const PublicWitnessArrangement_1 = require("./PublicWitnessArrangement");
 const PublicWitnessTimeSlotDefaultPublisher_1 = require("./PublicWitnessTimeSlotDefaultPublisher");
+const PublicWitnessTimeSlotPreference_1 = require("./PublicWitnessTimeSlotPreference");
 let PublicWitnessTimeSlot = class PublicWitnessTimeSlot {
 };
 __decorate([
@@ -48,6 +49,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => PublicWitnessTimeSlotDefaultPublisher_1.PublicWitnessTimeSlotDefaultPublisher, dp => dp.timeSlot),
     __metadata("design:type", Array)
 ], PublicWitnessTimeSlot.prototype, "defaultPublishers", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => PublicWitnessTimeSlotPreference_1.PublicWitnessTimeSlotPreference, pref => pref.timeSlot, { cascade: true }),
+    __metadata("design:type", Array)
+], PublicWitnessTimeSlot.prototype, "preferences", void 0);
 PublicWitnessTimeSlot = __decorate([
     (0, typeorm_1.Entity)("public_witness_time_slots")
 ], PublicWitnessTimeSlot);

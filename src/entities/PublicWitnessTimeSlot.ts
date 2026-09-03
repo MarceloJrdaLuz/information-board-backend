@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm"
 import { PublicWitnessArrangement } from "./PublicWitnessArrangement"
 import { PublicWitnessTimeSlotDefaultPublisher } from "./PublicWitnessTimeSlotDefaultPublisher"
+import { PublicWitnessTimeSlotPreference } from "./PublicWitnessTimeSlotPreference"
 
 @Entity("public_witness_time_slots")
 export class PublicWitnessTimeSlot {
@@ -28,4 +29,7 @@ export class PublicWitnessTimeSlot {
 
     @OneToMany(() => PublicWitnessTimeSlotDefaultPublisher, dp => dp.timeSlot)
     defaultPublishers: PublicWitnessTimeSlotDefaultPublisher[]
+
+    @OneToMany(() => PublicWitnessTimeSlotPreference, pref => pref.timeSlot, { cascade: true })
+    preferences: PublicWitnessTimeSlotPreference[]
 }

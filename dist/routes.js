@@ -295,9 +295,11 @@ routes.post("/public-witness/arrangements/congregation/:congregation_id", (0, pe
 routes.get("/public-witness/arrangements/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.getByCongregation);
 routes.get("/public-witness/arrangements/:arrangement_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.getOne);
 routes.patch("/public-witness/arrangements/:arrangement_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.update);
+routes.patch("/public-witness/arrangements/:arrangement_id/slot-preferences", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.updateSlotPreferences);
 routes.delete("/public-witness/arrangements/:arrangement_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.delete);
 /* === Public Witness Schedules === */
 routes.post("/public-witness/arrangements/:arrangement_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.createMultiple);
+routes.post("/public-witness/arrangements/:arrangement_id/generate-schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.generate);
 routes.get("/public-witness/arrangements/:arrangement_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getByDateRange);
 routes.get("/public-witness/schedules/pdf/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getPdfByCongregation);
 routes.get("/public-witness/schedules/congregation/:congregation_id/history", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getAssignmentsHistory);

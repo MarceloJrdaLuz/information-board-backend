@@ -1,19 +1,42 @@
-import { Response } from "express"
 import dayjs from "dayjs"
-import { NotFoundError, BadRequestError } from "../../helpers/api-errors"
-import { publicWitnessArrangementRepository } from "../../repositories/publicWitnessArrangementRepository"
-import { publicWitnessAssignmentRepository } from "../../repositories/publicWitnessAssignmentRepository"
-import { publicWitnessAssignmentPublisherRepository } from "../../repositories/publicWitnessAssignmentPublisherRepository"
-import { publisherRepository } from "../../repositories/publisherRepository"
-import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
-import { BodyScheduleCreateMultiple, ParamsSchedule } from "./types"
-import { publicWitnessTimeSlotDefaultPublisherRepository } from "../../repositories/publicWitnessTimeSlotDefaultPublisherRepository"
+import { Response } from "express"
 import { Between } from "typeorm"
-import { ParamsCongregation } from "../PublicWitnessArrangementController/types"
+import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { fieldServiceExceptionRepository } from "../../repositories/fieldServiceExceptionRepository"
 import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
+import { publicWitnessArrangementRepository } from "../../repositories/publicWitnessArrangementRepository"
+import { publicWitnessAssignmentPublisherRepository } from "../../repositories/publicWitnessAssignmentPublisherRepository"
+import { publicWitnessAssignmentRepository } from "../../repositories/publicWitnessAssignmentRepository"
+import { publicWitnessTimeSlotDefaultPublisherRepository } from "../../repositories/publicWitnessTimeSlotDefaultPublisherRepository"
+import { publisherRepository } from "../../repositories/publisherRepository"
+import { generatePublicWitnessSchedules } from "../../services/publicWitness/generatePublicWitnessSchedules"
+import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
+import { ParamsCongregation } from "../PublicWitnessArrangementController/types"
+import { BodyGeneratePublicWitnessSchedule, BodyScheduleCreateMultiple, ParamsSchedule } from "./types"
 
 class PublicWitnessScheduleController {
+    async generate(
+        req: CustomRequestPT<ParamsSchedule, BodyGeneratePublicWitnessSchedule>,
+        res: Response
+    ) {
+        const { arrangement_id } = req.params
+        const { startDate, endDate, mode, publishersPerSlot } = req.body
+
+        if (!startDate || !endDate) {
+            throw new BadRequestError("startDate e endDate são obrigatórios")
+        }
+
+        const result = await generatePublicWitnessSchedules({
+            arrangement_id,
+            startDate,
+            endDate,
+            mode,
+            publishersPerSlot: publishersPerSlot ? Number(publishersPerSlot) : 2
+        })
+
+        return res.status(200).json(result)
+    }
+
     async createMultiple(
         req: CustomRequestPT<ParamsSchedule, BodyScheduleCreateMultiple>,
         res: Response
