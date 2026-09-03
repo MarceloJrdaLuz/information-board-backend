@@ -146,7 +146,7 @@ class MidweekScheduleController {
         return res.status(201).json(saved);
     }
     async deleteUnavailability(req, res) {
-        const { id } = req.params;
+        const id = req.params.unavailability_id || req.params.id;
         await publisherUnavailabilityRepository_1.publisherUnavailabilityRepository.delete(id);
         return res.status(204).send();
     }
