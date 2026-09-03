@@ -27,6 +27,7 @@ const FormDataController_1 = __importDefault(require("./controllers/FormDataCont
 const GroupController_1 = __importDefault(require("./controllers/GroupController"));
 const HospitalityController_1 = __importDefault(require("./controllers/HospitalityController"));
 const HospitalityGroupController_1 = __importDefault(require("./controllers/HospitalityGroupController"));
+const MechanicalScheduleController_1 = require("./controllers/MechanicalScheduleController");
 const MeetingAssistanceController_1 = __importDefault(require("./controllers/MeetingAssistanceController"));
 const MidweekScheduleController_1 = require("./controllers/MidweekScheduleController");
 const NoticeController_1 = __importDefault(require("./controllers/NoticeController"));
@@ -52,6 +53,7 @@ const WeekendScheduleController_1 = __importDefault(require("./controllers/Weeke
 const gitHubCronAuth_1 = require("./middlewares/gitHubCronAuth");
 const routes = (0, express_1.Router)();
 const midweekController = new MidweekScheduleController_1.MidweekScheduleController();
+const mechanicalController = new MechanicalScheduleController_1.MechanicalScheduleController();
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
 ========================================================= */
@@ -351,4 +353,13 @@ routes.put("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.
 routes.get("/midweek/unavailabilities/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]), midweekController.getUnavailabilities.bind(midweekController));
 routes.post("/midweek/unavailabilities", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]), midweekController.createUnavailability.bind(midweekController));
 routes.delete("/midweek/unavailabilities/:unavailability_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]), midweekController.deleteUnavailability.bind(midweekController));
+// Partes Mecânicas (Meeting Duties)
+routes.get("/congregations/:congregation_id/mechanical-config", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.getConfig.bind(mechanicalController));
+routes.put("/congregations/:congregation_id/mechanical-config", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.saveConfig.bind(mechanicalController));
+routes.get("/congregations/:congregation_id/mechanical-schedules", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "PUBLISHERS_VIEWER", "PUBLISHERS_MANAGER"]), mechanicalController.getMonthSchedules.bind(mechanicalController));
+routes.post("/congregations/:congregation_id/mechanical-schedules/generate", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.autoAssignMonth.bind(mechanicalController));
+routes.put("/mechanical-assignments/:assignment_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.updateAssignment.bind(mechanicalController));
+routes.get("/congregations/:congregation_id/mechanical-suggestions", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.getSuggestions.bind(mechanicalController));
+routes.get("/congregations/:congregation_id/mechanical-qualifications", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.getQualifications.bind(mechanicalController));
+routes.post("/congregations/:congregation_id/mechanical-qualifications/toggle", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.toggleQualification.bind(mechanicalController));
 exports.default = routes;

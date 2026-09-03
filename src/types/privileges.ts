@@ -11,5 +11,11 @@ export enum Privileges {
     PRESIDENTE = 'Presidente',
     LEITOR = 'Leitor',
     DIRIGENTECAMPO = 'Dirigente de Campo',
-    TESTEMUNHOPUBLICO = 'Testemunho Público'
+    TESTEMUNHOPUBLICO = 'Testemunho Público',
+    INDICADOR = 'Indicador',
+    MICROFONEVOLANTE = 'Microfone Volante',
+    SOM = 'Som',
+    MIDIAS = 'Mídias',
+    SOMEMIDIAS = 'Som e Mídias',
+    PEDESTAL = 'Pedestal'
 }

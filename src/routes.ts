@@ -23,6 +23,7 @@ import FormDataController from "./controllers/FormDataController"
 import GroupController from "./controllers/GroupController"
 import HospitalityController from "./controllers/HospitalityController"
 import HospitalityGroupController from "./controllers/HospitalityGroupController"
+import { MechanicalScheduleController } from "./controllers/MechanicalScheduleController"
 import MeetingAssistanceController from "./controllers/MeetingAssistanceController"
 import { MidweekScheduleController } from "./controllers/MidweekScheduleController"
 import NoticeController from "./controllers/NoticeController"
@@ -49,6 +50,7 @@ import { verifyGitHubCron } from "./middlewares/gitHubCronAuth"
 
 const routes = Router()
 const midweekController = new MidweekScheduleController()
+const mechanicalController = new MechanicalScheduleController()
 
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
@@ -507,6 +509,55 @@ routes.delete(
     "/midweek/unavailabilities/:unavailability_id",
     is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]),
     midweekController.deleteUnavailability.bind(midweekController)
+);
+
+// Partes Mecânicas (Meeting Duties)
+routes.get(
+    "/congregations/:congregation_id/mechanical-config",
+    is(["ADMIN", "ADMIN_CONGREGATION"]),
+    mechanicalController.getConfig.bind(mechanicalController)
+);
+
+routes.put(
+    "/congregations/:congregation_id/mechanical-config",
+    is(["ADMIN", "ADMIN_CONGREGATION"]),
+    mechanicalController.saveConfig.bind(mechanicalController)
+);
+
+routes.get(
+    "/congregations/:congregation_id/mechanical-schedules",
+    is(["ADMIN", "ADMIN_CONGREGATION", "PUBLISHERS_VIEWER", "PUBLISHERS_MANAGER"]),
+    mechanicalController.getMonthSchedules.bind(mechanicalController)
+);
+
+routes.post(
+    "/congregations/:congregation_id/mechanical-schedules/generate",
+    is(["ADMIN", "ADMIN_CONGREGATION"]),
+    mechanicalController.autoAssignMonth.bind(mechanicalController)
+);
+
+routes.put(
+    "/mechanical-assignments/:assignment_id",
+    is(["ADMIN", "ADMIN_CONGREGATION"]),
+    mechanicalController.updateAssignment.bind(mechanicalController)
+);
+
+routes.get(
+    "/congregations/:congregation_id/mechanical-suggestions",
+    is(["ADMIN", "ADMIN_CONGREGATION"]),
+    mechanicalController.getSuggestions.bind(mechanicalController)
+);
+
+routes.get(
+    "/congregations/:congregation_id/mechanical-qualifications",
+    is(["ADMIN", "ADMIN_CONGREGATION"]),
+    mechanicalController.getQualifications.bind(mechanicalController)
+);
+
+routes.post(
+    "/congregations/:congregation_id/mechanical-qualifications/toggle",
+    is(["ADMIN", "ADMIN_CONGREGATION"]),
+    mechanicalController.toggleQualification.bind(mechanicalController)
 );
 
 export default routes
