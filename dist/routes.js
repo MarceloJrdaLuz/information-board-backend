@@ -348,7 +348,7 @@ routes.get("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.
 routes.patch("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePublisherQualification.bind(midweekController));
 routes.put("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePublisherQualification.bind(midweekController));
 // Ausências e Indisponibilidades
-routes.get("/midweek/unavailabilities/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]), midweekController.getUnavailabilities.bind(midweekController));
-routes.post("/midweek/unavailabilities", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]), midweekController.createUnavailability.bind(midweekController));
-routes.delete("/midweek/unavailabilities/:id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]), midweekController.deleteUnavailability.bind(midweekController));
+routes.get("/midweek/unavailabilities/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.getUnavailabilities.bind(midweekController));
+routes.post("/midweek/unavailabilities", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.createUnavailability.bind(midweekController));
+routes.delete("/midweek/unavailabilities/:id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.deleteUnavailability.bind(midweekController));
 exports.default = routes;

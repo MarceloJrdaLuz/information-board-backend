@@ -1,9 +1,10 @@
 import { NextFunction, Request, Response } from "express";
-import jwt, { decode } from "jsonwebtoken";
-import process from "process";
-import { config } from "../config";
+import { decode } from "jsonwebtoken";
 import { UnauthorizedError } from "../helpers/api-errors";
 import { userRepository } from "../repositories/userRepository";
+import jwt from "jsonwebtoken";
+import process from "process";
+import { config } from "../config";
 
 export async function decoder(request: Request) {
     const authHeader = request.headers.authorization
