@@ -63,6 +63,17 @@ function areGendersCompatible(pubA, pubB) {
     // Caso contrário, homem e mulher não podem ficar juntos
     return false;
 }
+/**
+ * Calcula a quantidade de dias desde a última designação do publicador.
+ * Retorna 9999 se o publicador nunca participou anteriormente (descanso máximo).
+ */
+function getDaysSinceLastAssignment(pubId, currentDate, lastAssignedDateMap) {
+    const lastDate = lastAssignedDateMap.get(pubId);
+    if (!lastDate)
+        return 9999;
+    const diffDays = (0, dayjs_1.default)(currentDate).diff((0, dayjs_1.default)(lastDate), "day");
+    return Math.max(0, diffDays);
+}
 async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDate, mode = "reconcile", publishersPerSlot = 2 }) {
     var _a, _b, _c, _d, _e, _f, _g;
     /* =========================================================
@@ -307,7 +318,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
         }
     }
     /* =========================================================
-     * 10. Geração do Rodízio com Diversificação e Regra Familiar
+     * 10. Geração do Rodízio com Anti-Repetição Consecutiva e Regra Familiar
      * ========================================================= */
     let totalAssignmentsCreated = 0;
     for (const date of validDates) {
@@ -361,7 +372,8 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                     }
                 }
             }
-            // Seleciona um a um para cada vaga do slot, respeitando preferências, compatibilidade de gênero e diversificação
+            // Seleciona um a um para cada vaga do slot, respeitando preferências, compatibilidade de gênero,
+            // descanso entre semanas consecutivas e diversificação de duplas
             for (let slotPos = 0; slotPos < neededCount; slotPos++) {
                 const candidates = eligiblePublishers.filter(pub => {
                     // 1. Não pode estar indisponível na data
@@ -400,7 +412,15 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                     const countB = periodCountMap.get(b.id) || 0;
                     if (countA !== countB)
                         return countA - countB;
-                    // 2. DIVERSIFICAÇÃO DE PARES / DUPLAS (EVITA REPETIR OS MESMOS IRMÃOS JUNTOS)
+                    // 2. ANTI-SEMANAS CONSECUTIVAS (EVITA REPETIR DUAS SEMANAS SEGUIDAS)
+                    // Quem participou há 7 dias ou menos NÃO deve ser escalado se houver quem descansou mais
+                    const daysA = getDaysSinceLastAssignment(a.id, date, lastAssignedDateMap);
+                    const daysB = getDaysSinceLastAssignment(b.id, date, lastAssignedDateMap);
+                    const isConsecutiveA = daysA <= 7 ? 1 : 0;
+                    const isConsecutiveB = daysB <= 7 ? 1 : 0;
+                    if (isConsecutiveA !== isConsecutiveB)
+                        return isConsecutiveA - isConsecutiveB;
+                    // 3. DIVERSIFICAÇÃO DE PARES / DUPLAS (EVITA REPETIR OS MESMOS IRMÃOS JUNTOS)
                     // Se já há alguém selecionado para este horário, quem nunca foi par dele tem prioridade máxima
                     if (currentSelectedIds.length > 0) {
                         const pairPenaltyA = getPairPenalty(a.id, currentSelectedIds, pairCountMap);
@@ -408,7 +428,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                         if (pairPenaltyA !== pairPenaltyB)
                             return pairPenaltyA - pairPenaltyB;
                     }
-                    // 3. SE ESTIVER ESCOLHENDO O 1º PUBLICADOR DE UMA VAGA DUPLA:
+                    // 4. SE ESTIVER ESCOLHENDO O 1º PUBLICADOR DE UMA VAGA DUPLA:
                     // Prioriza quem tem parceiro compatível por gênero/família disponível para não deixar o slot incompleto
                     if (currentSelectedPublishers.length === 0 && neededCount >= 2) {
                         const partnerA = hasCompatiblePartnerAvailable(a) ? 1 : 0;
@@ -416,29 +436,20 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                         if (partnerA !== partnerB)
                             return partnerB - partnerA;
                     }
-                    // 4. PREFERÊNCIA POR ESTE HORÁRIO (Entre quem tem a mesma quantidade de saídas e mesma novidade de dupla)
+                    // 5. PREFERÊNCIA POR ESTE HORÁRIO (Entre quem tem a mesma quantidade de saídas, não é consecutivo e mesma novidade de dupla)
                     const aHasPref = ((_a = publisherSlotPreferences.get(a.id)) === null || _a === void 0 ? void 0 : _a.has(slot.id)) ? 1 : 0;
                     const bHasPref = ((_b = publisherSlotPreferences.get(b.id)) === null || _b === void 0 ? void 0 : _b.has(slot.id)) ? 1 : 0;
                     if (aHasPref !== bHasPref)
                         return bHasPref - aHasPref;
-                    // 5. GRAU DE RESTRIÇÃO / FLEXIBILIDADE (Quem tem MENOS opções de horários entra primeiro quando o horário dele estiver disponível)
+                    // 6. GRAU DE RESTRIÇÃO / FLEXIBILIDADE (Quem tem MENOS opções de horários entra primeiro quando o horário dele estiver disponível)
                     const aSlotOptions = ((_c = publisherSlotPreferences.get(a.id)) === null || _c === void 0 ? void 0 : _c.size) || 999;
                     const bSlotOptions = ((_d = publisherSlotPreferences.get(b.id)) === null || _d === void 0 ? void 0 : _d.size) || 999;
                     if (aSlotOptions !== bSlotOptions)
                         return aSlotOptions - bSlotOptions;
-                    // 6. HISTÓRICO PASSADO INDIVIDUAL (Quem está há mais tempo sem participar tem prioridade)
-                    const lastA = lastAssignedDateMap.get(a.id);
-                    const lastB = lastAssignedDateMap.get(b.id);
-                    if (!lastA && lastB)
-                        return -1;
-                    if (lastA && !lastB)
-                        return 1;
-                    if (lastA && lastB) {
-                        const diff = (0, dayjs_1.default)(lastA).valueOf() - (0, dayjs_1.default)(lastB).valueOf();
-                        if (diff !== 0)
-                            return diff;
-                    }
-                    // 7. DESEMPATE BALANCEADO POR DATA
+                    // 7. MAIOR TEMPO DE DESCANSO (Quem está há mais dias sem participar tem prioridade)
+                    if (daysA !== daysB)
+                        return daysB - daysA;
+                    // 8. DESEMPATE BALANCEADO POR DATA
                     const hashA = stringHash(a.id + date + slot.id + slotPos);
                     const hashB = stringHash(b.id + date + slot.id + slotPos);
                     return hashA - hashB;

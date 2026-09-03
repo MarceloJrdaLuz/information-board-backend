@@ -505,7 +505,6 @@ routes.post(
 
 routes.delete(
     "/midweek/unavailabilities/:id",
-    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER"]),
     midweekController.deleteUnavailability.bind(midweekController)
 );
 
