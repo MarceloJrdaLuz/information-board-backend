@@ -1,7 +1,7 @@
 import dayjs from "dayjs"
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter"
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore"
-import { Between, LessThan } from "typeorm"
+import { Between, In, LessThan } from "typeorm"
 import { fieldServiceExceptionRepository } from "../../repositories/fieldServiceExceptionRepository"
 import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
 import { publicWitnessArrangementRepository } from "../../repositories/publicWitnessArrangementRepository"
@@ -21,6 +21,15 @@ interface GeneratePublicWitnessParams {
   endDate: string
   mode?: "append" | "reconcile"
   publishersPerSlot?: number
+}
+
+function stringHash(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i)
+    hash |= 0
+  }
+  return hash
 }
 
 export async function generatePublicWitnessSchedules({
@@ -190,7 +199,7 @@ export async function generatePublicWitnessSchedules({
 
   const canPublisherTakeSlot = (publisherId: string, slotId: string): boolean => {
     const preferences = publisherSlotPreferences.get(publisherId)
-    // Se não há preferência registrada para o arranjo, publicador é flexível
+    // Se não há preferência registrada para o arranjo, publicador é flexível (pode assumir qualquer horário)
     if (!preferences || preferences.size === 0) return true
     // Se há preferência registrada, só pode participar do slot se estiver na preferência
     return preferences.has(slotId)
@@ -249,6 +258,20 @@ export async function generatePublicWitnessSchedules({
         await publicWitnessAssignmentRepository.remove(item)
       }
     }
+  } else if (mode === "append" && rotativeSlotIds.length > 0) {
+    // Pré-computa o total de designações já existentes no período para balanceamento justo
+    const existingInPeriod = await publicWitnessAssignmentPublisherRepository.find({
+      where: {
+        assignment: {
+          time_slot_id: In(rotativeSlotIds),
+          date: Between(startDate, endDate)
+        }
+      },
+      relations: ["assignment"]
+    })
+    for (const ep of existingInPeriod) {
+      periodCountMap.set(ep.publisher_id, (periodCountMap.get(ep.publisher_id) || 0) + 1)
+    }
   }
 
   /* =========================================================
@@ -296,7 +319,6 @@ export async function generatePublicWitnessSchedules({
         currentPublishers = existingAssignment.publishers?.map(p => p.publisher_id) ?? []
         currentPublishers.forEach(id => {
           assignedOnDate.add(id)
-          periodCountMap.set(id, (periodCountMap.get(id) || 0) + 1)
         })
       }
 
@@ -305,13 +327,14 @@ export async function generatePublicWitnessSchedules({
 
       // Filtra candidatos elegíveis para este slot nesta data
       const candidates = eligiblePublishers.filter(pub => {
-        // 1. Não pode estar indisponível
+        // 1. Não pode estar indisponível na data
         if (isPublisherUnavailable(pub.id, date)) return false
 
         // 2. Não pode estar designado para outro slot ou saída no mesmo dia
         if (assignedOnDate.has(pub.id)) return false
 
-        // 3. Regra estrita de preferência de horários
+        // 3. Regra estrita de preferência de horários:
+        // Se o publicador definiu preferência(s), só pode entrar nos slots de sua preferência
         if (!canPublisherTakeSlot(pub.id, slot.id)) return false
 
         return true
@@ -319,17 +342,24 @@ export async function generatePublicWitnessSchedules({
 
       // Ordena candidatos de acordo com prioridade e rodízio justo
       candidates.sort((a, b) => {
-        // A. Prioridade para quem tem preferência expressa por este slot
-        const aHasPref = publisherSlotPreferences.get(a.id)?.has(slot.id) ? 1 : 0
-        const bHasPref = publisherSlotPreferences.get(b.id)?.has(slot.id) ? 1 : 0
-        if (aHasPref !== bHasPref) return bHasPref - aHasPref
-
-        // B. Menos designações no período atual (equilíbrio no mês)
+        // 1. MENOS DESIGNAÇÕES NO PERÍODO ATUAL (Equilíbrio e rodízio justo)
+        // Regra primária: todos os publicadores devem ser mesclados antes de qualquer um repetir
         const countA = periodCountMap.get(a.id) || 0
         const countB = periodCountMap.get(b.id) || 0
         if (countA !== countB) return countA - countB
 
-        // C. Última designação no histórico anterior (mais tempo sem sair tem prioridade)
+        // 2. PREFERÊNCIA POR ESTE HORÁRIO (Entre candidatos com a MESMA quantidade de saídas)
+        // Quem tem preferência expressa por este slot é alocado nele preferencialmente
+        const aHasPref = publisherSlotPreferences.get(a.id)?.has(slot.id) ? 1 : 0
+        const bHasPref = publisherSlotPreferences.get(b.id)?.has(slot.id) ? 1 : 0
+        if (aHasPref !== bHasPref) return bHasPref - aHasPref
+
+        // 3. GRAU DE RESTRIÇÃO / FLEXIBILIDADE (Quem tem MENOS opções de horários entra primeiro quando o horário dele estiver disponível)
+        const aSlotOptions = publisherSlotPreferences.get(a.id)?.size || 999
+        const bSlotOptions = publisherSlotPreferences.get(b.id)?.size || 999
+        if (aSlotOptions !== bSlotOptions) return aSlotOptions - bSlotOptions
+
+        // 4. HISTÓRICO PASSADO (Quem está há mais tempo sem participar tem prioridade)
         const lastA = lastAssignedDateMap.get(a.id)
         const lastB = lastAssignedDateMap.get(b.id)
         if (!lastA && lastB) return -1
@@ -339,8 +369,11 @@ export async function generatePublicWitnessSchedules({
           if (diff !== 0) return diff
         }
 
-        // D. Desempate estável por nome
-        return a.fullName.localeCompare(b.fullName)
+        // 5. DESEMPATE BALANCEADO POR DATA
+        // Garante distribuição variada e sem vício na ordem alfabética
+        const hashA = stringHash(a.id + date)
+        const hashB = stringHash(b.id + date)
+        return hashA - hashB
       })
 
       const selected = candidates.slice(0, neededCount)
@@ -381,4 +414,3 @@ export async function generatePublicWitnessSchedules({
     datesProcessed: validDates.length
   }
 }
-
