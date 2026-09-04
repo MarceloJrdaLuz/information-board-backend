@@ -29,6 +29,8 @@ const publicWitnessAssignmentRepository_1 = require("../../repositories/publicWi
 const publisherReminderRepository_1 = require("../../repositories/publisherReminderRepository");
 const territoryHistoryRepository_1 = require("../../repositories/territoryHistoryRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
+const mechanicalScheduleRepository_1 = require("../../repositories/mechanicalScheduleRepository");
+const mechanical_1 = require("../../types/mechanical");
 const pushNotificationService_1 = require("../../services/pushNotificationService");
 class CronJobController {
     async deleteExpiredNotices(req, res) {
@@ -312,7 +314,7 @@ class CronJobController {
      * Cron Job diário para disparar notificações push de lembretes pessoais e designações
      */
     async dispatchDailyNotifications(req, res) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19;
         const today = (0, dayjs_1.default)().startOf("day");
         const todayStr = today.format("YYYY-MM-DD");
         const tomorrow = today.add(1, "day");
@@ -568,6 +570,33 @@ class CronJobController {
                 });
                 // Deduplica programações caso correspondam a mais de uma condição
                 const uniqueSchedules = Array.from(new Map(midweekSchedules.map(s => [s.id, s])).values());
+                // Busca designações mecânicas da reunião de meio de semana para o mesmo período
+                const mechanicalMidweekSchedules = await mechanicalScheduleRepository_1.mechanicalScheduleRepository.find({
+                    where: [
+                        { weekStartDate: mondayStr, meetingType: mechanical_1.MechanicalMeetingType.MIDWEEK },
+                        { weekStartDate: (0, typeorm_1.Between)(mondayStr, sundayStr), meetingType: mechanical_1.MechanicalMeetingType.MIDWEEK },
+                        { date: (0, typeorm_1.Between)(mondayStr, sundayStr), meetingType: mechanical_1.MechanicalMeetingType.MIDWEEK }
+                    ],
+                    relations: [
+                        "congregation",
+                        "assignments",
+                        "assignments.publisher"
+                    ],
+                    order: {
+                        assignments: {
+                            order: "ASC"
+                        }
+                    }
+                });
+                const uniqueMechanicalSchedules = Array.from(new Map(mechanicalMidweekSchedules.map(s => [s.id, s])).values());
+                const processedMechScheduleIds = new Set();
+                const formatMechanicalRole = (role, order) => {
+                    const roleLabel = mechanical_1.MechanicalRoleLabels[role] || role;
+                    const roleWithOrder = order && order > 1 && (role === mechanical_1.MechanicalRole.ATTENDANT || role === mechanical_1.MechanicalRole.ROVING_MIC || role === mechanical_1.MechanicalRole.STAGE_MIC)
+                        ? `${roleLabel} ${order}`
+                        : roleLabel;
+                    return `${roleWithOrder} (Tarefa Mecânica)`;
+                };
                 const getRoomSuffix = (room) => {
                     if (room === MidweekMeetingPart_1.MidweekRoom.AUXILIARY_1)
                         return " (Sala Auxiliar 1)";
@@ -628,6 +657,17 @@ class CronJobController {
                             addAssignment(part.assistantPublisher, desc);
                         }
                     }
+                    // Anexa tarefas mecânicas da congregação para a mesma semana na notificação consolidada
+                    const scheduleCongId = ((_17 = schedule.congregation) === null || _17 === void 0 ? void 0 : _17.id) || schedule.congregation_id;
+                    const matchingMechSchedules = uniqueMechanicalSchedules.filter(ms => { var _a; return (ms.congregation_id === scheduleCongId || ((_a = ms.congregation) === null || _a === void 0 ? void 0 : _a.id) === scheduleCongId) && !ms.hasNoMeeting; });
+                    for (const mechSched of matchingMechSchedules) {
+                        processedMechScheduleIds.add(mechSched.id);
+                        for (const ma of mechSched.assignments || []) {
+                            if ((_18 = ma.publisher) === null || _18 === void 0 ? void 0 : _18.id) {
+                                addAssignment(ma.publisher, formatMechanicalRole(ma.role, ma.order));
+                            }
+                        }
+                    }
                     for (const [pubId, digest] of pubMap.entries()) {
                         const itemsList = digest.items.map(item => `• ${item}`).join("\n");
                         const title = `Reunião Meio de Semana (${meetingDateFmt})`;
@@ -644,6 +684,43 @@ class CronJobController {
                                 meetingDate: schedule.meetingDate || schedule.weekDate
                             }
                         }, "MIDWEEK_WEEKLY_DIGEST", { scheduleId: schedule.id });
+                    }
+                }
+                // Caso existam congregações com tarefas mecânicas cadastradas mas sem programação de meio de semana no banco
+                const remainingMechSchedules = uniqueMechanicalSchedules.filter(ms => !processedMechScheduleIds.has(ms.id) && !ms.hasNoMeeting);
+                for (const mechSched of remainingMechSchedules) {
+                    const meetingDateObj = mechSched.date ? (0, dayjs_1.default)(mechSched.date) : (0, dayjs_1.default)(mechSched.weekStartDate);
+                    const meetingDateFmt = meetingDateObj.format("DD/MM");
+                    const pubMap = new Map();
+                    const addAssignment = (pub, desc) => {
+                        if (!(pub === null || pub === void 0 ? void 0 : pub.id))
+                            return;
+                        if (!pubMap.has(pub.id)) {
+                            pubMap.set(pub.id, { id: pub.id, name: pub.name, items: [] });
+                        }
+                        pubMap.get(pub.id).items.push(desc);
+                    };
+                    for (const ma of mechSched.assignments || []) {
+                        if ((_19 = ma.publisher) === null || _19 === void 0 ? void 0 : _19.id) {
+                            addAssignment(ma.publisher, formatMechanicalRole(ma.role, ma.order));
+                        }
+                    }
+                    for (const [pubId, digest] of pubMap.entries()) {
+                        const itemsList = digest.items.map(item => `• ${item}`).join("\n");
+                        const title = `Reunião Meio de Semana (${meetingDateFmt})`;
+                        const body = digest.items.length === 1
+                            ? `Você tem 1 designação nesta semana:\n${itemsList}`
+                            : `Você tem ${digest.items.length} designações nesta semana:\n${itemsList}`;
+                        await sendNotification(pubId, {
+                            title,
+                            body,
+                            type: Notification_1.NotificationType.REMINDER,
+                            data: {
+                                url: "/dashboard",
+                                scheduleId: mechSched.id,
+                                meetingDate: mechSched.date || mechSched.weekStartDate
+                            }
+                        }, "MIDWEEK_WEEKLY_DIGEST", { scheduleId: mechSched.id });
                     }
                 }
             }

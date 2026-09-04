@@ -25,6 +25,8 @@ import { publicWitnessAssignmentRepository } from "../../repositories/publicWitn
 import { publisherReminderRepository } from "../../repositories/publisherReminderRepository"
 import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
+import { mechanicalScheduleRepository } from "../../repositories/mechanicalScheduleRepository"
+import { MechanicalMeetingType, MechanicalRole, MechanicalRoleLabels } from "../../types/mechanical"
 import { pushNotificationService } from "../../services/pushNotificationService"
 
 class CronJobController {
@@ -659,6 +661,37 @@ class CronJobController {
                 // Deduplica programações caso correspondam a mais de uma condição
                 const uniqueSchedules = Array.from(new Map(midweekSchedules.map(s => [s.id, s])).values())
 
+                // Busca designações mecânicas da reunião de meio de semana para o mesmo período
+                const mechanicalMidweekSchedules = await mechanicalScheduleRepository.find({
+                    where: [
+                        { weekStartDate: mondayStr, meetingType: MechanicalMeetingType.MIDWEEK },
+                        { weekStartDate: Between(mondayStr, sundayStr), meetingType: MechanicalMeetingType.MIDWEEK },
+                        { date: Between(mondayStr, sundayStr), meetingType: MechanicalMeetingType.MIDWEEK }
+                    ],
+                    relations: [
+                        "congregation",
+                        "assignments",
+                        "assignments.publisher"
+                    ],
+                    order: {
+                        assignments: {
+                            order: "ASC"
+                        }
+                    }
+                })
+
+                const uniqueMechanicalSchedules = Array.from(new Map(mechanicalMidweekSchedules.map(s => [s.id, s])).values())
+                const processedMechScheduleIds = new Set<string>()
+
+                const formatMechanicalRole = (role: MechanicalRole, order?: number) => {
+                    const roleLabel = MechanicalRoleLabels[role] || role
+                    const roleWithOrder =
+                        order && order > 1 && (role === MechanicalRole.ATTENDANT || role === MechanicalRole.ROVING_MIC || role === MechanicalRole.STAGE_MIC)
+                            ? `${roleLabel} ${order}`
+                            : roleLabel
+                    return `${roleWithOrder} (Tarefa Mecânica)`
+                }
+
                 const getRoomSuffix = (room?: MidweekRoom) => {
                     if (room === MidweekRoom.AUXILIARY_1) return " (Sala Auxiliar 1)"
                     if (room === MidweekRoom.AUXILIARY_2) return " (Sala Auxiliar 2)"
@@ -718,6 +751,21 @@ class CronJobController {
                         }
                     }
 
+                    // Anexa tarefas mecânicas da congregação para a mesma semana na notificação consolidada
+                    const scheduleCongId = schedule.congregation?.id || (schedule as any).congregation_id
+                    const matchingMechSchedules = uniqueMechanicalSchedules.filter(
+                        ms => (ms.congregation_id === scheduleCongId || ms.congregation?.id === scheduleCongId) && !ms.hasNoMeeting
+                    )
+
+                    for (const mechSched of matchingMechSchedules) {
+                        processedMechScheduleIds.add(mechSched.id)
+                        for (const ma of mechSched.assignments || []) {
+                            if (ma.publisher?.id) {
+                                addAssignment(ma.publisher, formatMechanicalRole(ma.role, ma.order))
+                            }
+                        }
+                    }
+
                     for (const [pubId, digest] of pubMap.entries()) {
                         const itemsList = digest.items.map(item => `• ${item}`).join("\n")
                         const title = `Reunião Meio de Semana (${meetingDateFmt})`
@@ -735,6 +783,51 @@ class CronJobController {
                                 meetingDate: schedule.meetingDate || schedule.weekDate
                             }
                         }, "MIDWEEK_WEEKLY_DIGEST", { scheduleId: schedule.id })
+                    }
+                }
+
+                // Caso existam congregações com tarefas mecânicas cadastradas mas sem programação de meio de semana no banco
+                const remainingMechSchedules = uniqueMechanicalSchedules.filter(
+                    ms => !processedMechScheduleIds.has(ms.id) && !ms.hasNoMeeting
+                )
+
+                for (const mechSched of remainingMechSchedules) {
+                    const meetingDateObj = mechSched.date ? dayjs(mechSched.date) : dayjs(mechSched.weekStartDate)
+                    const meetingDateFmt = meetingDateObj.format("DD/MM")
+
+                    const pubMap = new Map<string, { id: string; name?: string; items: string[] }>()
+
+                    const addAssignment = (pub: { id: string; name?: string } | null | undefined, desc: string) => {
+                        if (!pub?.id) return
+                        if (!pubMap.has(pub.id)) {
+                            pubMap.set(pub.id, { id: pub.id, name: pub.name, items: [] })
+                        }
+                        pubMap.get(pub.id)!.items.push(desc)
+                    }
+
+                    for (const ma of mechSched.assignments || []) {
+                        if (ma.publisher?.id) {
+                            addAssignment(ma.publisher, formatMechanicalRole(ma.role, ma.order))
+                        }
+                    }
+
+                    for (const [pubId, digest] of pubMap.entries()) {
+                        const itemsList = digest.items.map(item => `• ${item}`).join("\n")
+                        const title = `Reunião Meio de Semana (${meetingDateFmt})`
+                        const body = digest.items.length === 1
+                            ? `Você tem 1 designação nesta semana:\n${itemsList}`
+                            : `Você tem ${digest.items.length} designações nesta semana:\n${itemsList}`
+
+                        await sendNotification(pubId, {
+                            title,
+                            body,
+                            type: NotificationType.REMINDER,
+                            data: {
+                                url: "/dashboard",
+                                scheduleId: mechSched.id,
+                                meetingDate: mechSched.date || mechSched.weekStartDate
+                            }
+                        }, "MIDWEEK_WEEKLY_DIGEST", { scheduleId: mechSched.id })
                     }
                 }
             }
