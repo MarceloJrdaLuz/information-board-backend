@@ -29,6 +29,8 @@ const publisherPrivilegeRepository_1 = require("../../repositories/publisherPriv
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
+const mechanicalAssignmentRepository_1 = require("../../repositories/mechanicalAssignmentRepository");
+const mechanical_1 = require("../../types/mechanical");
 const privileges_1 = require("../../types/privileges");
 class PublisherControler {
     async create(req, res) {
@@ -581,6 +583,39 @@ class PublisherControler {
                 });
             }
         }
+        // 🔹 Mapeia designações de partes mecânicas
+        const mechanicalAssignments = await mechanicalAssignmentRepository_1.mechanicalAssignmentRepository.find({
+            where: {
+                publisher_id: publisher_id,
+                schedule: {
+                    date: (0, typeorm_1.MoreThanOrEqual)(todayStr)
+                }
+            },
+            relations: ["schedule"],
+            order: {
+                schedule: {
+                    date: "ASC"
+                }
+            }
+        });
+        const mechanicalAssignmentsMapped = mechanicalAssignments
+            .filter(ma => ma.schedule && !ma.schedule.hasNoMeeting)
+            .map(ma => {
+            const roleLabel = mechanical_1.MechanicalRoleLabels[ma.role] || ma.role;
+            const roleWithOrder = ma.order && ma.order > 1 && (ma.role === mechanical_1.MechanicalRole.ATTENDANT || ma.role === mechanical_1.MechanicalRole.ROVING_MIC || ma.role === mechanical_1.MechanicalRole.STAGE_MIC)
+                ? `${roleLabel} ${ma.order}`
+                : roleLabel;
+            return {
+                id: ma.id,
+                role: "Tarefa Mecânica",
+                title: roleWithOrder,
+                mechanicalRole: ma.role,
+                mechanicalRoleLabel: roleLabel,
+                order: ma.order,
+                meetingType: ma.schedule.meetingType,
+                date: ma.schedule.date
+            };
+        });
         const allAssignments = [
             ...assignments,
             ...hospitalityAssignments,
@@ -589,7 +624,8 @@ class PublisherControler {
             ...fieldServiceRotationMapped,
             ...publicWitnessMapped,
             ...midweekGeneralAssignments,
-            ...midweekPartAssignments
+            ...midweekPartAssignments,
+            ...mechanicalAssignmentsMapped
         ];
         // 🔹 Ordena por data
         allAssignments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

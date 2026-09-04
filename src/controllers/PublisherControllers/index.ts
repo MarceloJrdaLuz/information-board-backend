@@ -25,11 +25,14 @@ import { publisherPrivilegeRepository } from "../../repositories/publisherPrivil
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
+import { mechanicalAssignmentRepository } from "../../repositories/mechanicalAssignmentRepository"
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
+import { MechanicalRole, MechanicalRoleLabels } from "../../types/mechanical"
 import { Privileges } from "../../types/privileges"
 import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
 
 interface UnifiedAssignment {
+  id?: string
   role: string
   date: string
   title?: string | null
@@ -62,6 +65,10 @@ interface UnifiedAssignment {
   section?: string
   timeMinutes?: number
   partType?: string
+  mechanicalRole?: string
+  mechanicalRoleLabel?: string
+  meetingType?: string
+  order?: number
 }
 
 class PublisherControler {
@@ -678,6 +685,43 @@ class PublisherControler {
       }
     }
 
+    // 🔹 Mapeia designações de partes mecânicas
+    const mechanicalAssignments = await mechanicalAssignmentRepository.find({
+      where: {
+        publisher_id: publisher_id,
+        schedule: {
+          date: MoreThanOrEqual(todayStr)
+        }
+      },
+      relations: ["schedule"],
+      order: {
+        schedule: {
+          date: "ASC"
+        }
+      }
+    })
+
+    const mechanicalAssignmentsMapped: UnifiedAssignment[] = mechanicalAssignments
+      .filter(ma => ma.schedule && !ma.schedule.hasNoMeeting)
+      .map(ma => {
+        const roleLabel = MechanicalRoleLabels[ma.role] || ma.role
+        const roleWithOrder =
+          ma.order && ma.order > 1 && (ma.role === MechanicalRole.ATTENDANT || ma.role === MechanicalRole.ROVING_MIC || ma.role === MechanicalRole.STAGE_MIC)
+            ? `${roleLabel} ${ma.order}`
+            : roleLabel
+
+        return {
+          id: ma.id,
+          role: "Tarefa Mecânica",
+          title: roleWithOrder,
+          mechanicalRole: ma.role,
+          mechanicalRoleLabel: roleLabel,
+          order: ma.order,
+          meetingType: ma.schedule.meetingType,
+          date: ma.schedule.date
+        }
+      })
+
     const allAssignments: UnifiedAssignment[] = [
       ...assignments as UnifiedAssignment[],
       ...hospitalityAssignments as UnifiedAssignment[],
@@ -686,7 +730,8 @@ class PublisherControler {
       ...fieldServiceRotationMapped as UnifiedAssignment[],
       ...publicWitnessMapped,
       ...midweekGeneralAssignments,
-      ...midweekPartAssignments
+      ...midweekPartAssignments,
+      ...mechanicalAssignmentsMapped
     ]
 
     // 🔹 Ordena por data
