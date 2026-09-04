@@ -268,7 +268,7 @@ class PublisherControler {
         return res.status(200).json(publisher);
     }
     async getAssignmentPublisher(req, res) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e;
         const { publisher_id } = req.params;
         const publisher = await publisherRepository_1.publisherRepository.findOne({
             where: {
@@ -584,20 +584,20 @@ class PublisherControler {
             }
         }
         // 🔹 Mapeia designações de partes mecânicas
-        const mechanicalAssignments = await mechanicalAssignmentRepository_1.mechanicalAssignmentRepository.find({
-            where: {
-                publisher_id: publisher_id,
-                schedule: {
-                    date: (0, typeorm_1.MoreThanOrEqual)(todayStr)
-                }
-            },
-            relations: ["schedule"],
-            order: {
-                schedule: {
-                    date: "ASC"
-                }
-            }
-        });
+        const mechanicalAssignmentsQuery = mechanicalAssignmentRepository_1.mechanicalAssignmentRepository
+            .createQueryBuilder("ma")
+            .innerJoinAndSelect("ma.schedule", "sched")
+            .where("ma.publisher_id = :publisher_id", { publisher_id })
+            .andWhere("sched.date >= :todayStr", { todayStr });
+        if ((_e = publisher.congregation) === null || _e === void 0 ? void 0 : _e.id) {
+            mechanicalAssignmentsQuery.andWhere("sched.congregation_id = :congregation_id", {
+                congregation_id: publisher.congregation.id
+            });
+        }
+        const mechanicalAssignments = await mechanicalAssignmentsQuery
+            .orderBy("sched.date", "ASC")
+            .addOrderBy("ma.order", "ASC")
+            .getMany();
         const mechanicalAssignmentsMapped = mechanicalAssignments
             .filter(ma => ma.schedule && !ma.schedule.hasNoMeeting)
             .map(ma => {

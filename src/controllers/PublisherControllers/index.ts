@@ -686,20 +686,22 @@ class PublisherControler {
     }
 
     // 🔹 Mapeia designações de partes mecânicas
-    const mechanicalAssignments = await mechanicalAssignmentRepository.find({
-      where: {
-        publisher_id: publisher_id,
-        schedule: {
-          date: MoreThanOrEqual(todayStr)
-        }
-      },
-      relations: ["schedule"],
-      order: {
-        schedule: {
-          date: "ASC"
-        }
-      }
-    })
+    const mechanicalAssignmentsQuery = mechanicalAssignmentRepository
+      .createQueryBuilder("ma")
+      .innerJoinAndSelect("ma.schedule", "sched")
+      .where("ma.publisher_id = :publisher_id", { publisher_id })
+      .andWhere("sched.date >= :todayStr", { todayStr })
+
+    if (publisher.congregation?.id) {
+      mechanicalAssignmentsQuery.andWhere("sched.congregation_id = :congregation_id", {
+        congregation_id: publisher.congregation.id
+      })
+    }
+
+    const mechanicalAssignments = await mechanicalAssignmentsQuery
+      .orderBy("sched.date", "ASC")
+      .addOrderBy("ma.order", "ASC")
+      .getMany()
 
     const mechanicalAssignmentsMapped: UnifiedAssignment[] = mechanicalAssignments
       .filter(ma => ma.schedule && !ma.schedule.hasNoMeeting)
