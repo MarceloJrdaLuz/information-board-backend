@@ -344,8 +344,8 @@ routes.get("/usage", (0, permissions_1.is)(["ADMIN"]), VercelUsageController_1.d
 // Importação do XML da Apostila
 routes.post("/midweek/import-xml", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), multer_1.uploadXml.single("file"), midweekController.importXml.bind(midweekController));
 // Programação do Mês e Detalhes da Semana
-routes.get("/midweek/schedules/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER"]), midweekController.getMonthSchedules.bind(midweekController));
-routes.get("/midweek/schedules/:schedule_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER"]), midweekController.getScheduleById.bind(midweekController));
+routes.get("/midweek/schedules/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER", "MIDWEEK_VIEWER"]), midweekController.getMonthSchedules.bind(midweekController));
+routes.get("/midweek/schedules/:schedule_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER", "MIDWEEK_VIEWER"]), midweekController.getScheduleById.bind(midweekController));
 routes.patch("/midweek/schedules/:schedule_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updateSchedule.bind(midweekController));
 // Partes da Reunião
 routes.patch("/midweek/parts/:part_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePart.bind(midweekController));
