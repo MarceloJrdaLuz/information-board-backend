@@ -252,6 +252,18 @@ class CongregationController {
         });
         res.status(200).json(congregations);
     }
+    async listSystemCongregations(req, res) {
+        const congregations = await congregationRepository_1.congregationRepository.find({
+            where: {
+                type: Congregation_1.CongregationType.SYSTEM
+            },
+            select: ["id", "name", "city", "circuit", "number"],
+            order: {
+                name: "ASC"
+            }
+        });
+        return res.status(200).json(congregations);
+    }
     async getCongregation(req, res) {
         const { number } = req.params;
         const congExists = await congregationRepository_1.congregationRepository.findOne({

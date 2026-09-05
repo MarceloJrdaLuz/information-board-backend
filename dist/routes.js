@@ -7,6 +7,7 @@ const express_1 = require("express");
 const multer_1 = require("./config/multer");
 const permissions_1 = require("./middlewares/permissions");
 // Controllers
+const AccessRequestController_1 = __importDefault(require("./controllers/AccessRequestController"));
 const CategoryController_1 = __importDefault(require("./controllers/CategoryController"));
 const CleaningExceptionController_1 = __importDefault(require("./controllers/CleaningExceptionController"));
 const CleaningGroupController_1 = __importDefault(require("./controllers/CleaningGroupController"));
@@ -101,6 +102,18 @@ routes.put('/user/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION'])
 routes.get('/users', (0, permissions_1.is)(['ADMIN']), UserController_1.default.getUsers);
 routes.get('/users/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController_1.default.getUsersByCongregation);
 routes.patch('/users/:user_id/link-publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION']), UserController_1.default.linkPublisherToUser);
+/* === Solicitações de Acesso ao Domínio === */
+routes.post('/access-requests', AccessRequestController_1.default.create);
+routes.get('/access-requests/my', AccessRequestController_1.default.getMyRequests);
+routes.delete('/access-requests/my/:id', AccessRequestController_1.default.cancelMyRequest);
+routes.delete('/access-requests/my/:request_id', AccessRequestController_1.default.cancelMyRequest);
+routes.get('/access-requests/congregation/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.listByCongregation);
+routes.patch('/access-requests/:id/approve', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.approve);
+routes.patch('/access-requests/:id/reject', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.reject);
+routes.patch('/access-requests/:request_id/approve', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.approve);
+routes.patch('/access-requests/:request_id/reject', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.reject);
+routes.patch('/access-requests/congregation/:congregation_id/:request_id/approve', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.approve);
+routes.patch('/access-requests/congregation/:congregation_id/:request_id/reject', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.reject);
 /* === Publicadores === */
 routes.get('/publishers/congregationId/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers_1.default.getPublishers);
 routes.get('/publisher/:publisher_id/assignment', PublisherControllers_1.default.getAssignmentPublisher);
@@ -138,6 +151,7 @@ routes.delete('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['
 routes.post('/congregation', (0, permissions_1.is)(['ADMIN']), multer_1.uploadFile.single('image'), CongregationController_1.default.create);
 routes.delete('/congregation/:id', (0, permissions_1.is)(['ADMIN']), CongregationController_1.default.delete);
 routes.get('/congregations', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.list);
+routes.get('/congregations/system', CongregationController_1.default.listSystemCongregations);
 routes.get('/congregations/toTransfer', (0, permissions_1.is)(['ADMIN_CONGREGATION']), CongregationController_1.default.getCongregationSystemToTransferPublisher);
 routes.put('/congregation/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.update);
 routes.post('/congregation/:congregation_id/speakerCoordinator/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), CongregationController_1.default.addAndUpdateSpeakerCoordinator);

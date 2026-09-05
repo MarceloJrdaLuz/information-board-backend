@@ -25,10 +25,10 @@ exports.AppDataSource = new typeorm_1.DataSource({
         }
         : undefined,
     entities: environment === "local"
-        ? [`${__dirname}/**/entities/*.{ts, js}`]
+        ? [`${__dirname}/**/entities/*.{ts,js}`]
         : [(0, path_1.join)(__dirname, '../dist/**/entities/*.{ts,js}')],
     migrations: environment === "local"
-        ? [`${__dirname}/**/migrations/*.{ts, js}`]
+        ? [`${__dirname}/**/migrations/*.{ts,js}`]
         : [(0, path_1.join)(__dirname, '../dist/**/migrations/*.{ts,js}')],
     extra: {
         max: 5,

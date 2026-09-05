@@ -3,6 +3,7 @@ import { uploadFile, uploadXml } from "./config/multer"
 import { is, requirePublisher, verifyCronSecret } from "./middlewares/permissions"
 
 // Controllers
+import AccessRequestController from "./controllers/AccessRequestController"
 import CategoryController from "./controllers/CategoryController"
 import CleaningExceptionController from "./controllers/CleaningExceptionController"
 import CleaningGroupController from "./controllers/CleaningGroupController"
@@ -114,6 +115,19 @@ routes.get('/users', is(['ADMIN']), UserController.getUsers)
 routes.get('/users/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController.getUsersByCongregation)
 routes.patch('/users/:user_id/link-publisher', is(['ADMIN_CONGREGATION']), UserController.linkPublisherToUser)
 
+/* === Solicitações de Acesso ao Domínio === */
+routes.post('/access-requests', AccessRequestController.create)
+routes.get('/access-requests/my', AccessRequestController.getMyRequests)
+routes.delete('/access-requests/my/:id', AccessRequestController.cancelMyRequest)
+routes.delete('/access-requests/my/:request_id', AccessRequestController.cancelMyRequest)
+routes.get('/access-requests/congregation/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController.listByCongregation)
+routes.patch('/access-requests/:id/approve', is(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController.approve)
+routes.patch('/access-requests/:id/reject', is(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController.reject)
+routes.patch('/access-requests/:request_id/approve', is(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController.approve)
+routes.patch('/access-requests/:request_id/reject', is(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController.reject)
+routes.patch('/access-requests/congregation/:congregation_id/:request_id/approve', is(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController.approve)
+routes.patch('/access-requests/congregation/:congregation_id/:request_id/reject', is(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController.reject)
+
 /* === Publicadores === */
 routes.get('/publishers/congregationId/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers.getPublishers)
 routes.get('/publisher/:publisher_id/assignment', PublisherControllers.getAssignmentPublisher)
@@ -157,6 +171,7 @@ routes.delete('/emergencyContact/:emergencyContact_id', is(['ADMIN_CONGREGATION'
 routes.post('/congregation', is(['ADMIN']), uploadFile.single('image'), CongregationController.create)
 routes.delete('/congregation/:id', is(['ADMIN']), CongregationController.delete)
 routes.get('/congregations', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.list)
+routes.get('/congregations/system', CongregationController.listSystemCongregations)
 routes.get('/congregations/toTransfer', is(['ADMIN_CONGREGATION']), CongregationController.getCongregationSystemToTransferPublisher)
 routes.put('/congregation/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.update)
 routes.post('/congregation/:congregation_id/speakerCoordinator/:publisher_id', is(['ADMIN_CONGREGATION']), CongregationController.addAndUpdateSpeakerCoordinator)

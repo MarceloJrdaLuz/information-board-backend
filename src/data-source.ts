@@ -1,8 +1,9 @@
-import 'dotenv/config'
+import 'dotenv/config';
 import { join } from 'path';
-import 'reflect-metadata'
-import { DataSource } from "typeorm"
+import 'reflect-metadata';
+import { DataSource } from "typeorm";
 import { config } from './config';
+
 
 // Decodifique a variável de ambiente com o certificado .pem
 const sslCert = process.env.SSL_CERTIFICATE ? Buffer.from(process.env.SSL_CERTIFICATE, 'base64').toString() : undefined;
@@ -28,10 +29,10 @@ export const AppDataSource = new DataSource({
       }
       : undefined,
     entities: environment === "local"
-        ? [`${__dirname}/**/entities/*.{ts, js}`]
+        ? [`${__dirname}/**/entities/*.{ts,js}`]
         : [join(__dirname, '../dist/**/entities/*.{ts,js}')],
     migrations: environment === "local"
-        ? [`${__dirname}/**/migrations/*.{ts, js}`]
+        ? [`${__dirname}/**/migrations/*.{ts,js}`]
         : [join(__dirname, '../dist/**/migrations/*.{ts,js}')],
     extra: {
         max: 5, // limite enxuto de conexões por instância
