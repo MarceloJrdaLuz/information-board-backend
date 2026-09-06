@@ -2,16 +2,17 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const Congregation_1 = require("../../entities/Congregation");
 const permissions_1 = require("../../middlewares/permissions");
+const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepository");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
+const familyRepository_1 = require("../../repositories/familyRepository");
+const hospitalityGroupRepository_1 = require("../../repositories/hospitalityGroupRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const speakerRepository_1 = require("../../repositories/speakerRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
-const hospitalityGroupRepository_1 = require("../../repositories/hospitalityGroupRepository");
-const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepository");
-const familyRepository_1 = require("../../repositories/familyRepository");
+const midweekWorkbookWeekRepository_1 = require("../../repositories/midweekWorkbookWeekRepository");
 class FormDataController {
     async getFormData(req, res) {
         const requestUser = await (0, permissions_1.decoder)(req);
@@ -146,7 +147,10 @@ class FormDataController {
                         ...(mainCongregation ? [mainCongregation] : []),
                         ...auxiliaryCongregations
                     ];
-                    return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules });
+                    const workbookWeeks = await midweekWorkbookWeekRepository_1.midweekWorkbookWeekRepository.find({
+                        select: ["weekDate", "watchtowerStudyTheme"]
+                    });
+                    return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules, workbookWeeks });
                 }
                 case "hospitalityGroup": {
                     const publishers = await publisherRepository_1.publisherRepository.find({

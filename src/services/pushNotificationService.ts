@@ -80,7 +80,6 @@ class PushNotificationService {
         const pushData = JSON.stringify({
             title: payload.title,
             body: payload.body,
-            icon: "/icons/pwa-192.png",
             badge: "/icons/badge.png",
             data: {
                 ...payload.data,

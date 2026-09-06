@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_errors_1 = require("../../helpers/api-errors");
 const messageErrors_1 = require("../../helpers/messageErrors");
+const congregationRepository_1 = require("../../repositories/congregationRepository");
 const familyRepository_1 = require("../../repositories/familyRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
-const congregationRepository_1 = require("../../repositories/congregationRepository");
 const typeorm_1 = require("typeorm");
 class FamilyController {
     // -------------------------------------------------
@@ -58,6 +58,13 @@ class FamilyController {
             });
             if (!responsiblePublisher)
                 throw new api_errors_1.NotFoundError("Responsible publisher not found");
+        }
+        // Garantir que o responsável também esteja nos members (para receber family_id)
+        if (responsiblePublisher) {
+            const respId = responsiblePublisher.id;
+            if (!members.some(m => m.id === respId)) {
+                members.push(responsiblePublisher);
+            }
         }
         const newFamily = familyRepository_1.familyRepository.create({
             name,
@@ -130,6 +137,13 @@ class FamilyController {
                 })
                 : [];
             family.members = members;
+        }
+        // Garantir que o responsável também esteja nos members (para receber family_id)
+        if (family.responsible) {
+            const respId = family.responsible.id;
+            if (!family.members.some(m => m.id === respId)) {
+                family.members.push(family.responsible);
+            }
         }
         await familyRepository_1.familyRepository.save(family);
         return res.status(200).json(family);

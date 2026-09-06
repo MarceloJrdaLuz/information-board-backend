@@ -4,16 +4,32 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const dayjs_1 = __importDefault(require("dayjs"));
-const api_errors_1 = require("../../helpers/api-errors");
-const publicWitnessArrangementRepository_1 = require("../../repositories/publicWitnessArrangementRepository");
-const publicWitnessAssignmentRepository_1 = require("../../repositories/publicWitnessAssignmentRepository");
-const publicWitnessAssignmentPublisherRepository_1 = require("../../repositories/publicWitnessAssignmentPublisherRepository");
-const publisherRepository_1 = require("../../repositories/publisherRepository");
-const publicWitnessTimeSlotDefaultPublisherRepository_1 = require("../../repositories/publicWitnessTimeSlotDefaultPublisherRepository");
 const typeorm_1 = require("typeorm");
+const api_errors_1 = require("../../helpers/api-errors");
 const fieldServiceExceptionRepository_1 = require("../../repositories/fieldServiceExceptionRepository");
 const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
+const publicWitnessArrangementRepository_1 = require("../../repositories/publicWitnessArrangementRepository");
+const publicWitnessAssignmentPublisherRepository_1 = require("../../repositories/publicWitnessAssignmentPublisherRepository");
+const publicWitnessAssignmentRepository_1 = require("../../repositories/publicWitnessAssignmentRepository");
+const publicWitnessTimeSlotDefaultPublisherRepository_1 = require("../../repositories/publicWitnessTimeSlotDefaultPublisherRepository");
+const publisherRepository_1 = require("../../repositories/publisherRepository");
+const generatePublicWitnessSchedules_1 = require("../../services/publicWitness/generatePublicWitnessSchedules");
 class PublicWitnessScheduleController {
+    async generate(req, res) {
+        const { arrangement_id } = req.params;
+        const { startDate, endDate, mode, publishersPerSlot } = req.body;
+        if (!startDate || !endDate) {
+            throw new api_errors_1.BadRequestError("startDate e endDate são obrigatórios");
+        }
+        const result = await (0, generatePublicWitnessSchedules_1.generatePublicWitnessSchedules)({
+            arrangement_id,
+            startDate,
+            endDate,
+            mode,
+            publishersPerSlot: publishersPerSlot ? Number(publishersPerSlot) : 2
+        });
+        return res.status(200).json(result);
+    }
     async createMultiple(req, res) {
         var _a;
         const { schedule } = req.body;

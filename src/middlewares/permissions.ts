@@ -80,7 +80,13 @@ export function is(role: string[]) {
         const user = await decoder(req)
 
         // pega do body ou dos params
-        const congregation_id = req.body.congregation_id || req.params.id
+        const congregation_id =
+            req.body?.congregation_id ||
+            req.params?.congregation_id ||
+            req.params?.congregationId ||
+            req.params?.id
+            req.params?.congregationId;
+            req.params?.id;
 
         const userRoles = user?.roles?.map(role => role.name)
         const rolesExists = userRoles?.some(r => role.includes(r))
@@ -90,15 +96,17 @@ export function is(role: string[]) {
                 return next()
             } else {
                 // se for admin_congregation, precisa pertencer à congregação
-                const userCongregation = await userRepository.find({
-                    where: {
-                        id: user.id,
-                        congregation: { id: congregation_id }
-                    }
-                })
+                if (congregation_id) {
+                    const userCongregation = await userRepository.find({
+                        where: {
+                            id: user.id,
+                            congregation: { id: congregation_id }
+                        }
+                    })
 
-                if (userCongregation.length < 1) {
-                    throw new UnauthorizedError('User is not admin in this congregation')
+                    if (userCongregation.length < 1) {
+                        throw new UnauthorizedError('User is not admin in this congregation')
+                    }
                 }
                 return next()
             }

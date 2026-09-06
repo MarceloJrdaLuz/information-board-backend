@@ -1,16 +1,17 @@
 import { Request, Response } from "express"
 import { CongregationType } from "../../entities/Congregation"
 import { decoder } from "../../middlewares/permissions"
+import { cleaningGroupRepository } from "../../repositories/cleaningGroupRepository"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { externalTalkRepository } from "../../repositories/externalTalkRepository"
+import { familyRepository } from "../../repositories/familyRepository"
+import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupRepository"
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { speakerRepository } from "../../repositories/speakerRepository"
 import { talkRepository } from "../../repositories/talkRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
-import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupRepository"
-import { cleaningGroupRepository } from "../../repositories/cleaningGroupRepository"
-import { familyRepository } from "../../repositories/familyRepository"
+import { midweekWorkbookWeekRepository } from "../../repositories/midweekWorkbookWeekRepository"
 
 class FormDataController {
     async getFormData(req: Request, res: Response) {
@@ -185,8 +186,12 @@ class FormDataController {
                         ...auxiliaryCongregations
                     ]
 
+                    const workbookWeeks = await midweekWorkbookWeekRepository.find({
+                        select: ["weekDate", "watchtowerStudyTheme"]
+                    })
 
-                    return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules })
+                    return res.json({ speakers, talks, congregations, readers, chairmans, weekendSchedules, workbookWeeks })
+
                 }
 
                 case "hospitalityGroup": {

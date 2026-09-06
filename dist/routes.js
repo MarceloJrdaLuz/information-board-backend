@@ -7,6 +7,7 @@ const express_1 = require("express");
 const multer_1 = require("./config/multer");
 const permissions_1 = require("./middlewares/permissions");
 // Controllers
+const AccessRequestController_1 = __importDefault(require("./controllers/AccessRequestController"));
 const CategoryController_1 = __importDefault(require("./controllers/CategoryController"));
 const CleaningExceptionController_1 = __importDefault(require("./controllers/CleaningExceptionController"));
 const CleaningGroupController_1 = __importDefault(require("./controllers/CleaningGroupController"));
@@ -27,7 +28,9 @@ const FormDataController_1 = __importDefault(require("./controllers/FormDataCont
 const GroupController_1 = __importDefault(require("./controllers/GroupController"));
 const HospitalityController_1 = __importDefault(require("./controllers/HospitalityController"));
 const HospitalityGroupController_1 = __importDefault(require("./controllers/HospitalityGroupController"));
+const MechanicalScheduleController_1 = require("./controllers/MechanicalScheduleController");
 const MeetingAssistanceController_1 = __importDefault(require("./controllers/MeetingAssistanceController"));
+const MidweekScheduleController_1 = require("./controllers/MidweekScheduleController");
 const NoticeController_1 = __importDefault(require("./controllers/NoticeController"));
 const NotificationController_1 = __importDefault(require("./controllers/NotificationController"));
 const PermissionController_1 = __importDefault(require("./controllers/PermissionController"));
@@ -50,6 +53,8 @@ const VercelUsageController_1 = __importDefault(require("./controllers/VercelUsa
 const WeekendScheduleController_1 = __importDefault(require("./controllers/WeekendScheduleController"));
 const gitHubCronAuth_1 = require("./middlewares/gitHubCronAuth");
 const routes = (0, express_1.Router)();
+const midweekController = new MidweekScheduleController_1.MidweekScheduleController();
+const mechanicalController = new MechanicalScheduleController_1.MechanicalScheduleController();
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
 ========================================================= */
@@ -77,6 +82,8 @@ routes.get('/categories', CategoryController_1.default.getCategories);
 routes.get('/category/:category_id', CategoryController_1.default.getPermission);
 // Discurso de fim de semana (público)
 routes.get('/congregation/:congregation_id/weekendSchedules/public', WeekendScheduleController_1.default.getPublicSchedules);
+// Reunião de meio de semana (público)
+routes.get('/congregation/:congregation_id/midweekSchedules/public', midweekController.getPublicSchedules.bind(midweekController));
 // Consentimentos (público)
 routes.post("/consent/accept", DataProcessingAgreement_1.default.accept);
 routes.get("/consent", DataProcessingAgreement_1.default.list);
@@ -95,6 +102,18 @@ routes.put('/user/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION'])
 routes.get('/users', (0, permissions_1.is)(['ADMIN']), UserController_1.default.getUsers);
 routes.get('/users/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController_1.default.getUsersByCongregation);
 routes.patch('/users/:user_id/link-publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION']), UserController_1.default.linkPublisherToUser);
+/* === Solicitações de Acesso ao Domínio === */
+routes.post('/access-requests', AccessRequestController_1.default.create);
+routes.get('/access-requests/my', AccessRequestController_1.default.getMyRequests);
+routes.delete('/access-requests/my/:id', AccessRequestController_1.default.cancelMyRequest);
+routes.delete('/access-requests/my/:request_id', AccessRequestController_1.default.cancelMyRequest);
+routes.get('/access-requests/congregation/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.listByCongregation);
+routes.patch('/access-requests/:id/approve', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.approve);
+routes.patch('/access-requests/:id/reject', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.reject);
+routes.patch('/access-requests/:request_id/approve', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.approve);
+routes.patch('/access-requests/:request_id/reject', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.reject);
+routes.patch('/access-requests/congregation/:congregation_id/:request_id/approve', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.approve);
+routes.patch('/access-requests/congregation/:congregation_id/:request_id/reject', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.reject);
 /* === Publicadores === */
 routes.get('/publishers/congregationId/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers_1.default.getPublishers);
 routes.get('/publisher/:publisher_id/assignment', PublisherControllers_1.default.getAssignmentPublisher);
@@ -132,6 +151,7 @@ routes.delete('/emergencyContact/:emergencyContact_id', (0, permissions_1.is)(['
 routes.post('/congregation', (0, permissions_1.is)(['ADMIN']), multer_1.uploadFile.single('image'), CongregationController_1.default.create);
 routes.delete('/congregation/:id', (0, permissions_1.is)(['ADMIN']), CongregationController_1.default.delete);
 routes.get('/congregations', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.list);
+routes.get('/congregations/system', CongregationController_1.default.listSystemCongregations);
 routes.get('/congregations/toTransfer', (0, permissions_1.is)(['ADMIN_CONGREGATION']), CongregationController_1.default.getCongregationSystemToTransferPublisher);
 routes.put('/congregation/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.update);
 routes.post('/congregation/:congregation_id/speakerCoordinator/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), CongregationController_1.default.addAndUpdateSpeakerCoordinator);
@@ -291,9 +311,11 @@ routes.post("/public-witness/arrangements/congregation/:congregation_id", (0, pe
 routes.get("/public-witness/arrangements/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.getByCongregation);
 routes.get("/public-witness/arrangements/:arrangement_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.getOne);
 routes.patch("/public-witness/arrangements/:arrangement_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.update);
+routes.patch("/public-witness/arrangements/:arrangement_id/slot-preferences", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.updateSlotPreferences);
 routes.delete("/public-witness/arrangements/:arrangement_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController_1.default.delete);
 /* === Public Witness Schedules === */
 routes.post("/public-witness/arrangements/:arrangement_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.createMultiple);
+routes.post("/public-witness/arrangements/:arrangement_id/generate-schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.generate);
 routes.get("/public-witness/arrangements/:arrangement_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getByDateRange);
 routes.get("/public-witness/schedules/pdf/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getPdfByCongregation);
 routes.get("/public-witness/schedules/congregation/:congregation_id/history", (0, permissions_1.is)(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessScheduleController_1.default.getAssignmentsHistory);
@@ -316,4 +338,42 @@ routes.post('/cron/daily-notifications', gitHubCronAuth_1.verifyGitHubCron, Cron
 routes.get('/reportsCleanUp', permissions_1.verifyCronSecret, CronJobController_1.default.reportsCleanUp);
 routes.get('/backup', permissions_1.verifyCronSecret, CronJobController_1.default.backup);
 routes.get("/usage", (0, permissions_1.is)(["ADMIN"]), VercelUsageController_1.default.getUsage);
+/* =========================================================
+    REUNIÃO DE MEIO DE SEMANA (MIDWEEK SCHEDULE ASSISTANT)
+========================================================= */
+// Importação do XML da Apostila
+routes.post("/midweek/import-xml", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), multer_1.uploadXml.single("file"), midweekController.importXml.bind(midweekController));
+// Programação do Mês e Detalhes da Semana
+routes.get("/midweek/schedules/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER", "MIDWEEK_VIEWER"]), midweekController.getMonthSchedules.bind(midweekController));
+routes.get("/midweek/schedules/:schedule_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER", "MIDWEEK_VIEWER"]), midweekController.getScheduleById.bind(midweekController));
+routes.patch("/midweek/schedules/:schedule_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updateSchedule.bind(midweekController));
+// Partes da Reunião
+routes.patch("/midweek/parts/:part_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePart.bind(midweekController));
+routes.post("/midweek/schedules/:schedule_id/parts/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.createCustomPart.bind(midweekController));
+routes.delete("/midweek/parts/:part_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.deletePart.bind(midweekController));
+routes.post("/midweek/schedules/:schedule_id/rooms/:room/duplicate/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.duplicateStudentPartsForRoom.bind(midweekController));
+routes.post("/midweek/schedules/:schedule_id/duplicate-room/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.duplicateStudentPartsForRoom.bind(midweekController));
+// Sugestões de Publicadores (Histórico e Regras)
+routes.get("/midweek/parts/:part_id/suggestions/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.getSuggestionsForPart.bind(midweekController));
+routes.get("/midweek/schedules/:schedule_id/role-suggestions/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.getSuggestionsForRole.bind(midweekController));
+// Atribuição Automática Inteligente
+routes.post("/midweek/schedules/:schedule_id/auto-assign/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.autoAssignSchedule.bind(midweekController));
+routes.post("/midweek/schedules/month-auto-assign/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.autoAssignMonth.bind(midweekController));
+// Qualificações de Publicadores
+routes.get("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.getPublisherQualification.bind(midweekController));
+routes.patch("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePublisherQualification.bind(midweekController));
+routes.put("/midweek/publishers/:publisher_id/qualification", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePublisherQualification.bind(midweekController));
+// Ausências e Indisponibilidades
+routes.get("/midweek/unavailabilities/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER", "TALK_MANAGER"]), midweekController.getUnavailabilities.bind(midweekController));
+routes.post("/midweek/unavailabilities", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER", "TALK_MANAGER"]), midweekController.createUnavailability.bind(midweekController));
+routes.delete("/midweek/unavailabilities/:unavailability_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "PUBLISHERS_MANAGER", "PUBLIC_WITNESS_MANAGER", "FIELD_SERVICE_MANAGER", "TALK_MANAGER"]), midweekController.deleteUnavailability.bind(midweekController));
+// Partes Mecânicas (Meeting Duties)
+routes.get("/congregations/:congregation_id/mechanical-config", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.getConfig.bind(mechanicalController));
+routes.put("/congregations/:congregation_id/mechanical-config", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.saveConfig.bind(mechanicalController));
+routes.get("/congregations/:congregation_id/mechanical-schedules", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "PUBLISHERS_VIEWER", "PUBLISHERS_MANAGER"]), mechanicalController.getMonthSchedules.bind(mechanicalController));
+routes.post("/congregations/:congregation_id/mechanical-schedules/generate", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.autoAssignMonth.bind(mechanicalController));
+routes.put("/mechanical-assignments/:assignment_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.updateAssignment.bind(mechanicalController));
+routes.get("/congregations/:congregation_id/mechanical-suggestions", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.getSuggestions.bind(mechanicalController));
+routes.get("/congregations/:congregation_id/mechanical-qualifications", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.getQualifications.bind(mechanicalController));
+routes.post("/congregations/:congregation_id/mechanical-qualifications/toggle", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.toggleQualification.bind(mechanicalController));
 exports.default = routes;

@@ -65,11 +65,16 @@ function requirePublisher() {
 exports.requirePublisher = requirePublisher;
 function is(role) {
     const roleAuthorized = async (req, res, next) => {
-        var _a;
+        var _a, _b, _c, _d, _e, _f, _g;
         const user = await decoder(req);
         // pega do body ou dos params
-        const congregation_id = req.body.congregation_id || req.params.id;
-        const userRoles = (_a = user === null || user === void 0 ? void 0 : user.roles) === null || _a === void 0 ? void 0 : _a.map(role => role.name);
+        const congregation_id = ((_a = req.body) === null || _a === void 0 ? void 0 : _a.congregation_id) ||
+            ((_b = req.params) === null || _b === void 0 ? void 0 : _b.congregation_id) ||
+            ((_c = req.params) === null || _c === void 0 ? void 0 : _c.congregationId) ||
+            ((_d = req.params) === null || _d === void 0 ? void 0 : _d.id);
+        (_e = req.params) === null || _e === void 0 ? void 0 : _e.congregationId;
+        (_f = req.params) === null || _f === void 0 ? void 0 : _f.id;
+        const userRoles = (_g = user === null || user === void 0 ? void 0 : user.roles) === null || _g === void 0 ? void 0 : _g.map(role => role.name);
         const rolesExists = userRoles === null || userRoles === void 0 ? void 0 : userRoles.some(r => role.includes(r));
         if (rolesExists) {
             if (userRoles === null || userRoles === void 0 ? void 0 : userRoles.includes("ADMIN")) {
@@ -77,14 +82,16 @@ function is(role) {
             }
             else {
                 // se for admin_congregation, precisa pertencer à congregação
-                const userCongregation = await userRepository_1.userRepository.find({
-                    where: {
-                        id: user.id,
-                        congregation: { id: congregation_id }
+                if (congregation_id) {
+                    const userCongregation = await userRepository_1.userRepository.find({
+                        where: {
+                            id: user.id,
+                            congregation: { id: congregation_id }
+                        }
+                    });
+                    if (userCongregation.length < 1) {
+                        throw new api_errors_1.UnauthorizedError('User is not admin in this congregation');
                     }
-                });
-                if (userCongregation.length < 1) {
-                    throw new api_errors_1.UnauthorizedError('User is not admin in this congregation');
                 }
                 return next();
             }

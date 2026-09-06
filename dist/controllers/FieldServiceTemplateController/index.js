@@ -117,7 +117,7 @@ class FieldServiceTemplateController {
         const { congregation_id } = req.params;
         const templates = await fieldServiceTemplateRepository_1.fieldServiceTemplateRepository.find({
             where: { congregation: { id: congregation_id } },
-            relations: ["leader"],
+            relations: ["leader", "rotation_members", "rotation_members.publisher", "location_overrides"],
             order: { weekday: "ASC", time: "ASC" },
         });
         return res.json(templates);

@@ -1,23 +1,23 @@
 import { Response } from "express";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { messageErrors } from "../../helpers/messageErrors";
+import { congregationRepository } from "../../repositories/congregationRepository";
 import { familyRepository } from "../../repositories/familyRepository";
 import { publisherRepository } from "../../repositories/publisherRepository";
-import { congregationRepository } from "../../repositories/congregationRepository";
 
 import {
-    ParamsFamilyCreate,
     BodyFamilyCreate,
-    ParamsFamilyUpdate,
     BodyFamilyUpdate,
-    ParamsGetFamily,
+    ParamsDeleteFamily,
+    ParamsFamilyCreate,
+    ParamsFamilyUpdate,
     ParamsGetFamilies,
-    ParamsDeleteFamily
+    ParamsGetFamily
 } from "./types";
 
-import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 import { In, Not } from "typeorm";
 import { Publisher } from "../../entities/Publisher";
+import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 
 class FamilyController {
 
@@ -88,6 +88,14 @@ class FamilyController {
 
             if (!responsiblePublisher)
                 throw new NotFoundError("Responsible publisher not found");
+        }
+
+        // Garantir que o responsável também esteja nos members (para receber family_id)
+        if (responsiblePublisher) {
+            const respId = responsiblePublisher.id;
+            if (!members.some(m => m.id === respId)) {
+                members.push(responsiblePublisher);
+            }
         }
 
         const newFamily = familyRepository.create({
@@ -181,6 +189,14 @@ class FamilyController {
                 : [];
 
             family.members = members;
+        }
+
+        // Garantir que o responsável também esteja nos members (para receber family_id)
+        if (family.responsible) {
+            const respId = family.responsible.id;
+            if (!family.members.some(m => m.id === respId)) {
+                family.members.push(family.responsible);
+            }
         }
 
         await familyRepository.save(family);

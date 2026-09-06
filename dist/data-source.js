@@ -25,13 +25,16 @@ exports.AppDataSource = new typeorm_1.DataSource({
         }
         : undefined,
     entities: environment === "local"
-        ? [`${__dirname}/**/entities/*.{ts, js}`]
+        ? [`${__dirname}/**/entities/*.{ts,js}`]
         : [(0, path_1.join)(__dirname, '../dist/**/entities/*.{ts,js}')],
     migrations: environment === "local"
-        ? [`${__dirname}/**/migrations/*.{ts, js}`]
+        ? [`${__dirname}/**/migrations/*.{ts,js}`]
         : [(0, path_1.join)(__dirname, '../dist/**/migrations/*.{ts,js}')],
     extra: {
-        max: 10, // limite de conexões no pool
+        max: 5,
+        min: 1,
+        idleTimeoutMillis: 10000,
+        connectionTimeoutMillis: 10000, // timeout de 10s para adquirir conexão
     },
 });
 // Função para inicializar o DataSource uma única vez

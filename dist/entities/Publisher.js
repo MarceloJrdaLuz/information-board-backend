@@ -13,12 +13,14 @@ exports.Publisher = exports.Situation = exports.Hope = exports.Gender = void 0;
 const typeorm_1 = require("typeorm");
 const Congregation_1 = require("./Congregation");
 const EmergencyContact_1 = require("./EmergencyContact");
+const Family_1 = require("./Family");
 const Group_1 = require("./Group");
 const GroupOverseers_1 = require("./GroupOverseers");
 const HospitalityGroup_1 = require("./HospitalityGroup.");
-const User_1 = require("./User");
 const PublisherPrivilege_1 = require("./PublisherPrivilege");
-const Family_1 = require("./Family");
+const User_1 = require("./User");
+const PublisherMidweekQualification_1 = require("./PublisherMidweekQualification");
+const PublisherUnavailability_1 = require("./PublisherUnavailability");
 var Gender;
 (function (Gender) {
     Gender["Masculino"] = "Masculino";
@@ -127,15 +129,14 @@ __decorate([
     __metadata("design:type", Object)
 ], Publisher.prototype, "group", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => GroupOverseers_1.GroupOverseers, { nullable: true, onDelete: "SET NULL" }) // Relacionamento Many-to-One opcional com GroupOverseers
-    ,
+    (0, typeorm_1.ManyToOne)(() => GroupOverseers_1.GroupOverseers, { nullable: true, onDelete: "SET NULL" }),
     (0, typeorm_1.JoinColumn)({ name: 'group_overseers_id' }),
     __metadata("design:type", Object)
 ], Publisher.prototype, "groupOverseers", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => EmergencyContact_1.EmergencyContact, emergencyContact => emergencyContact.publishers, {
         nullable: true,
-        onDelete: "SET NULL", // se o contato for deletado, o publisher continua mas sem contato
+        onDelete: "SET NULL",
     }),
     __metadata("design:type", Object)
 ], Publisher.prototype, "emergencyContact", void 0);
@@ -155,6 +156,14 @@ __decorate([
     (0, typeorm_1.Column)({ type: "uuid", nullable: true }),
     __metadata("design:type", Object)
 ], Publisher.prototype, "hospitality_group_id", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => PublisherMidweekQualification_1.PublisherMidweekQualification, q => q.publisher, { nullable: true }),
+    __metadata("design:type", Object)
+], Publisher.prototype, "midweekQualification", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => PublisherUnavailability_1.PublisherUnavailability, u => u.publisher),
+    __metadata("design:type", Array)
+], Publisher.prototype, "unavailabilities", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
