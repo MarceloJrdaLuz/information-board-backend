@@ -139,15 +139,38 @@ export class MechanicalAutoAssignService {
             let midweekPlannedAssignments: MechanicalAssignment[] = [];
 
             for (const meetingInfo of meetingsToPlan) {
-                let schedule = await mechanicalScheduleRepository.findOne({
+                // Busca todas as programações existentes para esta semana e tipo de reunião
+                const existingSchedules = await mechanicalScheduleRepository.find({
                     where: {
                         congregation_id: congregationId,
-                        date: meetingInfo.date
+                        weekStartDate,
+                        meetingType: meetingInfo.meetingType
                     },
                     relations: ["assignments", "assignments.publisher"]
                 });
 
-                if (!schedule) {
+                let schedule: MechanicalSchedule;
+                const exactMatch = existingSchedules.find(s => s.date === meetingInfo.date);
+
+                if (exactMatch) {
+                    schedule = exactMatch;
+                    // Se existirem outras instâncias duplicadas (ex: data antiga que ficou órfã), exclui
+                    for (const extra of existingSchedules) {
+                        if (extra.id !== schedule.id) {
+                            await mechanicalScheduleRepository.delete(extra.id);
+                        }
+                    }
+                } else if (existingSchedules.length > 0) {
+                    // O dia da reunião mudou: substitui a antiga atualizando a data para a nova data
+                    schedule = existingSchedules[0];
+                    schedule.date = meetingInfo.date;
+                    schedule = await mechanicalScheduleRepository.save(schedule);
+
+                    // Se houver mais de uma duplicata antiga, remove as extras
+                    for (let i = 1; i < existingSchedules.length; i++) {
+                        await mechanicalScheduleRepository.delete(existingSchedules[i].id);
+                    }
+                } else {
                     schedule = mechanicalScheduleRepository.create({
                         congregation_id: congregationId,
                         weekStartDate,
@@ -409,6 +432,19 @@ export class MechanicalAutoAssignService {
 
                 if (savedSchedule) {
                     resultSchedules.push(savedSchedule);
+                }
+            }
+
+            // Remove quaisquer escalas órfãs nesta semana que não correspondam às reuniões planejadas
+            const leftoverSchedules = await mechanicalScheduleRepository.find({
+                where: {
+                    congregation_id: congregationId,
+                    weekStartDate
+                }
+            });
+            for (const leftover of leftoverSchedules) {
+                if (leftover.date !== midweekMeetingDate && leftover.date !== weekendMeetingDate) {
+                    await mechanicalScheduleRepository.delete(leftover.id);
                 }
             }
 

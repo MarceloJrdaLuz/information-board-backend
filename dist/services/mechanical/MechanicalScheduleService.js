@@ -1,27 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -32,6 +9,8 @@ const isBetween_1 = __importDefault(require("dayjs/plugin/isBetween"));
 const midweekEnums_1 = require("../../entities/midweekEnums");
 const Publisher_1 = require("../../entities/Publisher");
 const api_errors_1 = require("../../helpers/api-errors");
+const cleaningFunctions_1 = require("../../functions/cleaningFunctions");
+const congregationRepository_1 = require("../../repositories/congregationRepository");
 const mechanicalAssignmentRepository_1 = require("../../repositories/mechanicalAssignmentRepository");
 const mechanicalScheduleConfigRepository_1 = require("../../repositories/mechanicalScheduleConfigRepository");
 const mechanicalScheduleRepository_1 = require("../../repositories/mechanicalScheduleRepository");
@@ -77,36 +56,15 @@ class MechanicalScheduleService {
         // Semana começa na segunda-feira antes ou no primeiro dia do mês inicial
         const firstWeekMonday = startOfMonth.startOf("isoWeek").format("YYYY-MM-DD");
         const lastWeekSunday = endOfMonth.endOf("isoWeek").format("YYYY-MM-DD");
-        const schedules = await mechanicalScheduleRepository_1.mechanicalScheduleRepository
-            .createQueryBuilder("sched")
-            .leftJoinAndSelect("sched.assignments", "assignments")
-            .leftJoinAndSelect("assignments.publisher", "publisher")
-            .where("sched.congregation_id = :congregationId", { congregationId })
-            .andWhere("sched.date >= :startDate AND sched.date <= :endDate", {
-            startDate: firstWeekMonday,
-            endDate: lastWeekSunday
-        })
-            .orderBy("sched.date", "ASC")
-            .addOrderBy("assignments.order", "ASC")
-            .getMany();
-        // Busca registros de MidweekSchedule no mesmo período para detectar eventos especiais
-        const midweekSchedules = await midweekScheduleRepository_1.midweekScheduleRepository
-            .createQueryBuilder("mid")
-            .where("mid.congregation_id = :congregationId", { congregationId })
-            .andWhere("mid.weekDate >= :startDate AND mid.weekDate <= :endDate", {
-            startDate: firstWeekMonday,
-            endDate: lastWeekSunday
-        })
-            .getMany();
-        // Agrupa por semana (weekStartDate)
-        const weeksMap = new Map();
-        for (const s of schedules) {
-            const weekKey = s.weekStartDate;
-            if (!weeksMap.has(weekKey)) {
-                weeksMap.set(weekKey, []);
-            }
-            weeksMap.get(weekKey).push(s);
-        }
+        const congregation = await congregationRepository_1.congregationRepository.findOne({
+            where: { id: congregationId }
+        });
+        const midweekDayOfWeek = (congregation === null || congregation === void 0 ? void 0 : congregation.dayMeetingLifeAndMinistary)
+            ? (0, cleaningFunctions_1.convertMeetingDayPortugueseToIso)(congregation.dayMeetingLifeAndMinistary)
+            : 3;
+        const weekendDayOfWeek = (congregation === null || congregation === void 0 ? void 0 : congregation.dayMeetingPublic)
+            ? (0, cleaningFunctions_1.convertMeetingDayPortugueseToIso)(congregation.dayMeetingPublic)
+            : 7;
         // Garante que todas as semanas do período existam
         let curMonday = (0, dayjs_1.default)(firstWeekMonday);
         const endSun = (0, dayjs_1.default)(lastWeekSunday);
@@ -114,6 +72,73 @@ class MechanicalScheduleService {
         while (curMonday.isBefore(endSun)) {
             allWeekKeys.push(curMonday.format("YYYY-MM-DD"));
             curMonday = curMonday.add(1, "week");
+        }
+        const schedules = await mechanicalScheduleRepository_1.mechanicalScheduleRepository
+            .createQueryBuilder("sched")
+            .leftJoinAndSelect("sched.assignments", "assignments")
+            .leftJoinAndSelect("assignments.publisher", "publisher")
+            .where("sched.congregation_id = :congregationId", { congregationId })
+            .andWhere("sched.weekStartDate IN (:...allWeekKeys)", { allWeekKeys })
+            .orderBy("sched.date", "ASC")
+            .addOrderBy("assignments.order", "ASC")
+            .getMany();
+        // Busca registros de MidweekSchedule no mesmo período para detectar eventos especiais
+        const midweekSchedules = await midweekScheduleRepository_1.midweekScheduleRepository
+            .createQueryBuilder("mid")
+            .where("mid.congregation_id = :congregationId", { congregationId })
+            .andWhere("mid.weekDate IN (:...allWeekKeys)", { allWeekKeys })
+            .getMany();
+        // Agrupa por semana (weekStartDate) e reconcilia alterações de dias de reunião
+        const weeksMap = new Map();
+        for (const weekStartDate of allWeekKeys) {
+            const monday = (0, dayjs_1.default)(weekStartDate);
+            const expectedMidweekDate = monday.isoWeekday(midweekDayOfWeek).format("YYYY-MM-DD");
+            const expectedWeekendDate = monday.isoWeekday(weekendDayOfWeek).format("YYYY-MM-DD");
+            const weekScheds = schedules.filter(s => s.weekStartDate === weekStartDate);
+            // Reconcilia MIDWEEK
+            const midweekList = weekScheds.filter(s => s.meetingType === mechanical_1.MechanicalMeetingType.MIDWEEK);
+            let validMidweek = null;
+            if (midweekList.length > 0) {
+                validMidweek = midweekList.find(s => s.date === expectedMidweekDate) || midweekList[0];
+                if (validMidweek.date !== expectedMidweekDate) {
+                    validMidweek.date = expectedMidweekDate;
+                    await mechanicalScheduleRepository_1.mechanicalScheduleRepository.save(validMidweek);
+                }
+                for (const extra of midweekList) {
+                    if (extra.id !== validMidweek.id) {
+                        await mechanicalScheduleRepository_1.mechanicalScheduleRepository.delete(extra.id);
+                    }
+                }
+            }
+            // Reconcilia WEEKEND
+            const weekendList = weekScheds.filter(s => s.meetingType === mechanical_1.MechanicalMeetingType.WEEKEND);
+            let validWeekend = null;
+            if (weekendList.length > 0) {
+                validWeekend = weekendList.find(s => s.date === expectedWeekendDate) || weekendList[0];
+                if (validWeekend.date !== expectedWeekendDate) {
+                    validWeekend.date = expectedWeekendDate;
+                    await mechanicalScheduleRepository_1.mechanicalScheduleRepository.save(validWeekend);
+                }
+                for (const extra of weekendList) {
+                    if (extra.id !== validWeekend.id) {
+                        await mechanicalScheduleRepository_1.mechanicalScheduleRepository.delete(extra.id);
+                    }
+                }
+            }
+            // Remove outros órfãos
+            for (const s of weekScheds) {
+                if (s.meetingType !== mechanical_1.MechanicalMeetingType.MIDWEEK &&
+                    s.meetingType !== mechanical_1.MechanicalMeetingType.WEEKEND) {
+                    await mechanicalScheduleRepository_1.mechanicalScheduleRepository.delete(s.id);
+                }
+            }
+            const cleanWeekList = [];
+            if (validMidweek)
+                cleanWeekList.push(validMidweek);
+            if (validWeekend)
+                cleanWeekList.push(validWeekend);
+            cleanWeekList.sort((a, b) => (0, dayjs_1.default)(a.date).diff((0, dayjs_1.default)(b.date)));
+            weeksMap.set(weekStartDate, cleanWeekList);
         }
         const weeks = allWeekKeys.map((weekStartDate) => {
             var _a;
@@ -176,27 +201,29 @@ class MechanicalScheduleService {
                 schedules: weekSchedules
             };
         });
+        const allCleanSchedules = [];
+        for (const weekList of weeksMap.values()) {
+            allCleanSchedules.push(...weekList);
+        }
         return {
             year,
             month,
             monthsCount: safeMonths,
             weeks,
-            schedules
+            schedules: allCleanSchedules
         };
     }
     async toggleWeekMeeting(congregationId, weekStartDate, hasNoMeeting, eventTitle) {
         const monday = (0, dayjs_1.default)(weekStartDate);
-        const { congregationRepository } = await Promise.resolve().then(() => __importStar(require("../../repositories/congregationRepository")));
-        const congregation = await congregationRepository.findOne({ where: { id: congregationId } });
+        const congregation = await congregationRepository_1.congregationRepository.findOne({ where: { id: congregationId } });
         if (!congregation) {
             throw new api_errors_1.NotFoundError("Congregação não encontrada.");
         }
-        const { convertMeetingDayPortugueseToIso } = await Promise.resolve().then(() => __importStar(require("../../functions/cleaningFunctions")));
         const midweekDayOfWeek = congregation.dayMeetingLifeAndMinistary
-            ? convertMeetingDayPortugueseToIso(congregation.dayMeetingLifeAndMinistary)
+            ? (0, cleaningFunctions_1.convertMeetingDayPortugueseToIso)(congregation.dayMeetingLifeAndMinistary)
             : 3;
         const weekendDayOfWeek = congregation.dayMeetingPublic
-            ? convertMeetingDayPortugueseToIso(congregation.dayMeetingPublic)
+            ? (0, cleaningFunctions_1.convertMeetingDayPortugueseToIso)(congregation.dayMeetingPublic)
             : 7;
         const midweekDate = monday.isoWeekday(midweekDayOfWeek).format("YYYY-MM-DD");
         const weekendDate = monday.isoWeekday(weekendDayOfWeek).format("YYYY-MM-DD");
@@ -206,30 +233,43 @@ class MechanicalScheduleService {
         ];
         const updatedSchedules = [];
         for (const info of meetingInfos) {
-            let sched = await mechanicalScheduleRepository_1.mechanicalScheduleRepository.findOne({
+            const existingSchedules = await mechanicalScheduleRepository_1.mechanicalScheduleRepository.find({
                 where: {
                     congregation_id: congregationId,
-                    date: info.date
+                    weekStartDate,
+                    meetingType: info.type
                 },
                 relations: ["assignments"]
             });
-            if (!sched) {
+            let sched;
+            const exactMatch = existingSchedules.find(s => s.date === info.date);
+            if (exactMatch) {
+                sched = exactMatch;
+                for (const extra of existingSchedules) {
+                    if (extra.id !== sched.id) {
+                        await mechanicalScheduleRepository_1.mechanicalScheduleRepository.delete(extra.id);
+                    }
+                }
+            }
+            else if (existingSchedules.length > 0) {
+                sched = existingSchedules[0];
+                sched.date = info.date;
+                for (let i = 1; i < existingSchedules.length; i++) {
+                    await mechanicalScheduleRepository_1.mechanicalScheduleRepository.delete(existingSchedules[i].id);
+                }
+            }
+            else {
                 sched = mechanicalScheduleRepository_1.mechanicalScheduleRepository.create({
                     congregation_id: congregationId,
                     weekStartDate,
                     date: info.date,
                     meetingType: info.type,
-                    hasNoMeeting,
-                    eventTitle: hasNoMeeting ? (eventTitle || null) : null,
-                    notes: !hasNoMeeting ? "MANUALLY_ACTIVATED" : null,
                     assignments: []
                 });
             }
-            else {
-                sched.hasNoMeeting = hasNoMeeting;
-                sched.eventTitle = hasNoMeeting ? (eventTitle || null) : null;
-                sched.notes = !hasNoMeeting ? "MANUALLY_ACTIVATED" : null;
-            }
+            sched.hasNoMeeting = hasNoMeeting;
+            sched.eventTitle = hasNoMeeting ? (eventTitle || null) : null;
+            sched.notes = !hasNoMeeting ? "MANUALLY_ACTIVATED" : null;
             // Se marcou como sem reunião, remove todas as atribuições
             if (hasNoMeeting && sched.id) {
                 await mechanicalAssignmentRepository_1.mechanicalAssignmentRepository.delete({ schedule_id: sched.id });
@@ -237,6 +277,19 @@ class MechanicalScheduleService {
             }
             await mechanicalScheduleRepository_1.mechanicalScheduleRepository.save(sched);
             updatedSchedules.push(sched);
+        }
+        // Limpa quaisquer escalas órfãs para a semana
+        const allWeekSchedules = await mechanicalScheduleRepository_1.mechanicalScheduleRepository.find({
+            where: {
+                congregation_id: congregationId,
+                weekStartDate
+            }
+        });
+        for (const s of allWeekSchedules) {
+            if (s.date !== midweekDate && s.date !== weekendDate) {
+                await mechanicalAssignmentRepository_1.mechanicalAssignmentRepository.delete({ schedule_id: s.id });
+                await mechanicalScheduleRepository_1.mechanicalScheduleRepository.delete(s.id);
+            }
         }
         return {
             success: true,

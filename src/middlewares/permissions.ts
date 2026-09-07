@@ -1,13 +1,9 @@
 import { NextFunction, Request, Response } from "express";
-import { decode } from "jsonwebtoken";
-import jwt, { decode } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import process from "process";
 import { config } from "../config";
 import { UnauthorizedError } from "../helpers/api-errors";
 import { userRepository } from "../repositories/userRepository";
-import jwt from "jsonwebtoken";
-import process from "process";
-import { config } from "../config";
 
 export async function decoder(request: Request) {
     const authHeader = request.headers.authorization
@@ -36,7 +32,7 @@ export async function decoder(request: Request) {
         }
     })
 
-    const payload = decode(token)
+    const payload = jwt.decode(token) as { sub?: string } | null
 
     const user = await userRepository.findOne({
         where: { id: payload?.sub?.toString() },
