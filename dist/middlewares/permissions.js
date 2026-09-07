@@ -65,16 +65,13 @@ function requirePublisher() {
 exports.requirePublisher = requirePublisher;
 function is(role) {
     const roleAuthorized = async (req, res, next) => {
-        var _a, _b, _c, _d, _e, _f, _g;
+        var _a, _b, _c, _d;
         const user = await decoder(req);
         // pega do body ou dos params
         const congregation_id = ((_a = req.body) === null || _a === void 0 ? void 0 : _a.congregation_id) ||
             ((_b = req.params) === null || _b === void 0 ? void 0 : _b.congregation_id) ||
-            ((_c = req.params) === null || _c === void 0 ? void 0 : _c.congregationId) ||
-            ((_d = req.params) === null || _d === void 0 ? void 0 : _d.id);
-        (_e = req.params) === null || _e === void 0 ? void 0 : _e.congregationId;
-        (_f = req.params) === null || _f === void 0 ? void 0 : _f.id;
-        const userRoles = (_g = user === null || user === void 0 ? void 0 : user.roles) === null || _g === void 0 ? void 0 : _g.map(role => role.name);
+            ((_c = req.params) === null || _c === void 0 ? void 0 : _c.congregationId);
+        const userRoles = (_d = user === null || user === void 0 ? void 0 : user.roles) === null || _d === void 0 ? void 0 : _d.map(role => role.name);
         const rolesExists = userRoles === null || userRoles === void 0 ? void 0 : userRoles.some(r => role.includes(r));
         if (rolesExists) {
             if (userRoles === null || userRoles === void 0 ? void 0 : userRoles.includes("ADMIN")) {
