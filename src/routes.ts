@@ -446,6 +446,12 @@ routes.post(
     midweekController.createCustomPart.bind(midweekController)
 );
 
+routes.post(
+    "/midweek/schedules/:schedule_id/custom-part/congregation/:congregation_id",
+    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]),
+    midweekController.createCustomPart.bind(midweekController)
+);
+
 routes.delete(
     "/midweek/parts/:part_id/congregation/:congregation_id",
     is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]),

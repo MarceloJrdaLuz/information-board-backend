@@ -350,6 +350,7 @@ routes.patch("/midweek/schedules/:schedule_id/congregation/:congregation_id", (0
 // Partes da Reunião
 routes.patch("/midweek/parts/:part_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.updatePart.bind(midweekController));
 routes.post("/midweek/schedules/:schedule_id/parts/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.createCustomPart.bind(midweekController));
+routes.post("/midweek/schedules/:schedule_id/custom-part/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.createCustomPart.bind(midweekController));
 routes.delete("/midweek/parts/:part_id/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.deletePart.bind(midweekController));
 routes.post("/midweek/schedules/:schedule_id/rooms/:room/duplicate/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.duplicateStudentPartsForRoom.bind(midweekController));
 routes.post("/midweek/schedules/:schedule_id/duplicate-room/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER"]), midweekController.duplicateStudentPartsForRoom.bind(midweekController));
