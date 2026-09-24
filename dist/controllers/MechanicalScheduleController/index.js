@@ -1,6 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MechanicalScheduleController = void 0;
+const dayjs_1 = __importDefault(require("dayjs"));
 const api_errors_1 = require("../../helpers/api-errors");
 const MechanicalAutoAssignService_1 = require("../../services/mechanical/MechanicalAutoAssignService");
 const MechanicalScheduleService_1 = require("../../services/mechanical/MechanicalScheduleService");
@@ -35,6 +39,37 @@ class MechanicalScheduleController {
         }
         const data = await this.scheduleService.getMonthSchedules(congregation_id, year, month, monthsCount);
         return res.status(200).json(data);
+    }
+    async getPublicSchedules(req, res) {
+        const { congregation_id } = req.params;
+        if (!congregation_id) {
+            throw new api_errors_1.BadRequestError("ID da congregação é obrigatório.");
+        }
+        const now = (0, dayjs_1.default)();
+        const year = now.year();
+        const month = now.month() + 1;
+        // Busca o mês atual e o próximo (2 meses) para cobrir programações futuras
+        const data = await this.scheduleService.getMonthSchedules(congregation_id, year, month, 2);
+        // Retorna apenas dados públicos (sem informações sensíveis)
+        const publicSchedules = data.schedules.map((schedule) => {
+            var _a, _b;
+            return ({
+                id: schedule.id,
+                date: schedule.date,
+                weekStartDate: schedule.weekStartDate,
+                meetingType: schedule.meetingType,
+                hasNoMeeting: (_a = schedule.hasNoMeeting) !== null && _a !== void 0 ? _a : false,
+                eventTitle: (_b = schedule.eventTitle) !== null && _b !== void 0 ? _b : null,
+                assignments: (schedule.assignments || []).map((a) => ({
+                    role: a.role,
+                    order: a.order,
+                    publisherName: a.publisher
+                        ? (a.publisher.nickname || a.publisher.fullName)
+                        : null,
+                })),
+            });
+        });
+        return res.status(200).json(publicSchedules);
     }
     async toggleWeekMeeting(req, res) {
         const { congregation_id } = req.params;

@@ -92,6 +92,9 @@ routes.get('/congregation/:congregation_id/weekendSchedules/public', WeekendSche
 // Reunião de meio de semana (público)
 routes.get('/congregation/:congregation_id/midweekSchedules/public', midweekController.getPublicSchedules.bind(midweekController))
 
+// Tarefas mecânicas (público)
+routes.get('/congregation/:congregation_id/mechanical-schedules/public', mechanicalController.getPublicSchedules.bind(mechanicalController))
+
 // Consentimentos (público)
 routes.post("/consent/accept", DataProcessingAgreementController.accept)
 routes.get("/consent", DataProcessingAgreementController.list)
