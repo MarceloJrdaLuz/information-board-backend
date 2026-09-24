@@ -84,6 +84,8 @@ routes.get('/category/:category_id', CategoryController_1.default.getPermission)
 routes.get('/congregation/:congregation_id/weekendSchedules/public', WeekendScheduleController_1.default.getPublicSchedules);
 // Reunião de meio de semana (público)
 routes.get('/congregation/:congregation_id/midweekSchedules/public', midweekController.getPublicSchedules.bind(midweekController));
+// Tarefas mecânicas (público)
+routes.get('/congregation/:congregation_id/mechanical-schedules/public', mechanicalController.getPublicSchedules.bind(mechanicalController));
 // Consentimentos (público)
 routes.post("/consent/accept", DataProcessingAgreement_1.default.accept);
 routes.get("/consent", DataProcessingAgreement_1.default.list);

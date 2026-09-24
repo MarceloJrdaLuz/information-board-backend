@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import dayjs from "dayjs";
 import { BadRequestError } from "../../helpers/api-errors";
 import { MechanicalAutoAssignService } from "../../services/mechanical/MechanicalAutoAssignService";
 import { MechanicalScheduleService } from "../../services/mechanical/MechanicalScheduleService";
@@ -45,6 +46,40 @@ export class MechanicalScheduleController {
 
         const data = await this.scheduleService.getMonthSchedules(congregation_id, year, month, monthsCount);
         return res.status(200).json(data);
+    }
+
+    async getPublicSchedules(req: Request, res: Response) {
+        const { congregation_id } = req.params;
+
+        if (!congregation_id) {
+            throw new BadRequestError("ID da congregação é obrigatório.");
+        }
+
+        const now = dayjs();
+        const year = now.year();
+        const month = now.month() + 1;
+
+        // Busca o mês atual e o próximo (2 meses) para cobrir programações futuras
+        const data = await this.scheduleService.getMonthSchedules(congregation_id, year, month, 2);
+
+        // Retorna apenas dados públicos (sem informações sensíveis)
+        const publicSchedules = data.schedules.map((schedule: any) => ({
+            id: schedule.id,
+            date: schedule.date,
+            weekStartDate: schedule.weekStartDate,
+            meetingType: schedule.meetingType,
+            hasNoMeeting: schedule.hasNoMeeting ?? false,
+            eventTitle: schedule.eventTitle ?? null,
+            assignments: (schedule.assignments || []).map((a: any) => ({
+                role: a.role,
+                order: a.order,
+                publisherName: a.publisher
+                    ? (a.publisher.nickname || a.publisher.fullName)
+                    : null,
+            })),
+        }));
+
+        return res.status(200).json(publicSchedules);
     }
 
     async toggleWeekMeeting(req: Request, res: Response) {
