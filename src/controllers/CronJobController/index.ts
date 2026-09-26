@@ -20,14 +20,14 @@ import { fieldServiceExceptionRepository } from "../../repositories/fieldService
 import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
 import { fieldServiceTemplateLocationOverrideRepository } from "../../repositories/fieldServiceTemplateLocationOverrideRepository"
 import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
+import { mechanicalScheduleRepository } from "../../repositories/mechanicalScheduleRepository"
 import { midweekScheduleRepository } from "../../repositories/midweekScheduleRepository"
 import { publicWitnessAssignmentRepository } from "../../repositories/publicWitnessAssignmentRepository"
 import { publisherReminderRepository } from "../../repositories/publisherReminderRepository"
 import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
-import { mechanicalScheduleRepository } from "../../repositories/mechanicalScheduleRepository"
-import { MechanicalMeetingType, MechanicalRole, MechanicalRoleLabels } from "../../types/mechanical"
 import { pushNotificationService } from "../../services/pushNotificationService"
+import { MechanicalMeetingType, MechanicalRole, MechanicalRoleLabels } from "../../types/mechanical"
 
 class CronJobController {
     async deleteExpiredNotices(req: Request, res: Response) {
@@ -471,6 +471,65 @@ class CronJobController {
                         type: NotificationType.SPEAKER,
                         data: { url: "/dashboard", date: s.date }
                     }, "SPEAKER")
+                }
+            }
+
+            // ==========================================
+            // 2.1 TAREFAS MECÂNICAS DE FIM DE SEMANA (Hoje e Amanhã)
+            // ==========================================
+            const mechanicalWeekendSchedules = await mechanicalScheduleRepository.find({
+                where: [
+                    { date: todayStr, meetingType: MechanicalMeetingType.WEEKEND },
+                    { date: tomorrowStr, meetingType: MechanicalMeetingType.WEEKEND }
+                ],
+                relations: [
+                    "assignments",
+                    "assignments.publisher"
+                ],
+                order: {
+                    assignments: {
+                        order: "ASC"
+                    }
+                }
+            })
+
+            for (const ms of mechanicalWeekendSchedules) {
+                if (ms.hasNoMeeting) continue
+
+                const isToday = ms.date === todayStr
+                const timeLabel = isToday ? "hoje" : "amanhã"
+                const dateFmt = dayjs(ms.date).format("DD/MM")
+
+                // Agrupa designações por publicador para o caso de um irmão ter mais de uma função
+                const pubMechMap = new Map<string, string[]>()
+
+                for (const ma of ms.assignments || []) {
+                    if (ma.publisher?.id) {
+                        const roleLabel = MechanicalRoleLabels[ma.role] || ma.role
+                        const roleWithOrder =
+                            ma.order && ma.order > 1 && (ma.role === MechanicalRole.ATTENDANT || ma.role === MechanicalRole.ROVING_MIC || ma.role === MechanicalRole.STAGE_MIC)
+                                ? `${roleLabel} ${ma.order}`
+                                : roleLabel
+
+                        if (!pubMechMap.has(ma.publisher.id)) {
+                            pubMechMap.set(ma.publisher.id, [])
+                        }
+                        pubMechMap.get(ma.publisher.id)!.push(roleWithOrder)
+                    }
+                }
+
+                for (const [pubId, roles] of pubMechMap.entries()) {
+                    const rolesText = roles.join(", ")
+                    const body = roles.length === 1
+                        ? `Você está designado para ${rolesText} ${timeLabel} (${dateFmt}) na Reunião de Fim de Semana.`
+                        : `Você está designado para (${rolesText}) ${timeLabel} (${dateFmt}) na Reunião de Fim de Semana.`
+
+                    await sendNotification(pubId, {
+                        title: "Tarefa Mecânica • Fim de Semana",
+                        body,
+                        type: NotificationType.REMINDER,
+                        data: { url: "/dashboard", date: ms.date, scheduleId: ms.id }
+                    }, "MECHANICAL_WEEKEND", { scheduleId: ms.id })
                 }
             }
 

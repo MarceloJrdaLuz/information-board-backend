@@ -54,6 +54,11 @@ export type ParamsAddSpeakerCoordinatorTypes = {
     publisher_id: string
 }
 
+export type ParamsAddWatchtowerConductorTypes = {
+    congregation_id: string
+    publisher_id: string
+}
+
 export type QueryGetCongregationTypes = {
     number: string
 }

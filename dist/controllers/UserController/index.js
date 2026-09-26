@@ -64,7 +64,7 @@ class UserController {
         const { email, password } = req.body;
         const user = await userRepository_1.userRepository.find({
             where: { email },
-            relations: ['congregation', 'profile']
+            relations: ['congregation', 'congregation.speakerCoordinator', 'congregation.watchtowerConductor', 'profile']
         });
         if (!user || user.length === 0) {
             throw new api_errors_1.BadRequestError('Credentials invalid!');
@@ -139,7 +139,7 @@ class UserController {
         });
         const user = await userRepository_1.userRepository.findOne({
             where: { id: userId },
-            relations: ['congregation', 'congregation.speakerCoordinator', 'profile', 'publisher']
+            relations: ['congregation', 'congregation.speakerCoordinator', 'congregation.watchtowerConductor', 'profile', 'publisher']
         });
         if (!user) {
             throw new api_errors_1.BadRequestError('E-mail não cadastrado');

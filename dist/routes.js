@@ -157,6 +157,7 @@ routes.get('/congregations/system', CongregationController_1.default.listSystemC
 routes.get('/congregations/toTransfer', (0, permissions_1.is)(['ADMIN_CONGREGATION']), CongregationController_1.default.getCongregationSystemToTransferPublisher);
 routes.put('/congregation/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController_1.default.update);
 routes.post('/congregation/:congregation_id/speakerCoordinator/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), CongregationController_1.default.addAndUpdateSpeakerCoordinator);
+routes.post('/congregation/:congregation_id/watchtowerConductor/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION']), CongregationController_1.default.addAndUpdateWatchtowerConductor);
 routes.put('/congregation/:congregation_id/photo', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), multer_1.uploadFile.single('image'), CongregationController_1.default.uploadCongregationPhoto);
 /* === Congregações auxiliares === */
 routes.get('/auxiliaryCongregations', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'TALK_MANAGER']), CongregationController_1.default.getAuxiliaryCongregations);

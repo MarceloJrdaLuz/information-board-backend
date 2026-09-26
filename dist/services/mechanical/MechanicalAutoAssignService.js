@@ -23,12 +23,15 @@ class MechanicalAutoAssignService {
         this.scheduleService = new MechanicalScheduleService_1.MechanicalScheduleService();
     }
     async autoAssignMonth(congregationId, year, month, options = { forceReassignManual: false }) {
+        var _a;
         const congregation = await congregationRepository_1.congregationRepository.findOne({
-            where: { id: congregationId }
+            where: { id: congregationId },
+            relations: ["watchtowerConductor"]
         });
         if (!congregation) {
             throw new Error("Congregação não encontrada.");
         }
+        const watchtowerConductorId = ((_a = congregation.watchtowerConductor) === null || _a === void 0 ? void 0 : _a.id) || null;
         const config = await this.scheduleService.getConfig(congregationId);
         // Dias da semana das reuniões da congregação
         const midweekDay = congregation.dayMeetingLifeAndMinistary
@@ -249,6 +252,12 @@ class MechanicalAutoAssignService {
                             // ❌ RESTRIÇÃO ESTRITA: Presidente do Meio de Semana NUNCA é colocado no auto-preenchimento
                             if (midweekChairmanId && pub.id === midweekChairmanId) {
                                 return false;
+                            }
+                            // ❌ RESTRIÇÃO ESTRITA: Dirigente de A Sentinela NUNCA é colocado em tarefas mecânicas no fim de semana
+                            if (watchtowerConductorId && pub.id === watchtowerConductorId) {
+                                if (meetingInfo.meetingType === mechanical_1.MechanicalMeetingType.WEEKEND || config.sameTeamWholeWeek) {
+                                    return false;
+                                }
                             }
                             // ❌ Não pode 2 funções na mesma reunião
                             if (assignedThisMeeting.has(pub.id)) {

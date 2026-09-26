@@ -12,15 +12,15 @@ var Congregation_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Congregation = exports.CongregationType = void 0;
 const typeorm_1 = require("typeorm");
-const Document_1 = require("./Document");
-const Notice_1 = require("./Notice");
-const User_1 = require("./User");
 const enumWeekDays_1 = require("../types/enumWeekDays");
-const Group_1 = require("./Group");
-const Territory_1 = require("./Territory");
+const Document_1 = require("./Document");
 const EmergencyContact_1 = require("./EmergencyContact");
+const Group_1 = require("./Group");
 const HospitalityWeekend_1 = require("./HospitalityWeekend");
+const Notice_1 = require("./Notice");
 const Publisher_1 = require("./Publisher");
+const Territory_1 = require("./Territory");
+const User_1 = require("./User");
 var CongregationType;
 (function (CongregationType) {
     CongregationType["SYSTEM"] = "system";
@@ -65,6 +65,11 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: "speaker_coordinator_id" }),
     __metadata("design:type", Object)
 ], Congregation.prototype, "speakerCoordinator", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Publisher_1.Publisher, { nullable: true, onDelete: "SET NULL" }),
+    (0, typeorm_1.JoinColumn)({ name: "watchtower_conductor_id" }),
+    __metadata("design:type", Object)
+], Congregation.prototype, "watchtowerConductor", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: "enum",

@@ -24,14 +24,14 @@ const fieldServiceExceptionRepository_1 = require("../../repositories/fieldServi
 const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 const fieldServiceTemplateLocationOverrideRepository_1 = require("../../repositories/fieldServiceTemplateLocationOverrideRepository");
 const hospitalityAssignmentRepository_1 = require("../../repositories/hospitalityAssignmentRepository");
+const mechanicalScheduleRepository_1 = require("../../repositories/mechanicalScheduleRepository");
 const midweekScheduleRepository_1 = require("../../repositories/midweekScheduleRepository");
 const publicWitnessAssignmentRepository_1 = require("../../repositories/publicWitnessAssignmentRepository");
 const publisherReminderRepository_1 = require("../../repositories/publisherReminderRepository");
 const territoryHistoryRepository_1 = require("../../repositories/territoryHistoryRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
-const mechanicalScheduleRepository_1 = require("../../repositories/mechanicalScheduleRepository");
-const mechanical_1 = require("../../types/mechanical");
 const pushNotificationService_1 = require("../../services/pushNotificationService");
+const mechanical_1 = require("../../types/mechanical");
 class CronJobController {
     async deleteExpiredNotices(req, res) {
         const startOfToday = (0, moment_timezone_1.default)().startOf("day").toDate();
@@ -314,7 +314,7 @@ class CronJobController {
      * Cron Job diário para disparar notificações push de lembretes pessoais e designações
      */
     async dispatchDailyNotifications(req, res) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20;
         const today = (0, dayjs_1.default)().startOf("day");
         const todayStr = today.format("YYYY-MM-DD");
         const tomorrow = today.add(1, "day");
@@ -403,6 +403,57 @@ class CronJobController {
                 }
             }
             // ==========================================
+            // 2.1 TAREFAS MECÂNICAS DE FIM DE SEMANA (Hoje e Amanhã)
+            // ==========================================
+            const mechanicalWeekendSchedules = await mechanicalScheduleRepository_1.mechanicalScheduleRepository.find({
+                where: [
+                    { date: todayStr, meetingType: mechanical_1.MechanicalMeetingType.WEEKEND },
+                    { date: tomorrowStr, meetingType: mechanical_1.MechanicalMeetingType.WEEKEND }
+                ],
+                relations: [
+                    "assignments",
+                    "assignments.publisher"
+                ],
+                order: {
+                    assignments: {
+                        order: "ASC"
+                    }
+                }
+            });
+            for (const ms of mechanicalWeekendSchedules) {
+                if (ms.hasNoMeeting)
+                    continue;
+                const isToday = ms.date === todayStr;
+                const timeLabel = isToday ? "hoje" : "amanhã";
+                const dateFmt = (0, dayjs_1.default)(ms.date).format("DD/MM");
+                // Agrupa designações por publicador para o caso de um irmão ter mais de uma função
+                const pubMechMap = new Map();
+                for (const ma of ms.assignments || []) {
+                    if ((_f = ma.publisher) === null || _f === void 0 ? void 0 : _f.id) {
+                        const roleLabel = mechanical_1.MechanicalRoleLabels[ma.role] || ma.role;
+                        const roleWithOrder = ma.order && ma.order > 1 && (ma.role === mechanical_1.MechanicalRole.ATTENDANT || ma.role === mechanical_1.MechanicalRole.ROVING_MIC || ma.role === mechanical_1.MechanicalRole.STAGE_MIC)
+                            ? `${roleLabel} ${ma.order}`
+                            : roleLabel;
+                        if (!pubMechMap.has(ma.publisher.id)) {
+                            pubMechMap.set(ma.publisher.id, []);
+                        }
+                        pubMechMap.get(ma.publisher.id).push(roleWithOrder);
+                    }
+                }
+                for (const [pubId, roles] of pubMechMap.entries()) {
+                    const rolesText = roles.join(", ");
+                    const body = roles.length === 1
+                        ? `Você está designado para ${rolesText} ${timeLabel} (${dateFmt}) na Reunião de Fim de Semana.`
+                        : `Você está designado para (${rolesText}) ${timeLabel} (${dateFmt}) na Reunião de Fim de Semana.`;
+                    await sendNotification(pubId, {
+                        title: "Tarefa Mecânica • Fim de Semana",
+                        body,
+                        type: Notification_1.NotificationType.REMINDER,
+                        data: { url: "/dashboard", date: ms.date, scheduleId: ms.id }
+                    }, "MECHANICAL_WEEKEND", { scheduleId: ms.id });
+                }
+            }
+            // ==========================================
             // 3. DESIGNAÇÕES DE LIMPEZA DO SALÃO (Hoje e Amanhã)
             // ==========================================
             const cleaningSchedules = await cleaningScheduleRepository_1.cleaningScheduleRepository.find({
@@ -415,11 +466,11 @@ class CronJobController {
             for (const c of cleaningSchedules) {
                 const isToday = c.date === todayStr;
                 const timeLabel = isToday ? "hoje" : "amanhã";
-                const publishers = ((_f = c.group) === null || _f === void 0 ? void 0 : _f.publishers) || [];
+                const publishers = ((_g = c.group) === null || _g === void 0 ? void 0 : _g.publishers) || [];
                 for (const pub of publishers) {
                     await sendNotification(pub.id, {
                         title: "Limpeza do Salão do Reino",
-                        body: `Seu grupo (${((_g = c.group) === null || _g === void 0 ? void 0 : _g.name) || "Limpeza"}) está escalado para a limpeza do salão ${timeLabel} (${(0, dayjs_1.default)(c.date).format("DD/MM")}).`,
+                        body: `Seu grupo (${((_h = c.group) === null || _h === void 0 ? void 0 : _h.name) || "Limpeza"}) está escalado para a limpeza do salão ${timeLabel} (${(0, dayjs_1.default)(c.date).format("DD/MM")}).`,
                         type: Notification_1.NotificationType.CLEANING,
                         data: { url: "/dashboard", date: c.date }
                     }, "CLEANING");
@@ -436,11 +487,11 @@ class CronJobController {
                 relations: ["leader", "template"]
             });
             for (const fs of fieldServiceSchedules) {
-                if ((_h = fs.leader) === null || _h === void 0 ? void 0 : _h.id) {
+                if ((_j = fs.leader) === null || _j === void 0 ? void 0 : _j.id) {
                     const isToday = fs.date === todayStr;
                     const timeLabel = isToday ? "hoje" : "amanhã";
-                    const timeStr = ((_j = fs.template) === null || _j === void 0 ? void 0 : _j.time) ? ` às ${fs.template.time}` : "";
-                    const locStr = ((_k = fs.template) === null || _k === void 0 ? void 0 : _k.location) ? ` (${fs.template.location})` : "";
+                    const timeStr = ((_k = fs.template) === null || _k === void 0 ? void 0 : _k.time) ? ` às ${fs.template.time}` : "";
+                    const locStr = ((_l = fs.template) === null || _l === void 0 ? void 0 : _l.location) ? ` (${fs.template.location})` : "";
                     await sendNotification(fs.leader.id, {
                         title: "Dirigente de Saída de Campo",
                         body: `Você está escalado como Dirigente de Campo ${timeLabel} (${(0, dayjs_1.default)(fs.date).format("DD/MM")})${timeStr}${locStr}.`,
@@ -463,10 +514,10 @@ class CronJobController {
             for (const pw of publicWitnessAssignments) {
                 const isToday = pw.date === todayStr;
                 const timeLabel = isToday ? "hoje" : "amanhã";
-                const title = ((_m = (_l = pw.timeSlot) === null || _l === void 0 ? void 0 : _l.arrangement) === null || _m === void 0 ? void 0 : _m.title) || "Testemunho Público";
+                const title = ((_o = (_m = pw.timeSlot) === null || _m === void 0 ? void 0 : _m.arrangement) === null || _o === void 0 ? void 0 : _o.title) || "Testemunho Público";
                 const period = pw.timeSlot ? ` (${pw.timeSlot.start_time} - ${pw.timeSlot.end_time})` : "";
                 for (const pubRel of pw.publishers || []) {
-                    if ((_o = pubRel.publisher) === null || _o === void 0 ? void 0 : _o.id) {
+                    if ((_p = pubRel.publisher) === null || _p === void 0 ? void 0 : _p.id) {
                         await sendNotification(pubRel.publisher.id, {
                             title: "Testemunho Público",
                             body: `Você tem designação no arranjo "${title}" ${timeLabel} (${(0, dayjs_1.default)(pw.date).format("DD/MM")})${period}.`,
@@ -487,10 +538,10 @@ class CronJobController {
                 relations: ["speaker", "speaker.publisher", "destinationCongregation", "talk"]
             });
             for (const ext of externalTalks) {
-                if ((_q = (_p = ext.speaker) === null || _p === void 0 ? void 0 : _p.publisher) === null || _q === void 0 ? void 0 : _q.id) {
+                if ((_r = (_q = ext.speaker) === null || _q === void 0 ? void 0 : _q.publisher) === null || _r === void 0 ? void 0 : _r.id) {
                     const isToday = ext.date === todayStr;
                     const timeLabel = isToday ? "hoje" : "amanhã";
-                    const cong = ((_r = ext.destinationCongregation) === null || _r === void 0 ? void 0 : _r.name) ? ` na congregação ${ext.destinationCongregation.name}` : "";
+                    const cong = ((_s = ext.destinationCongregation) === null || _s === void 0 ? void 0 : _s.name) ? ` na congregação ${ext.destinationCongregation.name}` : "";
                     await sendNotification(ext.speaker.publisher.id, {
                         title: "Discurso fora",
                         body: `Você tem discurso fora agendado ${timeLabel} (${(0, dayjs_1.default)(ext.date).format("DD/MM")})${cong}.`,
@@ -510,26 +561,26 @@ class CronJobController {
                 relations: ["group", "group.members", "group.host", "weekend"]
             });
             for (const h of hospitalityAssignments) {
-                const isToday = ((_s = h.weekend) === null || _s === void 0 ? void 0 : _s.date) === todayStr;
+                const isToday = ((_t = h.weekend) === null || _t === void 0 ? void 0 : _t.date) === todayStr;
                 const timeLabel = isToday ? "hoje" : "amanhã";
-                const dateFmt = (0, dayjs_1.default)((_t = h.weekend) === null || _t === void 0 ? void 0 : _t.date).format("DD/MM");
+                const dateFmt = (0, dayjs_1.default)((_u = h.weekend) === null || _u === void 0 ? void 0 : _u.date).format("DD/MM");
                 // Host
-                if ((_v = (_u = h.group) === null || _u === void 0 ? void 0 : _u.host) === null || _v === void 0 ? void 0 : _v.id) {
+                if ((_w = (_v = h.group) === null || _v === void 0 ? void 0 : _v.host) === null || _w === void 0 ? void 0 : _w.id) {
                     await sendNotification(h.group.host.id, {
                         title: "Arranjo de Hospitalidade",
                         body: `Você é o anfitrião do arranjo de hospitalidade ${timeLabel} (${dateFmt}).`,
                         type: Notification_1.NotificationType.HOSPITALITY,
-                        data: { url: "/dashboard", date: (_w = h.weekend) === null || _w === void 0 ? void 0 : _w.date }
+                        data: { url: "/dashboard", date: (_x = h.weekend) === null || _x === void 0 ? void 0 : _x.date }
                     }, "HOSPITALITY_HOST");
                 }
                 // Grupo
-                for (const member of ((_x = h.group) === null || _x === void 0 ? void 0 : _x.members) || []) {
-                    if (member.id !== ((_z = (_y = h.group) === null || _y === void 0 ? void 0 : _y.host) === null || _z === void 0 ? void 0 : _z.id)) {
+                for (const member of ((_y = h.group) === null || _y === void 0 ? void 0 : _y.members) || []) {
+                    if (member.id !== ((_0 = (_z = h.group) === null || _z === void 0 ? void 0 : _z.host) === null || _0 === void 0 ? void 0 : _0.id)) {
                         await sendNotification(member.id, {
                             title: "Arranjo de Hospitalidade",
-                            body: `Seu grupo (${((_0 = h.group) === null || _0 === void 0 ? void 0 : _0.name) || ""}) está designado para o arranjo de hospitalidade ${timeLabel} (${dateFmt}).`,
+                            body: `Seu grupo (${((_1 = h.group) === null || _1 === void 0 ? void 0 : _1.name) || ""}) está designado para o arranjo de hospitalidade ${timeLabel} (${dateFmt}).`,
                             type: Notification_1.NotificationType.HOSPITALITY,
-                            data: { url: "/dashboard", date: (_1 = h.weekend) === null || _1 === void 0 ? void 0 : _1.date }
+                            data: { url: "/dashboard", date: (_2 = h.weekend) === null || _2 === void 0 ? void 0 : _2.date }
                         }, "HOSPITALITY_MEMBER");
                     }
                 }
@@ -537,7 +588,7 @@ class CronJobController {
             // ==========================================
             // 8. NOTIFICAÇÃO CONSOLIDADA DA REUNIÃO DE MEIO DE SEMANA (Toda Segunda-feira)
             // ==========================================
-            const isMonday = today.day() === 1 || ((_2 = req.query) === null || _2 === void 0 ? void 0 : _2.forceMidweek) === "true" || ((_3 = req.body) === null || _3 === void 0 ? void 0 : _3.forceMidweek) === true;
+            const isMonday = today.day() === 1 || ((_3 = req.query) === null || _3 === void 0 ? void 0 : _3.forceMidweek) === "true" || ((_4 = req.body) === null || _4 === void 0 ? void 0 : _4.forceMidweek) === true;
             if (isMonday) {
                 // Início (segunda) e fim (domingo) da semana atual
                 const weekMonday = today.day() === 0 ? today.subtract(6, "day") : today.subtract(today.day() - 1, "day");
@@ -617,19 +668,19 @@ class CronJobController {
                         }
                         pubMap.get(pub.id).items.push(desc);
                     };
-                    if ((_4 = schedule.chairman) === null || _4 === void 0 ? void 0 : _4.id)
+                    if ((_5 = schedule.chairman) === null || _5 === void 0 ? void 0 : _5.id)
                         addAssignment(schedule.chairman, "Presidente da Reunião");
-                    if ((_5 = schedule.openingPrayer) === null || _5 === void 0 ? void 0 : _5.id)
+                    if ((_6 = schedule.openingPrayer) === null || _6 === void 0 ? void 0 : _6.id)
                         addAssignment(schedule.openingPrayer, "Oração Inicial");
-                    if ((_6 = schedule.closingPrayer) === null || _6 === void 0 ? void 0 : _6.id)
+                    if ((_7 = schedule.closingPrayer) === null || _7 === void 0 ? void 0 : _7.id)
                         addAssignment(schedule.closingPrayer, "Oração Final");
-                    if ((_7 = schedule.auxCounselor1) === null || _7 === void 0 ? void 0 : _7.id)
+                    if ((_8 = schedule.auxCounselor1) === null || _8 === void 0 ? void 0 : _8.id)
                         addAssignment(schedule.auxCounselor1, "Conselheiro - Sala Auxiliar 1");
-                    if ((_8 = schedule.auxCounselor2) === null || _8 === void 0 ? void 0 : _8.id)
+                    if ((_9 = schedule.auxCounselor2) === null || _9 === void 0 ? void 0 : _9.id)
                         addAssignment(schedule.auxCounselor2, "Conselheiro - Sala Auxiliar 2");
-                    if ((_9 = schedule.cbsConductor) === null || _9 === void 0 ? void 0 : _9.id)
+                    if ((_10 = schedule.cbsConductor) === null || _10 === void 0 ? void 0 : _10.id)
                         addAssignment(schedule.cbsConductor, "Dirigente do Estudo Bíblico de Congregação");
-                    if ((_10 = schedule.cbsReader) === null || _10 === void 0 ? void 0 : _10.id)
+                    if ((_11 = schedule.cbsReader) === null || _11 === void 0 ? void 0 : _11.id)
                         addAssignment(schedule.cbsReader, "Leitor do Estudo Bíblico de Congregação");
                     const activeParts = (schedule.parts || [])
                         .filter(p => p.isActive !== false)
@@ -637,9 +688,9 @@ class CronJobController {
                     for (const part of activeParts) {
                         const roomSuffix = getRoomSuffix(part.room);
                         // Titular da parte
-                        if ((_11 = part.assignedPublisher) === null || _11 === void 0 ? void 0 : _11.id) {
+                        if ((_12 = part.assignedPublisher) === null || _12 === void 0 ? void 0 : _12.id) {
                             let desc = part.title || "Parte";
-                            const assistantName = ((_12 = part.assistantPublisher) === null || _12 === void 0 ? void 0 : _12.nickname) || ((_13 = part.assistantPublisher) === null || _13 === void 0 ? void 0 : _13.fullName);
+                            const assistantName = ((_13 = part.assistantPublisher) === null || _13 === void 0 ? void 0 : _13.nickname) || ((_14 = part.assistantPublisher) === null || _14 === void 0 ? void 0 : _14.fullName);
                             if (assistantName) {
                                 desc += ` (com ${assistantName})`;
                             }
@@ -647,9 +698,9 @@ class CronJobController {
                             addAssignment(part.assignedPublisher, desc);
                         }
                         // Ajudante da parte
-                        if ((_14 = part.assistantPublisher) === null || _14 === void 0 ? void 0 : _14.id) {
+                        if ((_15 = part.assistantPublisher) === null || _15 === void 0 ? void 0 : _15.id) {
                             let desc = `${part.title || "Parte"} - Ajudante`;
-                            const titularName = ((_15 = part.assignedPublisher) === null || _15 === void 0 ? void 0 : _15.nickname) || ((_16 = part.assignedPublisher) === null || _16 === void 0 ? void 0 : _16.fullName);
+                            const titularName = ((_16 = part.assignedPublisher) === null || _16 === void 0 ? void 0 : _16.nickname) || ((_17 = part.assignedPublisher) === null || _17 === void 0 ? void 0 : _17.fullName);
                             if (titularName) {
                                 desc += ` de ${titularName}`;
                             }
@@ -658,12 +709,12 @@ class CronJobController {
                         }
                     }
                     // Anexa tarefas mecânicas da congregação para a mesma semana na notificação consolidada
-                    const scheduleCongId = ((_17 = schedule.congregation) === null || _17 === void 0 ? void 0 : _17.id) || schedule.congregation_id;
+                    const scheduleCongId = ((_18 = schedule.congregation) === null || _18 === void 0 ? void 0 : _18.id) || schedule.congregation_id;
                     const matchingMechSchedules = uniqueMechanicalSchedules.filter(ms => { var _a; return (ms.congregation_id === scheduleCongId || ((_a = ms.congregation) === null || _a === void 0 ? void 0 : _a.id) === scheduleCongId) && !ms.hasNoMeeting; });
                     for (const mechSched of matchingMechSchedules) {
                         processedMechScheduleIds.add(mechSched.id);
                         for (const ma of mechSched.assignments || []) {
-                            if ((_18 = ma.publisher) === null || _18 === void 0 ? void 0 : _18.id) {
+                            if ((_19 = ma.publisher) === null || _19 === void 0 ? void 0 : _19.id) {
                                 addAssignment(ma.publisher, formatMechanicalRole(ma.role, ma.order));
                             }
                         }
@@ -701,7 +752,7 @@ class CronJobController {
                         pubMap.get(pub.id).items.push(desc);
                     };
                     for (const ma of mechSched.assignments || []) {
-                        if ((_19 = ma.publisher) === null || _19 === void 0 ? void 0 : _19.id) {
+                        if ((_20 = ma.publisher) === null || _20 === void 0 ? void 0 : _20.id) {
                             addAssignment(ma.publisher, formatMechanicalRole(ma.role, ma.order));
                         }
                     }

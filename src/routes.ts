@@ -178,6 +178,7 @@ routes.get('/congregations/system', CongregationController.listSystemCongregatio
 routes.get('/congregations/toTransfer', is(['ADMIN_CONGREGATION']), CongregationController.getCongregationSystemToTransferPublisher)
 routes.put('/congregation/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION']), CongregationController.update)
 routes.post('/congregation/:congregation_id/speakerCoordinator/:publisher_id', is(['ADMIN_CONGREGATION']), CongregationController.addAndUpdateSpeakerCoordinator)
+routes.post('/congregation/:congregation_id/watchtowerConductor/:publisher_id', is(['ADMIN_CONGREGATION']), CongregationController.addAndUpdateWatchtowerConductor)
 routes.put('/congregation/:congregation_id/photo', is(['ADMIN', 'ADMIN_CONGREGATION']), uploadFile.single('image'), CongregationController.uploadCongregationPhoto)
 
 /* === Congregações auxiliares === */

@@ -4,8 +4,8 @@ import { MechanicalSchedule } from "../../entities/MechanicalSchedule";
 import { MechanicalScheduleConfig } from "../../entities/MechanicalScheduleConfig";
 import { MidweekSpecialType } from "../../entities/midweekEnums";
 import { Gender, Publisher, Situation } from "../../entities/Publisher";
-import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { convertMeetingDayPortugueseToIso } from "../../functions/cleaningFunctions";
+import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { mechanicalAssignmentRepository } from "../../repositories/mechanicalAssignmentRepository";
 import { mechanicalScheduleConfigRepository } from "../../repositories/mechanicalScheduleConfigRepository";
@@ -26,6 +26,7 @@ export interface MechanicalCandidateSuggestion {
     isUnavailable: boolean;
     unavailabilityReason?: string | null;
     isMidweekChairman: boolean;
+    isWatchtowerConductor: boolean;
     isAssignedThisMeeting: boolean;
     daysSinceLastAny: number | null;
     daysSinceLastThisRole: number | null;
@@ -444,6 +445,13 @@ export class MechanicalScheduleService {
         });
         const midweekChairmanId = midweekSched?.chairman_id || null;
 
+        // Busca o dirigente de A Sentinela da congregação
+        const congregation = await congregationRepository.findOne({
+            where: { id: congregationId },
+            relations: ["watchtowerConductor"]
+        });
+        const watchtowerConductorId = congregation?.watchtowerConductor?.id || null;
+
         // Publicadores ativos varões da congregação
         const publishers = await publisherRepository.find({
             where: {
@@ -514,6 +522,11 @@ export class MechanicalScheduleService {
             }
 
             const isMidweekChairman = Boolean(midweekChairmanId && pub.id === midweekChairmanId);
+            const isWatchtowerConductor = Boolean(
+                schedule.meetingType === MechanicalMeetingType.WEEKEND &&
+                watchtowerConductorId &&
+                pub.id === watchtowerConductorId
+            );
             const isAssignedThisMeeting = assignedInThisMeeting.has(pub.id);
 
             const lastAny = lastAnyDateMap.get(pub.id) || null;
@@ -528,6 +541,7 @@ export class MechanicalScheduleService {
             let score = 1000;
             if (isUnavailable) score -= 50000;
             if (isMidweekChairman) score -= 40000; // Alerta forte, presidente não deve ser colocado
+            if (isWatchtowerConductor) score -= 40000; // Alerta forte, dirigente de A Sentinela não deve ser colocado no fim de semana
             if (isAssignedThisMeeting) score -= 30000;
             if (!isQualified) score -= 15000;
 
@@ -559,6 +573,7 @@ export class MechanicalScheduleService {
                 isUnavailable,
                 unavailabilityReason,
                 isMidweekChairman,
+                isWatchtowerConductor,
                 isAssignedThisMeeting,
                 daysSinceLastAny,
                 daysSinceLastThisRole,

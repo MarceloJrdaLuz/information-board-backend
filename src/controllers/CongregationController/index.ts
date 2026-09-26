@@ -16,7 +16,7 @@ import { speakerRepository } from "../../repositories/speakerRepository";
 import { userRepository } from "../../repositories/userRepository";
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest, QueryCustomRequest } from "../../types/customRequest";
 import { NormalizeFiles } from "../../types/normalizeFile";
-import { BodyAuxiliaryCongregationCreateTypes, BodyAuxiliaryCongregationUpdateTypes, BodyCongregationCreateTypes, BodyCongregationUpdateTypes, ParamsAddSpeakerCoordinatorTypes, ParamsCongregationDeleteTypes, ParamsUpdateCongregationTypes, QueryCongregationDeleteTypes, QueryGetCongregationTypes } from "./types";
+import { BodyAuxiliaryCongregationCreateTypes, BodyAuxiliaryCongregationUpdateTypes, BodyCongregationCreateTypes, BodyCongregationUpdateTypes, ParamsAddSpeakerCoordinatorTypes, ParamsAddWatchtowerConductorTypes, ParamsCongregationDeleteTypes, ParamsUpdateCongregationTypes, QueryCongregationDeleteTypes, QueryGetCongregationTypes } from "./types";
 
 
 class CongregationController {
@@ -580,6 +580,33 @@ class CongregationController {
         }
 
         congregation.speakerCoordinator = publisher
+
+        await congregationRepository.save(congregation)
+       
+        return res.status(200).end()
+    }
+
+    async addAndUpdateWatchtowerConductor(req: ParamsCustomRequest<ParamsAddWatchtowerConductorTypes>, res: Response) {
+        const { congregation_id, publisher_id } = req.params
+
+        const congregation = await congregationRepository.findOne({
+            where: {
+                id: congregation_id,
+                type: CongregationType.SYSTEM
+            }
+        })
+
+        if (!congregation) {
+            throw new NotFoundError(messageErrors.notFound.congregation)
+        }
+
+        const publisher = await publisherRepository.findOneBy({ id: publisher_id })
+
+        if (!publisher) {
+            throw new NotFoundError(messageErrors.notFound.publisher)
+        }
+
+        congregation.watchtowerConductor = publisher
 
         await congregationRepository.save(congregation)
        
