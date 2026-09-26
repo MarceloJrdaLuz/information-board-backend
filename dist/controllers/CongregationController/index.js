@@ -482,5 +482,24 @@ class CongregationController {
         await congregationRepository_1.congregationRepository.save(congregation);
         return res.status(200).end();
     }
+    async addAndUpdateWatchtowerConductor(req, res) {
+        const { congregation_id, publisher_id } = req.params;
+        const congregation = await congregationRepository_1.congregationRepository.findOne({
+            where: {
+                id: congregation_id,
+                type: Congregation_1.CongregationType.SYSTEM
+            }
+        });
+        if (!congregation) {
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.congregation);
+        }
+        const publisher = await publisherRepository_1.publisherRepository.findOneBy({ id: publisher_id });
+        if (!publisher) {
+            throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.publisher);
+        }
+        congregation.watchtowerConductor = publisher;
+        await congregationRepository_1.congregationRepository.save(congregation);
+        return res.status(200).end();
+    }
 }
 exports.default = new CongregationController();

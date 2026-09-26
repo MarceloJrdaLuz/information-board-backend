@@ -1,13 +1,13 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
-import { Document } from "./Document"
-import { Notice } from "./Notice"
-import { User } from "./User"
 import { EndweekDays, MidweekDays } from "../types/enumWeekDays"
-import { Group } from "./Group"
-import { Territory } from "./Territory"
+import { Document } from "./Document"
 import { EmergencyContact } from "./EmergencyContact"
+import { Group } from "./Group"
 import { HospitalityWeekend } from "./HospitalityWeekend"
+import { Notice } from "./Notice"
 import { Publisher } from "./Publisher"
+import { Territory } from "./Territory"
+import { User } from "./User"
 
 export enum CongregationType {
   SYSTEM = "system",   // congregações que usam o sistema normalmente
@@ -43,6 +43,10 @@ export class Congregation {
   @ManyToOne(() => Publisher, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "speaker_coordinator_id" })
   speakerCoordinator?: Publisher | null;
+
+  @ManyToOne(() => Publisher, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "watchtower_conductor_id" })
+  watchtowerConductor?: Publisher | null;
 
   @Column({
     type: "enum",

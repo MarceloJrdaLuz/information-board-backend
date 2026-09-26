@@ -75,7 +75,7 @@ class UserController {
 
         const user = await userRepository.find({
             where: { email },
-            relations: ['congregation', 'profile']
+            relations: ['congregation', 'congregation.speakerCoordinator', 'congregation.watchtowerConductor', 'profile']
         })
 
         if (!user || user.length === 0) {
@@ -183,7 +183,7 @@ class UserController {
 
         const user = await userRepository.findOne({
             where: { id: userId },
-            relations: ['congregation', 'congregation.speakerCoordinator', 'profile', 'publisher']
+            relations: ['congregation', 'congregation.speakerCoordinator', 'congregation.watchtowerConductor', 'profile', 'publisher']
         })
 
         if (!user) {

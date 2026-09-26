@@ -30,12 +30,15 @@ export class MechanicalAutoAssignService {
         options: { forceReassignManual?: boolean } = { forceReassignManual: false }
     ): Promise<MechanicalSchedule[]> {
         const congregation = await congregationRepository.findOne({
-            where: { id: congregationId }
+            where: { id: congregationId },
+            relations: ["watchtowerConductor"]
         });
 
         if (!congregation) {
             throw new Error("Congregação não encontrada.");
         }
+
+        const watchtowerConductorId = congregation.watchtowerConductor?.id || null;
 
         const config = await this.scheduleService.getConfig(congregationId);
 
@@ -296,6 +299,13 @@ export class MechanicalAutoAssignService {
                         // ❌ RESTRIÇÃO ESTRITA: Presidente do Meio de Semana NUNCA é colocado no auto-preenchimento
                         if (midweekChairmanId && pub.id === midweekChairmanId) {
                             return false;
+                        }
+
+                        // ❌ RESTRIÇÃO ESTRITA: Dirigente de A Sentinela NUNCA é colocado em tarefas mecânicas no fim de semana
+                        if (watchtowerConductorId && pub.id === watchtowerConductorId) {
+                            if (meetingInfo.meetingType === MechanicalMeetingType.WEEKEND || config.sameTeamWholeWeek) {
+                                return false;
+                            }
                         }
 
                         // ❌ Não pode 2 funções na mesma reunião
