@@ -175,6 +175,7 @@ class MidweekScheduleController {
             return ((_a = pub.nickname) === null || _a === void 0 ? void 0 : _a.trim()) || pub.fullName || null;
         };
         const mapped = sorted.map(s => {
+            var _a;
             const dateObj = (0, dayjs_1.default)(s.meetingDate || s.weekDate);
             const monthName = dateObj.locale("pt-br").format("MMMM");
             const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
@@ -202,6 +203,7 @@ class MidweekScheduleController {
                 cbsConductor: getDisplayName(s.cbsConductor),
                 cbsReader: getDisplayName(s.cbsReader),
                 cbsSourceMaterial: (cbsPart === null || cbsPart === void 0 ? void 0 : cbsPart.sourceMaterial) || null,
+                cbsTimeMinutes: (_a = cbsPart === null || cbsPart === void 0 ? void 0 : cbsPart.timeMinutes) !== null && _a !== void 0 ? _a : 30,
                 parts: (s.parts || [])
                     .filter((p) => { var _a; return p.isActive !== false && p.partType !== "CBS" && !((_a = p.title) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes("estudo bíblico")); })
                     .sort((a, b) => { var _a, _b; return ((_a = a.orderIndex) !== null && _a !== void 0 ? _a : 0) - ((_b = b.orderIndex) !== null && _b !== void 0 ? _b : 0); })

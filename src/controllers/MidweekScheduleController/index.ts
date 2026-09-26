@@ -245,6 +245,7 @@ export class MidweekScheduleController {
                 cbsConductor: getDisplayName(s.cbsConductor),
                 cbsReader: getDisplayName(s.cbsReader),
                 cbsSourceMaterial: cbsPart?.sourceMaterial || null,
+                cbsTimeMinutes: cbsPart?.timeMinutes ?? 30,
                 parts: (s.parts || [])
                     .filter((p: any) => p.isActive !== false && p.partType !== "CBS" && !p.title?.toLowerCase().includes("estudo bíblico"))
                     .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
