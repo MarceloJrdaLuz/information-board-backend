@@ -7,8 +7,8 @@ class AddCancelMechanicalToSpecialEvents1788559000000 {
         this.name = "AddCancelMechanicalToSpecialEvents1788559000000";
     }
     async up(queryRunner) {
-        const hasCancelMechanical = await queryRunner.hasColumn("special_events", "cancelMechanical");
-        if (!hasCancelMechanical) {
+        const hasColumn = await queryRunner.hasColumn("special_events", "cancelMechanical");
+        if (!hasColumn) {
             await queryRunner.addColumn("special_events", new typeorm_1.TableColumn({
                 name: "cancelMechanical",
                 type: "boolean",
@@ -17,7 +17,8 @@ class AddCancelMechanicalToSpecialEvents1788559000000 {
         }
     }
     async down(queryRunner) {
-        if (await queryRunner.hasColumn("special_events", "cancelMechanical")) {
+        const hasColumn = await queryRunner.hasColumn("special_events", "cancelMechanical");
+        if (hasColumn) {
             await queryRunner.dropColumn("special_events", "cancelMechanical");
         }
     }

@@ -69,6 +69,9 @@ export class SpecialEvent {
     @Column({ type: "boolean", default: false })
     cancelCleaning: boolean;
 
+    @Column({ type: "boolean", default: false })
+    cancelMechanical: boolean;
+
     @Column({
         type: "enum",
         enum: EventImpactScope,
