@@ -3,7 +3,7 @@ import isoWeek from "dayjs/plugin/isoWeek";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { Request, Response } from "express";
-import { Between, MoreThanOrEqual } from "typeorm";
+import { Between, MoreThanOrEqual, Not } from "typeorm";
 import { MidweekMeetingPart } from "../../entities/MidweekMeetingPart";
 import { MidweekSpecialType } from "../../entities/MidweekSchedule";
 import { EventImpactScope, SpecialEvent, SpecialEventType } from "../../entities/SpecialEvent";
@@ -298,19 +298,39 @@ class SpecialEventController {
             }
         }
 
-        // Reverte marcação em MidweekSchedules que tinham o nome deste evento
+        // Busca outros eventos especiais da congregação (exceto este que está sendo excluído)
+        const otherEvents = await specialEventRepository.find({
+            where: {
+                congregation_id: event.congregation_id,
+                id: Not(id)
+            }
+        });
+
+        // 1. Reverte marcação em MidweekSchedules que caem no período deste evento
         const startWeek = dayjs(event.startDate).startOf("isoWeek").format("YYYY-MM-DD");
         const endWeek = dayjs(event.endDate).endOf("isoWeek").format("YYYY-MM-DD");
 
         const midweekSchedules = await midweekScheduleRepository.find({
             where: {
-                congregation: { id: event.congregation_id },
+                congregation_id: event.congregation_id,
                 weekDate: Between(startWeek, endWeek)
             }
         });
 
         for (const schedule of midweekSchedules) {
-            if (schedule.specialName === event.title) {
+            const schedWeekStart = dayjs(schedule.weekDate).startOf("isoWeek");
+            const schedWeekEnd = dayjs(schedule.weekDate).endOf("isoWeek");
+
+            const otherMatchingEvent = otherEvents.find(ev => {
+                const evStart = dayjs(ev.startDate);
+                const evEnd = dayjs(ev.endDate);
+                if (ev.affectsWholeWeek) {
+                    return evStart.startOf("isoWeek").isSameOrBefore(schedWeekEnd) && evEnd.endOf("isoWeek").isSameOrAfter(schedWeekStart);
+                }
+                return evStart.isSameOrBefore(schedWeekEnd) && evEnd.isSameOrAfter(schedWeekStart);
+            });
+
+            if (!otherMatchingEvent) {
                 schedule.isSpecial = false;
                 schedule.specialType = MidweekSpecialType.NONE;
                 schedule.specialName = null;
@@ -318,7 +338,7 @@ class SpecialEventController {
             }
         }
 
-        // Reverte marcação em WeekendSchedules que tinham o nome deste evento
+        // 2. Reverte marcação em WeekendSchedules que caem no período deste evento
         const congregation = await congregationRepository.findOne({
             where: { id: event.congregation_id }
         });
@@ -326,21 +346,42 @@ class SpecialEventController {
         const affectedDates = getAffectedWeekendDates(
             event.startDate,
             event.endDate,
-            event.affectsWholeWeek,
+            true, // cobre a semana inteira para garantir todas as datas possíveis
             congregation?.dayMeetingPublic
         );
 
         for (const date of affectedDates) {
-            const ws = await weekendScheduleRepository.findOne({
-                where: {
-                    congregation: { id: event.congregation_id },
-                    date
-                }
+            const otherMatchingEvent = otherEvents.find(ev => {
+                const dates = getAffectedWeekendDates(
+                    ev.startDate,
+                    ev.endDate,
+                    ev.affectsWholeWeek,
+                    congregation?.dayMeetingPublic
+                );
+                return dates.includes(date);
             });
-            if (ws && ws.specialName === event.title) {
-                ws.isSpecial = false;
-                ws.specialName = null;
-                await weekendScheduleRepository.save(ws);
+
+            if (!otherMatchingEvent) {
+                const ws = await weekendScheduleRepository.findOne({
+                    where: {
+                        congregation: { id: event.congregation_id },
+                        date
+                    },
+                    relations: ["speaker", "talk", "chairman", "reader", "visitingCongregation"]
+                });
+
+                if (ws) {
+                    const isEmptyPlaceholder = !ws.speaker && !ws.talk && !ws.chairman && !ws.reader &&
+                        !ws.visitingCongregation && !ws.manualSpeaker && !ws.manualTalk && !ws.watchTowerStudyTitle;
+
+                    if (isEmptyPlaceholder) {
+                        await weekendScheduleRepository.delete(ws.id);
+                    } else {
+                        ws.isSpecial = false;
+                        ws.specialName = null;
+                        await weekendScheduleRepository.save(ws);
+                    }
+                }
             }
         }
 

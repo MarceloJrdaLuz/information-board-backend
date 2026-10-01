@@ -88,31 +88,36 @@ class MidweekScheduleService {
                     endDate: (0, typeorm_1.MoreThanOrEqual)(firstDayRange)
                 }
             });
-            if (specialEvents.length > 0) {
-                for (const schedule of schedulesToReturn) {
-                    const schedWeekStart = (0, dayjs_1.default)(schedule.weekDate).startOf("isoWeek");
-                    const schedWeekEnd = (0, dayjs_1.default)(schedule.weekDate).endOf("isoWeek");
-                    const matchingEvent = specialEvents.find(ev => {
-                        const evStart = (0, dayjs_1.default)(ev.startDate);
-                        const evEnd = (0, dayjs_1.default)(ev.endDate);
-                        if (ev.affectsWholeWeek) {
-                            return evStart.startOf("isoWeek").isSameOrBefore(schedWeekEnd) && evEnd.endOf("isoWeek").isSameOrAfter(schedWeekStart);
-                        }
-                        return evStart.isSameOrBefore(schedWeekEnd) && evEnd.isSameOrAfter(schedWeekStart);
-                    });
-                    if (matchingEvent && (matchingEvent.cancelMidweekMeeting || matchingEvent.isCircuitOverseerVisit)) {
-                        if (!schedule.isSpecial || schedule.specialName !== matchingEvent.title) {
-                            schedule.isSpecial = true;
-                            schedule.specialName = matchingEvent.title;
-                            if (matchingEvent.cancelMidweekMeeting) {
-                                schedule.specialType = (0, SpecialEventController_1.mapSpecialEventTypeToMidweek)(matchingEvent.type);
-                            }
-                            else if (matchingEvent.isCircuitOverseerVisit) {
-                                schedule.specialType = MidweekSchedule_1.MidweekSpecialType.CIRCUIT_OVERSEER_VISIT;
-                            }
-                            await midweekScheduleRepository_1.midweekScheduleRepository.save(schedule);
-                        }
+            for (const schedule of schedulesToReturn) {
+                const schedWeekStart = (0, dayjs_1.default)(schedule.weekDate).startOf("isoWeek");
+                const schedWeekEnd = (0, dayjs_1.default)(schedule.weekDate).endOf("isoWeek");
+                const matchingEvent = specialEvents.find(ev => {
+                    const evStart = (0, dayjs_1.default)(ev.startDate);
+                    const evEnd = (0, dayjs_1.default)(ev.endDate);
+                    if (ev.affectsWholeWeek) {
+                        return evStart.startOf("isoWeek").isSameOrBefore(schedWeekEnd) && evEnd.endOf("isoWeek").isSameOrAfter(schedWeekStart);
                     }
+                    return evStart.isSameOrBefore(schedWeekEnd) && evEnd.isSameOrAfter(schedWeekStart);
+                });
+                if (matchingEvent && (matchingEvent.cancelMidweekMeeting || matchingEvent.isCircuitOverseerVisit)) {
+                    if (!schedule.isSpecial || schedule.specialName !== matchingEvent.title) {
+                        schedule.isSpecial = true;
+                        schedule.specialName = matchingEvent.title;
+                        if (matchingEvent.cancelMidweekMeeting) {
+                            schedule.specialType = (0, SpecialEventController_1.mapSpecialEventTypeToMidweek)(matchingEvent.type);
+                        }
+                        else if (matchingEvent.isCircuitOverseerVisit) {
+                            schedule.specialType = MidweekSchedule_1.MidweekSpecialType.CIRCUIT_OVERSEER_VISIT;
+                        }
+                        await midweekScheduleRepository_1.midweekScheduleRepository.save(schedule);
+                    }
+                }
+                else if (schedule.isSpecial) {
+                    // Não há evento especial ativo para esta semana. Reverte para reunião normal!
+                    schedule.isSpecial = false;
+                    schedule.specialType = MidweekSchedule_1.MidweekSpecialType.NONE;
+                    schedule.specialName = null;
+                    await midweekScheduleRepository_1.midweekScheduleRepository.save(schedule);
                 }
             }
         }

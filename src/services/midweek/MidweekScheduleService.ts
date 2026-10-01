@@ -95,32 +95,36 @@ export class MidweekScheduleService {
                 }
             });
 
-            if (specialEvents.length > 0) {
-                for (const schedule of schedulesToReturn) {
-                    const schedWeekStart = dayjs(schedule.weekDate).startOf("isoWeek");
-                    const schedWeekEnd = dayjs(schedule.weekDate).endOf("isoWeek");
+            for (const schedule of schedulesToReturn) {
+                const schedWeekStart = dayjs(schedule.weekDate).startOf("isoWeek");
+                const schedWeekEnd = dayjs(schedule.weekDate).endOf("isoWeek");
 
-                    const matchingEvent = specialEvents.find(ev => {
-                        const evStart = dayjs(ev.startDate);
-                        const evEnd = dayjs(ev.endDate);
-                        if (ev.affectsWholeWeek) {
-                            return evStart.startOf("isoWeek").isSameOrBefore(schedWeekEnd) && evEnd.endOf("isoWeek").isSameOrAfter(schedWeekStart);
-                        }
-                        return evStart.isSameOrBefore(schedWeekEnd) && evEnd.isSameOrAfter(schedWeekStart);
-                    });
-
-                    if (matchingEvent && (matchingEvent.cancelMidweekMeeting || matchingEvent.isCircuitOverseerVisit)) {
-                        if (!schedule.isSpecial || schedule.specialName !== matchingEvent.title) {
-                            schedule.isSpecial = true;
-                            schedule.specialName = matchingEvent.title;
-                            if (matchingEvent.cancelMidweekMeeting) {
-                                schedule.specialType = mapSpecialEventTypeToMidweek(matchingEvent.type);
-                            } else if (matchingEvent.isCircuitOverseerVisit) {
-                                schedule.specialType = MidweekSpecialType.CIRCUIT_OVERSEER_VISIT;
-                            }
-                            await midweekScheduleRepository.save(schedule);
-                        }
+                const matchingEvent = specialEvents.find(ev => {
+                    const evStart = dayjs(ev.startDate);
+                    const evEnd = dayjs(ev.endDate);
+                    if (ev.affectsWholeWeek) {
+                        return evStart.startOf("isoWeek").isSameOrBefore(schedWeekEnd) && evEnd.endOf("isoWeek").isSameOrAfter(schedWeekStart);
                     }
+                    return evStart.isSameOrBefore(schedWeekEnd) && evEnd.isSameOrAfter(schedWeekStart);
+                });
+
+                if (matchingEvent && (matchingEvent.cancelMidweekMeeting || matchingEvent.isCircuitOverseerVisit)) {
+                    if (!schedule.isSpecial || schedule.specialName !== matchingEvent.title) {
+                        schedule.isSpecial = true;
+                        schedule.specialName = matchingEvent.title;
+                        if (matchingEvent.cancelMidweekMeeting) {
+                            schedule.specialType = mapSpecialEventTypeToMidweek(matchingEvent.type);
+                        } else if (matchingEvent.isCircuitOverseerVisit) {
+                            schedule.specialType = MidweekSpecialType.CIRCUIT_OVERSEER_VISIT;
+                        }
+                        await midweekScheduleRepository.save(schedule);
+                    }
+                } else if (schedule.isSpecial) {
+                    // Não há evento especial ativo para esta semana. Reverte para reunião normal!
+                    schedule.isSpecial = false;
+                    schedule.specialType = MidweekSpecialType.NONE;
+                    schedule.specialName = null;
+                    await midweekScheduleRepository.save(schedule);
                 }
             }
         } catch (error) {

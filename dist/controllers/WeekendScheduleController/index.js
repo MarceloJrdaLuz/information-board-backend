@@ -226,7 +226,7 @@ class WeekendScheduleController {
     }
     async getSchedules(req, res) {
         const { congregation_id } = req.params;
-        const schedules = await weekendScheduleRepository_1.weekendScheduleRepository.find({
+        let schedules = await weekendScheduleRepository_1.weekendScheduleRepository.find({
             where: { congregation: { id: congregation_id } },
             relations: ["speaker", "talk", "chairman", "reader", "congregation", "visitingCongregation"],
             order: { date: "ASC" },
@@ -238,34 +238,62 @@ class WeekendScheduleController {
                 cancelWeekendMeeting: true
             }
         });
+        const activeSpecialDates = new Map();
         for (const se of specialEvents) {
             const dates = (0, SpecialEventController_1.getAffectedWeekendDates)(se.startDate, se.endDate, se.affectsWholeWeek, congregation === null || congregation === void 0 ? void 0 : congregation.dayMeetingPublic);
-            for (const date of dates) {
-                let ws = schedules.find(s => s.date === date);
-                if (ws) {
-                    ws.isSpecial = true;
-                    if (!ws.specialName)
-                        ws.specialName = se.title;
-                }
-                else {
-                    const newWs = weekendScheduleRepository_1.weekendScheduleRepository.create({
-                        congregation: { id: congregation_id },
-                        date,
-                        isSpecial: true,
-                        specialName: se.title,
-                        watchTowerStudyTitle: null,
-                        chairman: null,
-                        reader: null,
-                        speaker: null,
-                        talk: null,
-                        manualSpeaker: null,
-                        manualTalk: null
-                    });
-                    await weekendScheduleRepository_1.weekendScheduleRepository.save(newWs);
-                    schedules.push(newWs);
-                }
+            for (const d of dates) {
+                activeSpecialDates.set(d, se.title);
             }
         }
+        for (const [date, title] of activeSpecialDates.entries()) {
+            let ws = schedules.find(s => s.date === date);
+            if (ws) {
+                if (!ws.isSpecial || ws.specialName !== title) {
+                    ws.isSpecial = true;
+                    ws.specialName = title;
+                    await weekendScheduleRepository_1.weekendScheduleRepository.save(ws);
+                }
+            }
+            else {
+                const newWs = weekendScheduleRepository_1.weekendScheduleRepository.create({
+                    congregation: { id: congregation_id },
+                    date,
+                    isSpecial: true,
+                    specialName: title,
+                    watchTowerStudyTitle: null,
+                    chairman: null,
+                    reader: null,
+                    speaker: null,
+                    talk: null,
+                    manualSpeaker: null,
+                    manualTalk: null
+                });
+                await weekendScheduleRepository_1.weekendScheduleRepository.save(newWs);
+                schedules.push(newWs);
+            }
+        }
+        // Auto-reversão para reuniões de fim de semana sem evento ativo
+        const schedulesToKeep = [];
+        for (const ws of schedules) {
+            if (ws.isSpecial && !activeSpecialDates.has(ws.date)) {
+                const isEmptyPlaceholder = !ws.speaker && !ws.talk && !ws.chairman && !ws.reader &&
+                    !ws.visitingCongregation && !ws.manualSpeaker && !ws.manualTalk && !ws.watchTowerStudyTitle;
+                if (isEmptyPlaceholder) {
+                    await weekendScheduleRepository_1.weekendScheduleRepository.delete(ws.id);
+                    continue;
+                }
+                else {
+                    ws.isSpecial = false;
+                    ws.specialName = null;
+                    await weekendScheduleRepository_1.weekendScheduleRepository.save(ws);
+                    schedulesToKeep.push(ws);
+                }
+            }
+            else {
+                schedulesToKeep.push(ws);
+            }
+        }
+        schedules = schedulesToKeep;
         schedules.sort((a, b) => a.date.localeCompare(b.date));
         return res.json(schedules);
     }
@@ -281,7 +309,7 @@ class WeekendScheduleController {
     }
     async getPublicSchedules(req, res) {
         const { congregation_id } = req.params;
-        const schedules = await weekendScheduleRepository_1.weekendScheduleRepository.find({
+        let schedules = await weekendScheduleRepository_1.weekendScheduleRepository.find({
             where: {
                 congregation: {
                     id: congregation_id
@@ -297,42 +325,66 @@ class WeekendScheduleController {
                 congregation: { id: congregation_id }
             }
         });
+        const activeSpecialDates = new Map();
         for (const se of specialEvents) {
             const dates = (0, SpecialEventController_1.getAffectedWeekendDates)(se.startDate, se.endDate, se.affectsWholeWeek, congregation === null || congregation === void 0 ? void 0 : congregation.dayMeetingPublic);
-            for (const date of dates) {
-                let ws = schedules.find(s => s.date === date);
-                if (ws) {
-                    ws.isSpecial = true;
-                    if (!ws.specialName)
-                        ws.specialName = se.title;
-                    if (se.cancelWeekendMeeting) {
-                        ws.speaker = null;
-                        ws.talk = null;
-                        ws.chairman = null;
-                        ws.reader = null;
-                        ws.manualSpeaker = null;
-                        ws.manualTalk = null;
-                    }
-                }
-                else {
-                    const newWs = weekendScheduleRepository_1.weekendScheduleRepository.create({
-                        congregation: { id: congregation_id },
-                        date,
-                        isSpecial: true,
-                        specialName: se.title,
-                        watchTowerStudyTitle: null,
-                        chairman: null,
-                        reader: null,
-                        speaker: null,
-                        talk: null,
-                        manualSpeaker: null,
-                        manualTalk: null
-                    });
-                    await weekendScheduleRepository_1.weekendScheduleRepository.save(newWs);
-                    schedules.push(newWs);
-                }
+            for (const d of dates) {
+                activeSpecialDates.set(d, { title: se.title, cancelMeeting: Boolean(se.cancelWeekendMeeting) });
             }
         }
+        for (const [date, info] of activeSpecialDates.entries()) {
+            let ws = schedules.find(s => s.date === date);
+            if (ws) {
+                ws.isSpecial = true;
+                ws.specialName = info.title;
+                if (info.cancelMeeting) {
+                    ws.speaker = null;
+                    ws.talk = null;
+                    ws.chairman = null;
+                    ws.reader = null;
+                    ws.manualSpeaker = null;
+                    ws.manualTalk = null;
+                }
+            }
+            else {
+                const newWs = weekendScheduleRepository_1.weekendScheduleRepository.create({
+                    congregation: { id: congregation_id },
+                    date,
+                    isSpecial: true,
+                    specialName: info.title,
+                    watchTowerStudyTitle: null,
+                    chairman: null,
+                    reader: null,
+                    speaker: null,
+                    talk: null,
+                    manualSpeaker: null,
+                    manualTalk: null
+                });
+                await weekendScheduleRepository_1.weekendScheduleRepository.save(newWs);
+                schedules.push(newWs);
+            }
+        }
+        const schedulesToKeep = [];
+        for (const ws of schedules) {
+            if (ws.isSpecial && !activeSpecialDates.has(ws.date)) {
+                const isEmptyPlaceholder = !ws.speaker && !ws.talk && !ws.chairman && !ws.reader &&
+                    !ws.visitingCongregation && !ws.manualSpeaker && !ws.manualTalk && !ws.watchTowerStudyTitle;
+                if (isEmptyPlaceholder) {
+                    await weekendScheduleRepository_1.weekendScheduleRepository.delete(ws.id);
+                    continue;
+                }
+                else {
+                    ws.isSpecial = false;
+                    ws.specialName = null;
+                    await weekendScheduleRepository_1.weekendScheduleRepository.save(ws);
+                    schedulesToKeep.push(ws);
+                }
+            }
+            else {
+                schedulesToKeep.push(ws);
+            }
+        }
+        schedules = schedulesToKeep;
         schedules.sort((a, b) => a.date.localeCompare(b.date));
         const externalTalks = await externalTalkRepository_1.externalTalkRepository.find({
             where: {
