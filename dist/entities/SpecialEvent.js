@@ -83,6 +83,10 @@ __decorate([
     __metadata("design:type", Boolean)
 ], SpecialEvent.prototype, "cancelCleaning", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: "boolean", default: false }),
+    __metadata("design:type", Boolean)
+], SpecialEvent.prototype, "cancelMechanical", void 0);
+__decorate([
     (0, typeorm_1.Column)({
         type: "enum",
         enum: EventImpactScope,

@@ -16,6 +16,8 @@ const WeekendSchedule_1 = require("../../entities/WeekendSchedule");
 const api_errors_1 = require("../../helpers/api-errors");
 const permissions_1 = require("../../middlewares/permissions");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
+const mechanicalAssignmentRepository_1 = require("../../repositories/mechanicalAssignmentRepository");
+const mechanicalScheduleRepository_1 = require("../../repositories/mechanicalScheduleRepository");
 const midweekMeetingPartRepository_1 = require("../../repositories/midweekMeetingPartRepository");
 const midweekScheduleRepository_1 = require("../../repositories/midweekScheduleRepository");
 const specialEventRepository_1 = require("../../repositories/specialEventRepository");
@@ -119,7 +121,7 @@ class SpecialEventController {
      */
     async create(req, res) {
         const { congregation_id } = req.params;
-        const { type, title, startDate, endDate, affectsWholeWeek, cancelMidweekMeeting, cancelWeekendMeeting, isCircuitOverseerVisit, cancelCleaning, fieldServiceImpact, publicWitnessingImpact, showOnPublicBoard, theme, location, notes } = req.body;
+        const { type, title, startDate, endDate, affectsWholeWeek, cancelMidweekMeeting, cancelWeekendMeeting, isCircuitOverseerVisit, cancelCleaning, cancelMechanical, fieldServiceImpact, publicWitnessingImpact, showOnPublicBoard, theme, location, notes } = req.body;
         if (!title || !startDate || !endDate || !type) {
             throw new api_errors_1.BadRequestError("Título, tipo, data de início e data de fim são obrigatórios.");
         }
@@ -149,6 +151,7 @@ class SpecialEventController {
             cancelWeekendMeeting: cancelWeekendMeeting !== null && cancelWeekendMeeting !== void 0 ? cancelWeekendMeeting : false,
             isCircuitOverseerVisit: isCircuitOverseerVisit !== null && isCircuitOverseerVisit !== void 0 ? isCircuitOverseerVisit : (type === SpecialEvent_1.SpecialEventType.CIRCUIT_OVERSEER_VISIT),
             cancelCleaning: cancelCleaning !== null && cancelCleaning !== void 0 ? cancelCleaning : false,
+            cancelMechanical: cancelMechanical !== null && cancelMechanical !== void 0 ? cancelMechanical : (cancelMidweekMeeting || cancelWeekendMeeting ? true : false),
             fieldServiceImpact: fieldServiceImpact !== null && fieldServiceImpact !== void 0 ? fieldServiceImpact : SpecialEvent_1.EventImpactScope.NONE,
             publicWitnessingImpact: publicWitnessingImpact !== null && publicWitnessingImpact !== void 0 ? publicWitnessingImpact : SpecialEvent_1.EventImpactScope.NONE,
             showOnPublicBoard: showOnPublicBoard !== null && showOnPublicBoard !== void 0 ? showOnPublicBoard : true,
@@ -187,7 +190,7 @@ class SpecialEventController {
                 throw new api_errors_1.UnauthorizedError('Usuário não tem permissão nesta congregação.');
             }
         }
-        const { type, title, startDate, endDate, affectsWholeWeek, cancelMidweekMeeting, cancelWeekendMeeting, isCircuitOverseerVisit, cancelCleaning, fieldServiceImpact, publicWitnessingImpact, showOnPublicBoard, theme, location, notes } = req.body;
+        const { type, title, startDate, endDate, affectsWholeWeek, cancelMidweekMeeting, cancelWeekendMeeting, isCircuitOverseerVisit, cancelCleaning, cancelMechanical, fieldServiceImpact, publicWitnessingImpact, showOnPublicBoard, theme, location, notes } = req.body;
         if (title !== undefined)
             event.title = title.trim();
         if (type !== undefined)
@@ -206,6 +209,8 @@ class SpecialEventController {
             event.isCircuitOverseerVisit = isCircuitOverseerVisit;
         if (cancelCleaning !== undefined)
             event.cancelCleaning = cancelCleaning;
+        if (cancelMechanical !== undefined)
+            event.cancelMechanical = cancelMechanical;
         if (fieldServiceImpact !== undefined)
             event.fieldServiceImpact = fieldServiceImpact;
         if (publicWitnessingImpact !== undefined)
@@ -314,6 +319,31 @@ class SpecialEventController {
                         await weekendScheduleRepository_1.weekendScheduleRepository.save(ws);
                     }
                 }
+            }
+        }
+        // 3. Reverte marcação em MechanicalSchedules que caem no período deste evento
+        const mechanicalSchedules = await mechanicalScheduleRepository_1.mechanicalScheduleRepository
+            .createQueryBuilder("sched")
+            .where("sched.congregation_id = :congregationId", { congregationId: event.congregation_id })
+            .andWhere("sched.weekStartDate BETWEEN :startWeek AND :endWeek", { startWeek, endWeek })
+            .getMany();
+        for (const sched of mechanicalSchedules) {
+            const schedWeekStart = (0, dayjs_1.default)(sched.weekStartDate).startOf("isoWeek");
+            const schedWeekEnd = (0, dayjs_1.default)(sched.weekStartDate).endOf("isoWeek");
+            const otherMatchingEvent = otherEvents.find(ev => {
+                if (!ev.cancelMechanical)
+                    return false;
+                const evStart = (0, dayjs_1.default)(ev.startDate);
+                const evEnd = (0, dayjs_1.default)(ev.endDate);
+                if (ev.affectsWholeWeek) {
+                    return evStart.startOf("isoWeek").isSameOrBefore(schedWeekEnd) && evEnd.endOf("isoWeek").isSameOrAfter(schedWeekStart);
+                }
+                return evStart.isSameOrBefore(schedWeekEnd) && evEnd.isSameOrAfter(schedWeekStart);
+            });
+            if (!otherMatchingEvent) {
+                sched.hasNoMeeting = false;
+                sched.eventTitle = null;
+                await mechanicalScheduleRepository_1.mechanicalScheduleRepository.save(sched);
             }
         }
         await specialEventRepository_1.specialEventRepository.delete(id);
@@ -489,6 +519,33 @@ async function syncEventImpacts(event) {
                 manualTalk: null
             });
             await weekendScheduleRepository_1.weekendScheduleRepository.save(ws);
+        }
+    }
+    // 3. Sincroniza Partes Mecânicas
+    if (event.cancelMechanical) {
+        const startMonday = (0, dayjs_1.default)(event.startDate).startOf("isoWeek");
+        const endSunday = (0, dayjs_1.default)(event.endDate).endOf("isoWeek");
+        let curMon = startMonday.clone();
+        const affectedWeekStarts = [];
+        while (curMon.isSameOrBefore(endSunday)) {
+            affectedWeekStarts.push(curMon.format("YYYY-MM-DD"));
+            curMon = curMon.add(1, "week");
+        }
+        if (affectedWeekStarts.length > 0) {
+            const mechanicalSchedules = await mechanicalScheduleRepository_1.mechanicalScheduleRepository
+                .createQueryBuilder("sched")
+                .where("sched.congregation_id = :congregationId", { congregationId: event.congregation_id })
+                .andWhere("sched.weekStartDate IN (:...affectedWeekStarts)", { affectedWeekStarts })
+                .getMany();
+            for (const sched of mechanicalSchedules) {
+                sched.hasNoMeeting = true;
+                sched.eventTitle = event.title;
+                if (sched.id) {
+                    await mechanicalAssignmentRepository_1.mechanicalAssignmentRepository.delete({ schedule_id: sched.id });
+                    sched.assignments = [];
+                }
+                await mechanicalScheduleRepository_1.mechanicalScheduleRepository.save(sched);
+            }
         }
     }
 }

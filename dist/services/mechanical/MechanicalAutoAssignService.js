@@ -7,6 +7,7 @@ exports.MechanicalAutoAssignService = void 0;
 const dayjs_1 = __importDefault(require("dayjs"));
 const isBetween_1 = __importDefault(require("dayjs/plugin/isBetween"));
 const isoWeek_1 = __importDefault(require("dayjs/plugin/isoWeek"));
+const midweekEnums_1 = require("../../entities/midweekEnums");
 const Publisher_1 = require("../../entities/Publisher");
 const cleaningFunctions_1 = require("../../functions/cleaningFunctions");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
@@ -14,6 +15,7 @@ const mechanicalAssignmentRepository_1 = require("../../repositories/mechanicalA
 const mechanicalScheduleRepository_1 = require("../../repositories/mechanicalScheduleRepository");
 const midweekScheduleRepository_1 = require("../../repositories/midweekScheduleRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
 const mechanical_1 = require("../../types/mechanical");
 const MechanicalScheduleService_1 = require("./MechanicalScheduleService");
 dayjs_1.default.extend(isoWeek_1.default);
@@ -79,6 +81,15 @@ class MechanicalAutoAssignService {
                 lastThisRoleDateMap.set(key, dt);
             }
         }
+        // Eventos especiais no período
+        const specialEvents = await specialEventRepository_1.specialEventRepository
+            .createQueryBuilder("evt")
+            .where("evt.congregation_id = :congregationId", { congregationId })
+            .andWhere("evt.startDate <= :endPeriod AND evt.endDate >= :startPeriod", {
+            startPeriod: firstMonday.format("YYYY-MM-DD"),
+            endPeriod: lastSunday.format("YYYY-MM-DD")
+        })
+            .getMany();
         const resultSchedules = [];
         let currentWeekMonday = firstMonday.clone();
         while (currentWeekMonday.isBefore(lastSunday)) {
@@ -157,6 +168,30 @@ class MechanicalAutoAssignService {
                         assignments: []
                     });
                     schedule = await mechanicalScheduleRepository_1.mechanicalScheduleRepository.save(schedule);
+                }
+                // Se a reunião não for realizada ou as partes mecânicas foram canceladas nesta semana
+                const weekSundayStr = currentWeekMonday.clone().add(6, "day").format("YYYY-MM-DD");
+                const specialEvt = specialEvents.find(evt => evt.cancelMechanical &&
+                    evt.startDate <= weekSundayStr &&
+                    evt.endDate >= weekStartDate);
+                const isMidweekSpecialNoMeeting = (midweekSchedule === null || midweekSchedule === void 0 ? void 0 : midweekSchedule.isSpecial) === true &&
+                    (midweekSchedule === null || midweekSchedule === void 0 ? void 0 : midweekSchedule.specialType) !== midweekEnums_1.MidweekSpecialType.NONE &&
+                    (midweekSchedule === null || midweekSchedule === void 0 ? void 0 : midweekSchedule.specialType) !== midweekEnums_1.MidweekSpecialType.CIRCUIT_OVERSEER_VISIT;
+                const isCancelled = schedule.notes !== "MANUALLY_ACTIVATED" &&
+                    (schedule.hasNoMeeting || !!specialEvt || isMidweekSpecialNoMeeting);
+                if (isCancelled) {
+                    schedule.hasNoMeeting = true;
+                    schedule.eventTitle =
+                        schedule.eventTitle ||
+                            (specialEvt === null || specialEvt === void 0 ? void 0 : specialEvt.title) ||
+                            (isMidweekSpecialNoMeeting ? ((midweekSchedule === null || midweekSchedule === void 0 ? void 0 : midweekSchedule.specialName) || "Evento Especial") : "Sem Reunião");
+                    if (schedule.id) {
+                        await mechanicalAssignmentRepository_1.mechanicalAssignmentRepository.delete({ schedule_id: schedule.id });
+                    }
+                    schedule.assignments = [];
+                    schedule = await mechanicalScheduleRepository_1.mechanicalScheduleRepository.save(schedule);
+                    resultSchedules.push(schedule);
+                    continue;
                 }
                 // Cria lista de slots esperados para esta reunião
                 const expectedSlots = [];

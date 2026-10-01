@@ -11,6 +11,8 @@ import { WeekendSchedule } from "../../entities/WeekendSchedule";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
 import { decoder } from "../../middlewares/permissions";
 import { congregationRepository } from "../../repositories/congregationRepository";
+import { mechanicalAssignmentRepository } from "../../repositories/mechanicalAssignmentRepository";
+import { mechanicalScheduleRepository } from "../../repositories/mechanicalScheduleRepository";
 import { midweekMeetingPartRepository } from "../../repositories/midweekMeetingPartRepository";
 import { midweekScheduleRepository } from "../../repositories/midweekScheduleRepository";
 import { specialEventRepository } from "../../repositories/specialEventRepository";
@@ -140,6 +142,7 @@ class SpecialEventController {
             cancelWeekendMeeting,
             isCircuitOverseerVisit,
             cancelCleaning,
+            cancelMechanical,
             fieldServiceImpact,
             publicWitnessingImpact,
             showOnPublicBoard,
@@ -183,6 +186,7 @@ class SpecialEventController {
             cancelWeekendMeeting: cancelWeekendMeeting ?? false,
             isCircuitOverseerVisit: isCircuitOverseerVisit ?? (type === SpecialEventType.CIRCUIT_OVERSEER_VISIT),
             cancelCleaning: cancelCleaning ?? false,
+            cancelMechanical: cancelMechanical ?? (cancelMidweekMeeting || cancelWeekendMeeting ? true : false),
             fieldServiceImpact: fieldServiceImpact ?? EventImpactScope.NONE,
             publicWitnessingImpact: publicWitnessingImpact ?? EventImpactScope.NONE,
             showOnPublicBoard: showOnPublicBoard ?? true,
@@ -238,6 +242,7 @@ class SpecialEventController {
             cancelWeekendMeeting,
             isCircuitOverseerVisit,
             cancelCleaning,
+            cancelMechanical,
             fieldServiceImpact,
             publicWitnessingImpact,
             showOnPublicBoard,
@@ -255,6 +260,7 @@ class SpecialEventController {
         if (cancelWeekendMeeting !== undefined) event.cancelWeekendMeeting = cancelWeekendMeeting;
         if (isCircuitOverseerVisit !== undefined) event.isCircuitOverseerVisit = isCircuitOverseerVisit;
         if (cancelCleaning !== undefined) event.cancelCleaning = cancelCleaning;
+        if (cancelMechanical !== undefined) event.cancelMechanical = cancelMechanical;
         if (fieldServiceImpact !== undefined) event.fieldServiceImpact = fieldServiceImpact;
         if (publicWitnessingImpact !== undefined) event.publicWitnessingImpact = publicWitnessingImpact;
         if (showOnPublicBoard !== undefined) event.showOnPublicBoard = showOnPublicBoard;
@@ -383,6 +389,34 @@ class SpecialEventController {
                         await weekendScheduleRepository.save(ws);
                     }
                 }
+            }
+        }
+
+        // 3. Reverte marcação em MechanicalSchedules que caem no período deste evento
+        const mechanicalSchedules = await mechanicalScheduleRepository
+            .createQueryBuilder("sched")
+            .where("sched.congregation_id = :congregationId", { congregationId: event.congregation_id })
+            .andWhere("sched.weekStartDate BETWEEN :startWeek AND :endWeek", { startWeek, endWeek })
+            .getMany();
+
+        for (const sched of mechanicalSchedules) {
+            const schedWeekStart = dayjs(sched.weekStartDate).startOf("isoWeek");
+            const schedWeekEnd = dayjs(sched.weekStartDate).endOf("isoWeek");
+
+            const otherMatchingEvent = otherEvents.find(ev => {
+                if (!ev.cancelMechanical) return false;
+                const evStart = dayjs(ev.startDate);
+                const evEnd = dayjs(ev.endDate);
+                if (ev.affectsWholeWeek) {
+                    return evStart.startOf("isoWeek").isSameOrBefore(schedWeekEnd) && evEnd.endOf("isoWeek").isSameOrAfter(schedWeekStart);
+                }
+                return evStart.isSameOrBefore(schedWeekEnd) && evEnd.isSameOrAfter(schedWeekStart);
+            });
+
+            if (!otherMatchingEvent) {
+                sched.hasNoMeeting = false;
+                sched.eventTitle = null;
+                await mechanicalScheduleRepository.save(sched);
             }
         }
 
@@ -580,6 +614,37 @@ export async function syncEventImpacts(event: SpecialEvent) {
                 manualTalk: null
             });
             await weekendScheduleRepository.save(ws);
+        }
+    }
+
+    // 3. Sincroniza Partes Mecânicas
+    if (event.cancelMechanical) {
+        const startMonday = dayjs(event.startDate).startOf("isoWeek");
+        const endSunday = dayjs(event.endDate).endOf("isoWeek");
+
+        let curMon = startMonday.clone();
+        const affectedWeekStarts: string[] = [];
+        while (curMon.isSameOrBefore(endSunday)) {
+            affectedWeekStarts.push(curMon.format("YYYY-MM-DD"));
+            curMon = curMon.add(1, "week");
+        }
+
+        if (affectedWeekStarts.length > 0) {
+            const mechanicalSchedules = await mechanicalScheduleRepository
+                .createQueryBuilder("sched")
+                .where("sched.congregation_id = :congregationId", { congregationId: event.congregation_id })
+                .andWhere("sched.weekStartDate IN (:...affectedWeekStarts)", { affectedWeekStarts })
+                .getMany();
+
+            for (const sched of mechanicalSchedules) {
+                sched.hasNoMeeting = true;
+                sched.eventTitle = event.title;
+                if (sched.id) {
+                    await mechanicalAssignmentRepository.delete({ schedule_id: sched.id });
+                    sched.assignments = [];
+                }
+                await mechanicalScheduleRepository.save(sched);
+            }
         }
     }
 }

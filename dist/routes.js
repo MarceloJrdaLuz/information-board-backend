@@ -386,6 +386,7 @@ routes.get("/congregations/:congregation_id/mechanical-config", (0, permissions_
 routes.put("/congregations/:congregation_id/mechanical-config", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.saveConfig.bind(mechanicalController));
 routes.get("/congregations/:congregation_id/mechanical-schedules", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION", "PUBLISHERS_VIEWER", "PUBLISHERS_MANAGER"]), mechanicalController.getMonthSchedules.bind(mechanicalController));
 routes.post("/congregations/:congregation_id/mechanical-schedules/generate", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.autoAssignMonth.bind(mechanicalController));
+routes.post("/congregations/:congregation_id/mechanical-schedules/toggle-week", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.toggleWeekMeeting.bind(mechanicalController));
 routes.put("/mechanical-assignments/:assignment_id", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.updateAssignment.bind(mechanicalController));
 routes.get("/congregations/:congregation_id/mechanical-suggestions", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.getSuggestions.bind(mechanicalController));
 routes.get("/congregations/:congregation_id/mechanical-qualifications", (0, permissions_1.is)(["ADMIN", "ADMIN_CONGREGATION"]), mechanicalController.getQualifications.bind(mechanicalController));

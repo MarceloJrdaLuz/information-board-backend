@@ -591,6 +591,12 @@ routes.post(
     mechanicalController.autoAssignMonth.bind(mechanicalController)
 );
 
+routes.post(
+    "/congregations/:congregation_id/mechanical-schedules/toggle-week",
+    is(["ADMIN", "ADMIN_CONGREGATION"]),
+    mechanicalController.toggleWeekMeeting.bind(mechanicalController)
+);
+
 routes.put(
     "/mechanical-assignments/:assignment_id",
     is(["ADMIN", "ADMIN_CONGREGATION"]),
