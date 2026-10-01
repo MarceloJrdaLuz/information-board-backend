@@ -8,13 +8,18 @@ const isoWeek_1 = __importDefault(require("dayjs/plugin/isoWeek"));
 const isSameOrAfter_1 = __importDefault(require("dayjs/plugin/isSameOrAfter"));
 const isSameOrBefore_1 = __importDefault(require("dayjs/plugin/isSameOrBefore"));
 const typeorm_1 = require("typeorm");
+const CleaningSchedule_1 = require("../../entities/CleaningSchedule");
 const cleaningFunctions_1 = require("../../functions/cleaningFunctions");
 const organizePublishersByFamily_1 = require("../../functions/organizePublishersByFamily");
+const api_errors_1 = require("../../helpers/api-errors");
+const permissions_1 = require("../../middlewares/permissions");
 const cleaningExceptionRepository_1 = require("../../repositories/cleaningExceptionRepository");
 const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepository");
 const cleaningScheduleConfigRepository_1 = require("../../repositories/cleaningScheduleConfigRepository");
 const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
+const userRepository_1 = require("../../repositories/userRepository");
 const cleaning_1 = require("../../types/cleaning");
 dayjs_1.default.extend(isoWeek_1.default);
 dayjs_1.default.extend(isSameOrBefore_1.default);
@@ -51,17 +56,43 @@ class CleaningScheduleController {
             where: { congregation: { id: congregation.id } }
         });
         const exceptionDates = new Set(exceptions.map(e => e.date));
-        // 🔹 BUSCA o último agendamento ANTES de deletar
+        const cleaningSpecialEvents = await specialEventRepository_1.specialEventRepository.find({
+            where: {
+                congregation_id: congregation.id,
+                cancelCleaning: true
+            }
+        });
+        for (const se of cleaningSpecialEvents) {
+            const seStart = (0, dayjs_1.default)(se.startDate);
+            const seEnd = (0, dayjs_1.default)(se.endDate);
+            const rangeStart = se.affectsWholeWeek ? seStart.startOf("isoWeek") : seStart;
+            const rangeEnd = se.affectsWholeWeek ? seEnd.endOf("isoWeek") : seEnd;
+            let cur = rangeStart.clone();
+            while (cur.isSameOrBefore(rangeEnd)) {
+                exceptionDates.add(cur.format("YYYY-MM-DD"));
+                cur = cur.add(1, "day");
+            }
+        }
+        // 🔹 BUSCA o último agendamento ANTERIOR ao início do novo intervalo
         const lastSchedule = await cleaningScheduleRepository_1.cleaningScheduleRepository.findOne({
-            where: { congregation: { id: congregation.id } },
+            where: {
+                congregation_id: congregation.id,
+                date: (0, typeorm_1.LessThan)(startDate.format("YYYY-MM-DD"))
+            },
             order: { date: "DESC" },
             relations: ["group"]
         });
-        // 🔹 Deleta programações existentes no intervalo
-        await cleaningScheduleRepository_1.cleaningScheduleRepository.delete({
-            congregation: { id: congregation.id },
-            date: (0, typeorm_1.In)(Array.from({ length: endDate.diff(startDate, "day") + 1 }, (_, i) => startDate.clone().add(i, "day").format("YYYY-MM-DD")))
-        });
+        // 🔹 Deleta programações existentes no intervalo de forma confiável via QueryBuilder
+        await cleaningScheduleRepository_1.cleaningScheduleRepository
+            .createQueryBuilder()
+            .delete()
+            .from(CleaningSchedule_1.CleaningSchedule)
+            .where("congregation_id = :congregationId", { congregationId: congregation.id })
+            .andWhere("date >= :startDate AND date <= :endDate", {
+            startDate: startDate.format("YYYY-MM-DD"),
+            endDate: endDate.format("YYYY-MM-DD")
+        })
+            .execute();
         const newSchedule = [];
         // 🔹 DEFINE o ponto inicial do rodízio
         let groupIndex = 0;
@@ -120,9 +151,41 @@ class CleaningScheduleController {
     async getFutureSchedules(req, res) {
         const { congregation_id } = req.params;
         const today = (0, dayjs_1.default)().format("YYYY-MM-DD");
+        // 1. Busca exceções manuais e eventos especiais com cancelCleaning
+        const exceptions = await cleaningExceptionRepository_1.cleaningExceptionRepository.find({
+            where: { congregation: { id: congregation_id } }
+        });
+        const blockedDates = new Set(exceptions.map(e => e.date));
+        const cleaningSpecialEvents = await specialEventRepository_1.specialEventRepository.find({
+            where: {
+                congregation_id,
+                cancelCleaning: true
+            }
+        });
+        for (const se of cleaningSpecialEvents) {
+            const seStart = (0, dayjs_1.default)(se.startDate);
+            const seEnd = (0, dayjs_1.default)(se.endDate);
+            const rangeStart = se.affectsWholeWeek ? seStart.startOf("isoWeek") : seStart;
+            const rangeEnd = se.affectsWholeWeek ? seEnd.endOf("isoWeek") : seEnd;
+            let cur = rangeStart.clone();
+            while (cur.isSameOrBefore(rangeEnd)) {
+                blockedDates.add(cur.format("YYYY-MM-DD"));
+                cur = cur.add(1, "day");
+            }
+        }
+        // 2. Se houver agendamentos em datas bloqueadas, expurga automaticamente do banco
+        if (blockedDates.size > 0) {
+            await cleaningScheduleRepository_1.cleaningScheduleRepository
+                .createQueryBuilder()
+                .delete()
+                .from(CleaningSchedule_1.CleaningSchedule)
+                .where("congregation_id = :congregation_id", { congregation_id })
+                .andWhere("date IN (:...dates)", { dates: Array.from(blockedDates) })
+                .execute();
+        }
         const schedules = await cleaningScheduleRepository_1.cleaningScheduleRepository.find({
             where: {
-                congregation: { id: congregation_id },
+                congregation_id,
                 date: (0, typeorm_1.MoreThanOrEqual)(today),
             },
             relations: [
@@ -147,6 +210,32 @@ class CleaningScheduleController {
             };
         });
         return res.status(200).json({ schedules: schedulesProcessed });
+    }
+    async delete(req, res) {
+        var _a;
+        const { id } = req.params;
+        const schedule = await cleaningScheduleRepository_1.cleaningScheduleRepository.findOne({
+            where: { id },
+            relations: ["congregation"]
+        });
+        if (!schedule) {
+            throw new api_errors_1.NotFoundError("Programação de limpeza não encontrada.");
+        }
+        const user = await (0, permissions_1.decoder)(req);
+        const userRoles = (_a = user === null || user === void 0 ? void 0 : user.roles) === null || _a === void 0 ? void 0 : _a.map(role => role.name);
+        if (!(userRoles === null || userRoles === void 0 ? void 0 : userRoles.includes("ADMIN"))) {
+            const userCongregation = await userRepository_1.userRepository.find({
+                where: {
+                    id: user.id,
+                    congregation: { id: schedule.congregation.id }
+                }
+            });
+            if (userCongregation.length < 1) {
+                throw new api_errors_1.UnauthorizedError("Usuário não tem permissão nesta congregação.");
+            }
+        }
+        await cleaningScheduleRepository_1.cleaningScheduleRepository.delete(id);
+        return res.status(204).send();
     }
 }
 exports.default = new CleaningScheduleController();

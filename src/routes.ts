@@ -39,6 +39,7 @@ import PushNotificationController from "./controllers/PushNotificationController
 import ReportController from "./controllers/ReportController"
 import RoleController from "./controllers/RoleController"
 import SpeakerController from "./controllers/SpeakerController"
+import SpecialEventController from "./controllers/SpecialEventController"
 import TalkController from "./controllers/TalkController"
 import TermsOfUseController from "./controllers/TermsOfUseController"
 import TerritoryController from "./controllers/TerritoryController"
@@ -94,6 +95,10 @@ routes.get('/congregation/:congregation_id/midweekSchedules/public', midweekCont
 
 // Tarefas mecânicas (público)
 routes.get('/congregation/:congregation_id/mechanical-schedules/public', mechanicalController.getPublicSchedules.bind(mechanicalController))
+
+// Eventos especiais (dados públicos)
+routes.get('/congregation/:congregation_id/special-events/public', SpecialEventController.getPublicEvents)
+routes.get('/congregation/number/:number/special-events/public', SpecialEventController.getPublicEventsByNumber)
 
 // Consentimentos (público)
 routes.post("/consent/accept", DataProcessingAgreementController.accept)
@@ -223,6 +228,7 @@ routes.delete("/cleaning-exception/:groupId", is(['ADMIN_CONGREGATION', 'CLEANIN
 /* === Gerar programação de limpeza === */
 routes.post("/cleaning/generate-schedule/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController.generate);
 routes.get("/cleaning/schedule/congregation/:congregation_id", CleaningScheduleController.getFutureSchedules);
+routes.delete("/cleaning/schedule/:id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController.delete);
 
 /* === Famílias === */
 
@@ -390,6 +396,28 @@ routes.get("/consent/congregation/:congregation_id", is(['ADMIN_CONGREGATION']),
 
 /* === Formulários === */
 routes.get('/form-data', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'TALK_MANAGER']), FormDataController.getFormData)
+
+/* === Eventos Especiais === */
+routes.get(
+    '/congregation/:congregation_id/special-events',
+    is(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER', 'VIEWER']),
+    SpecialEventController.list
+)
+routes.post(
+    '/congregation/:congregation_id/special-events',
+    is(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER']),
+    SpecialEventController.create
+)
+routes.put(
+    '/special-events/:id',
+    is(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER']),
+    SpecialEventController.update
+)
+routes.delete(
+    '/special-events/:id',
+    is(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER']),
+    SpecialEventController.delete
+)
 
 /* === Cron Jobs === */
 routes.get('/deleteExpiredNotices', verifyGitHubCron, CronJobController.deleteExpiredNotices)
@@ -561,6 +589,12 @@ routes.post(
     "/congregations/:congregation_id/mechanical-schedules/generate",
     is(["ADMIN", "ADMIN_CONGREGATION"]),
     mechanicalController.autoAssignMonth.bind(mechanicalController)
+);
+
+routes.post(
+    "/congregations/:congregation_id/mechanical-schedules/toggle-week",
+    is(["ADMIN", "ADMIN_CONGREGATION"]),
+    mechanicalController.toggleWeekMeeting.bind(mechanicalController)
 );
 
 routes.put(

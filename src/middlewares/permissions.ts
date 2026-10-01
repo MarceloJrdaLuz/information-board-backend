@@ -78,14 +78,14 @@ export function is(role: string[]) {
     const roleAuthorized = async (req: Request, res: Response, next: NextFunction) => {
         const user = await decoder(req)
 
-        // pega do body ou dos params
+        // pega do body, dos params ou da query
         const congregation_id =
             req.body?.congregation_id ||
+            req.body?.congregationId ||
             req.params?.congregation_id ||
             req.params?.congregationId ||
-            req.params?.id
-            req.params?.congregationId;
-            req.params?.id;
+            req.query?.congregation_id ||
+            req.query?.congregationId;
 
         const userRoles = user?.roles?.map(role => role.name)
         const rolesExists = userRoles?.some(r => role.includes(r))

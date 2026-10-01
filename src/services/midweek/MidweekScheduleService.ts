@@ -1,5 +1,9 @@
 import dayjs from "dayjs";
-import { Between } from "typeorm";
+import isoWeek from "dayjs/plugin/isoWeek";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import { Between, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
+import { mapSpecialEventTypeToMidweek } from "../../controllers/SpecialEventController";
 import { AppDataSource } from "../../data-source";
 import { MidweekMeetingPart, MidweekRoom } from "../../entities/MidweekMeetingPart";
 import { MidweekSchedule, MidweekSpecialType } from "../../entities/MidweekSchedule";
@@ -8,6 +12,11 @@ import { MidweekWorkbookWeek } from "../../entities/MidweekWorkbookWeek";
 import { midweekMeetingPartRepository } from "../../repositories/midweekMeetingPartRepository";
 import { midweekScheduleRepository } from "../../repositories/midweekScheduleRepository";
 import { midweekWorkbookWeekRepository } from "../../repositories/midweekWorkbookWeekRepository";
+import { specialEventRepository } from "../../repositories/specialEventRepository";
+
+dayjs.extend(isoWeek);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
 
 export class MidweekScheduleService {
     async getOrGenerateMonthSchedules(congregationId: string, year: number, month: number): Promise<MidweekSchedule[]> {
@@ -74,6 +83,52 @@ export class MidweekScheduleService {
             if (isWeekInMonth) {
                 schedulesToReturn.push(newSchedule);
             }
+        }
+
+        // Sincroniza automaticamente com eventos especiais da congregação
+        try {
+            const specialEvents = await specialEventRepository.find({
+                where: {
+                    congregation_id: congregationId,
+                    startDate: LessThanOrEqual(lastDayRange),
+                    endDate: MoreThanOrEqual(firstDayRange)
+                }
+            });
+
+            for (const schedule of schedulesToReturn) {
+                const schedWeekStart = dayjs(schedule.weekDate).startOf("isoWeek");
+                const schedWeekEnd = dayjs(schedule.weekDate).endOf("isoWeek");
+
+                const matchingEvent = specialEvents.find(ev => {
+                    const evStart = dayjs(ev.startDate);
+                    const evEnd = dayjs(ev.endDate);
+                    if (ev.affectsWholeWeek) {
+                        return evStart.startOf("isoWeek").isSameOrBefore(schedWeekEnd) && evEnd.endOf("isoWeek").isSameOrAfter(schedWeekStart);
+                    }
+                    return evStart.isSameOrBefore(schedWeekEnd) && evEnd.isSameOrAfter(schedWeekStart);
+                });
+
+                if (matchingEvent && (matchingEvent.cancelMidweekMeeting || matchingEvent.isCircuitOverseerVisit)) {
+                    if (!schedule.isSpecial || schedule.specialName !== matchingEvent.title) {
+                        schedule.isSpecial = true;
+                        schedule.specialName = matchingEvent.title;
+                        if (matchingEvent.cancelMidweekMeeting) {
+                            schedule.specialType = mapSpecialEventTypeToMidweek(matchingEvent.type);
+                        } else if (matchingEvent.isCircuitOverseerVisit) {
+                            schedule.specialType = MidweekSpecialType.CIRCUIT_OVERSEER_VISIT;
+                        }
+                        await midweekScheduleRepository.save(schedule);
+                    }
+                } else if (schedule.isSpecial) {
+                    // Não há evento especial ativo para esta semana. Reverte para reunião normal!
+                    schedule.isSpecial = false;
+                    schedule.specialType = MidweekSpecialType.NONE;
+                    schedule.specialName = null;
+                    await midweekScheduleRepository.save(schedule);
+                }
+            }
+        } catch (error) {
+            console.error("Erro ao sincronizar eventos especiais em MidweekScheduleService:", error);
         }
 
         return schedulesToReturn.sort((a, b) => a.weekDate.localeCompare(b.weekDate));

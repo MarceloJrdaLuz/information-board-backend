@@ -1,18 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const Congregation_1 = require("../../entities/Congregation");
+const WeekendSchedule_1 = require("../../entities/WeekendSchedule");
 const permissions_1 = require("../../middlewares/permissions");
 const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepository");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
 const familyRepository_1 = require("../../repositories/familyRepository");
 const hospitalityGroupRepository_1 = require("../../repositories/hospitalityGroupRepository");
+const midweekWorkbookWeekRepository_1 = require("../../repositories/midweekWorkbookWeekRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const speakerRepository_1 = require("../../repositories/speakerRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
-const midweekWorkbookWeekRepository_1 = require("../../repositories/midweekWorkbookWeekRepository");
+const SpecialEventController_1 = require("../SpecialEventController");
 class FormDataController {
     async getFormData(req, res) {
         const requestUser = await (0, permissions_1.decoder)(req);
@@ -143,6 +146,86 @@ class FormDataController {
                     const mainCongregation = await congregationRepository_1.congregationRepository.findOne({
                         where: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id }
                     });
+                    // Sincroniza e garante reconhecimento de eventos especiais no fim de semana
+                    const specialEvents = await specialEventRepository_1.specialEventRepository.find({
+                        where: {
+                            congregation: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id }
+                        }
+                    });
+                    for (const se of specialEvents) {
+                        const dates = (0, SpecialEventController_1.getAffectedWeekendDates)(se.startDate, se.endDate, se.affectsWholeWeek, mainCongregation === null || mainCongregation === void 0 ? void 0 : mainCongregation.dayMeetingPublic);
+                        for (const date of dates) {
+                            let ws = weekendSchedules.find(s => s.date === date);
+                            if (ws) {
+                                ws.isSpecial = true;
+                                if (!ws.specialName)
+                                    ws.specialName = se.title;
+                                if (se.cancelWeekendMeeting) {
+                                    const hasParts = Boolean(ws.speaker || ws.talk || ws.chairman || ws.reader || ws.visitingCongregation || ws.manualSpeaker || ws.manualTalk || ws.watchTowerStudyTitle);
+                                    if (hasParts) {
+                                        await weekendScheduleRepository_1.weekendScheduleRepository
+                                            .createQueryBuilder()
+                                            .update(WeekendSchedule_1.WeekendSchedule)
+                                            .set({
+                                            speaker: null,
+                                            speaker_id: null,
+                                            talk: null,
+                                            talk_id: null,
+                                            chairman: null,
+                                            chairman_id: null,
+                                            reader: null,
+                                            reader_id: null,
+                                            visitingCongregation: null,
+                                            visitingCongregation_id: null,
+                                            manualSpeaker: null,
+                                            manualTalk: null,
+                                            watchTowerStudyTitle: null,
+                                            isSpecial: true,
+                                            specialName: se.title
+                                        })
+                                            .where("id = :id", { id: ws.id })
+                                            .execute();
+                                    }
+                                    ws.speaker = null;
+                                    ws.speaker_id = null;
+                                    ws.talk = null;
+                                    ws.talk_id = null;
+                                    ws.chairman = null;
+                                    ws.chairman_id = null;
+                                    ws.reader = null;
+                                    ws.reader_id = null;
+                                    ws.visitingCongregation = null;
+                                    ws.visitingCongregation_id = null;
+                                    ws.manualSpeaker = null;
+                                    ws.manualTalk = null;
+                                    ws.watchTowerStudyTitle = null;
+                                }
+                            }
+                            else {
+                                const newWs = weekendScheduleRepository_1.weekendScheduleRepository.create({
+                                    congregation: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id },
+                                    date,
+                                    isSpecial: true,
+                                    specialName: se.title,
+                                    watchTowerStudyTitle: null,
+                                    chairman: null,
+                                    chairman_id: null,
+                                    reader: null,
+                                    reader_id: null,
+                                    speaker: null,
+                                    speaker_id: null,
+                                    talk: null,
+                                    talk_id: null,
+                                    visitingCongregation: null,
+                                    visitingCongregation_id: null,
+                                    manualSpeaker: null,
+                                    manualTalk: null
+                                });
+                                await weekendScheduleRepository_1.weekendScheduleRepository.save(newWs);
+                                weekendSchedules.push(newWs);
+                            }
+                        }
+                    }
                     const congregations = [
                         ...(mainCongregation ? [mainCongregation] : []),
                         ...auxiliaryCongregations

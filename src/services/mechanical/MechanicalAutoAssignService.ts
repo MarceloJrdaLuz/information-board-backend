@@ -3,6 +3,7 @@ import isBetween from "dayjs/plugin/isBetween";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { MechanicalAssignment } from "../../entities/MechanicalAssignment";
 import { MechanicalSchedule } from "../../entities/MechanicalSchedule";
+import { MidweekSpecialType } from "../../entities/midweekEnums";
 import { Gender, Situation } from "../../entities/Publisher";
 import { convertMeetingDayPortugueseToIso } from "../../functions/cleaningFunctions";
 import { congregationRepository } from "../../repositories/congregationRepository";
@@ -10,6 +11,7 @@ import { mechanicalAssignmentRepository } from "../../repositories/mechanicalAss
 import { mechanicalScheduleRepository } from "../../repositories/mechanicalScheduleRepository";
 import { midweekScheduleRepository } from "../../repositories/midweekScheduleRepository";
 import { publisherRepository } from "../../repositories/publisherRepository";
+import { specialEventRepository } from "../../repositories/specialEventRepository";
 import { MechanicalMeetingType, MechanicalRole } from "../../types/mechanical";
 import { MechanicalScheduleService } from "./MechanicalScheduleService";
 
@@ -97,6 +99,16 @@ export class MechanicalAutoAssignService {
             }
         }
 
+        // Eventos especiais no período
+        const specialEvents = await specialEventRepository
+            .createQueryBuilder("evt")
+            .where("evt.congregation_id = :congregationId", { congregationId })
+            .andWhere("evt.startDate <= :endPeriod AND evt.endDate >= :startPeriod", {
+                startPeriod: firstMonday.format("YYYY-MM-DD"),
+                endPeriod: lastSunday.format("YYYY-MM-DD")
+            })
+            .getMany();
+
         const resultSchedules: MechanicalSchedule[] = [];
         let currentWeekMonday = firstMonday.clone();
 
@@ -182,6 +194,39 @@ export class MechanicalAutoAssignService {
                         assignments: []
                     });
                     schedule = await mechanicalScheduleRepository.save(schedule);
+                }
+
+                // Se a reunião não for realizada ou as partes mecânicas foram canceladas nesta semana
+                const weekSundayStr = currentWeekMonday.clone().add(6, "day").format("YYYY-MM-DD");
+                const specialEvt = specialEvents.find(evt =>
+                    evt.cancelMechanical &&
+                    evt.startDate <= weekSundayStr &&
+                    evt.endDate >= weekStartDate
+                );
+
+                const isMidweekSpecialNoMeeting =
+                    midweekSchedule?.isSpecial === true &&
+                    midweekSchedule?.specialType !== MidweekSpecialType.NONE &&
+                    midweekSchedule?.specialType !== MidweekSpecialType.CIRCUIT_OVERSEER_VISIT;
+
+                const isCancelled =
+                    schedule.notes !== "MANUALLY_ACTIVATED" &&
+                    (schedule.hasNoMeeting || !!specialEvt || isMidweekSpecialNoMeeting);
+
+                if (isCancelled) {
+                    schedule.hasNoMeeting = true;
+                    schedule.eventTitle =
+                        schedule.eventTitle ||
+                        specialEvt?.title ||
+                        (isMidweekSpecialNoMeeting ? (midweekSchedule?.specialName || "Evento Especial") : "Sem Reunião");
+
+                    if (schedule.id) {
+                        await mechanicalAssignmentRepository.delete({ schedule_id: schedule.id });
+                    }
+                    schedule.assignments = [];
+                    schedule = await mechanicalScheduleRepository.save(schedule);
+                    resultSchedules.push(schedule);
+                    continue;
                 }
 
                 // Cria lista de slots esperados para esta reunião

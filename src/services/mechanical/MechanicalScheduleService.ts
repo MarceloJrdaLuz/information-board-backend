@@ -14,6 +14,7 @@ import { midweekScheduleRepository } from "../../repositories/midweekScheduleRep
 import { privilegeRepository } from "../../repositories/privilegeRepository";
 import { publisherPrivilegeRepository } from "../../repositories/publisherPrivilegeRepository";
 import { publisherRepository } from "../../repositories/publisherRepository";
+import { specialEventRepository } from "../../repositories/specialEventRepository";
 import { MechanicalMeetingType, MechanicalRole as RoleEnum } from "../../types/mechanical";
 
 dayjs.extend(isBetween);
@@ -117,6 +118,16 @@ export class MechanicalScheduleService {
             .andWhere("mid.weekDate IN (:...allWeekKeys)", { allWeekKeys })
             .getMany();
 
+        // Busca registros de SpecialEvent no mesmo período para checar cancelamento de partes mecânicas
+        const specialEvents = await specialEventRepository
+            .createQueryBuilder("evt")
+            .where("evt.congregation_id = :congregationId", { congregationId })
+            .andWhere("evt.startDate <= :endPeriod AND evt.endDate >= :startPeriod", {
+                startPeriod: firstWeekMonday,
+                endPeriod: lastWeekSunday
+            })
+            .getMany();
+
         // Agrupa por semana (weekStartDate) e reconcilia alterações de dias de reunião
         const weeksMap = new Map<string, MechanicalSchedule[]>();
 
@@ -208,6 +219,16 @@ export class MechanicalScheduleService {
                 }
             }
 
+            // Verifica se há evento especial registrado com cancelMechanical = true
+            const sundayStr = sunday.format("YYYY-MM-DD");
+            const specialEvt = specialEvents.find(evt =>
+                evt.cancelMechanical &&
+                evt.startDate <= sundayStr &&
+                evt.endDate >= weekStartDate
+            );
+            const specialEventNoMeeting = !!specialEvt;
+            const specialEventTitle = specialEvt?.title || null;
+
             const isManuallyActivated = weekSchedules.some(s => s.notes === "MANUALLY_ACTIVATED");
             const isManuallyDeactivated = weekSchedules.some(s => s.hasNoMeeting);
 
@@ -219,7 +240,10 @@ export class MechanicalScheduleService {
                 eventTitle = null;
             } else if (isManuallyDeactivated) {
                 hasNoMeeting = true;
-                eventTitle = explicitEventTitle || fallbackEventTitle || "Sem Reunião";
+                eventTitle = explicitEventTitle || specialEventTitle || fallbackEventTitle || "Sem Reunião";
+            } else if (specialEventNoMeeting) {
+                hasNoMeeting = true;
+                eventTitle = specialEventTitle;
             } else if (isMidweekSpecialNoMeeting) {
                 hasNoMeeting = true;
                 eventTitle = fallbackEventTitle;
@@ -234,6 +258,8 @@ export class MechanicalScheduleService {
                 formattedWeek: `Semana de ${monday.format("DD/MM")} a ${sunday.format("DD/MM/YYYY")}`,
                 hasNoMeeting,
                 eventTitle,
+                isSpecialEvent: specialEventNoMeeting,
+                specialEventId: specialEventNoMeeting ? (specialEvt?.id || null) : null,
                 schedules: weekSchedules
             };
         });

@@ -5,6 +5,7 @@ import { MidweekRoom } from "../../entities/MidweekMeetingPart";
 import { BadRequestError } from "../../helpers/api-errors";
 import { publisherMidweekQualificationRepository } from "../../repositories/publisherMidweekQualificationRepository";
 import { publisherUnavailabilityRepository } from "../../repositories/publisherUnavailabilityRepository";
+import { specialEventRepository } from "../../repositories/specialEventRepository";
 import { MidweekAutoAssignService } from "../../services/midweek/MidweekAutoAssignService";
 import { MidweekScheduleService } from "../../services/midweek/MidweekScheduleService";
 import { MidweekSuggestionService } from "../../services/midweek/MidweekSuggestionService";
@@ -216,11 +217,24 @@ export class MidweekScheduleController {
             return pub.nickname?.trim() || pub.fullName || null;
         };
 
+        const specialEvents = await specialEventRepository.find({
+            where: {
+                congregation: { id: congregation_id }
+            }
+        });
+
         const mapped = sorted.map(s => {
             const dateObj = dayjs(s.meetingDate || s.weekDate);
             const monthName = dateObj.locale("pt-br").format("MMMM");
             const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
             const cbsPart = (s.parts || []).find((p: any) => p.partType === "CBS" || p.title?.toLowerCase().includes("estudo bíblico"));
+
+            const matchingEvent = specialEvents.find(se => {
+                const startWeek = dayjs(se.startDate).startOf("isoWeek").format("YYYY-MM-DD");
+                const endWeek = dayjs(se.endDate).endOf("isoWeek").format("YYYY-MM-DD");
+                const sWeek = dayjs(s.weekDate).format("YYYY-MM-DD");
+                return sWeek >= startWeek && sWeek <= endWeek;
+            });
 
             return {
                 id: s.id,
@@ -234,7 +248,9 @@ export class MidweekScheduleController {
                 songEnd: s.songEnd,
                 isSpecial: Boolean(s.isSpecial),
                 specialType: s.specialType,
-                specialName: s.specialName,
+                specialName: s.specialName || matchingEvent?.title || null,
+                specialTheme: matchingEvent?.theme || null,
+                specialLocation: matchingEvent?.location || null,
                 notes: s.notes || null,
                 isCurrentWeek: dayjs().isSame(dateObj, "week") || dayjs().isSame(dayjs(s.weekDate), "week"),
                 chairman: getDisplayName(s.chairman),

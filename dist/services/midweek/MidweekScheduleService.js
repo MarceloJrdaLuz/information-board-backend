@@ -5,7 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MidweekScheduleService = void 0;
 const dayjs_1 = __importDefault(require("dayjs"));
+const isoWeek_1 = __importDefault(require("dayjs/plugin/isoWeek"));
+const isSameOrAfter_1 = __importDefault(require("dayjs/plugin/isSameOrAfter"));
+const isSameOrBefore_1 = __importDefault(require("dayjs/plugin/isSameOrBefore"));
 const typeorm_1 = require("typeorm");
+const SpecialEventController_1 = require("../../controllers/SpecialEventController");
 const data_source_1 = require("../../data-source");
 const MidweekMeetingPart_1 = require("../../entities/MidweekMeetingPart");
 const MidweekSchedule_1 = require("../../entities/MidweekSchedule");
@@ -13,6 +17,10 @@ const MidweekWorkbookPart_1 = require("../../entities/MidweekWorkbookPart");
 const midweekMeetingPartRepository_1 = require("../../repositories/midweekMeetingPartRepository");
 const midweekScheduleRepository_1 = require("../../repositories/midweekScheduleRepository");
 const midweekWorkbookWeekRepository_1 = require("../../repositories/midweekWorkbookWeekRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
+dayjs_1.default.extend(isoWeek_1.default);
+dayjs_1.default.extend(isSameOrBefore_1.default);
+dayjs_1.default.extend(isSameOrAfter_1.default);
 class MidweekScheduleService {
     async getOrGenerateMonthSchedules(congregationId, year, month) {
         const startDate = (0, dayjs_1.default)(`${year}-${String(month).padStart(2, '0')}-01`).startOf('month');
@@ -70,6 +78,51 @@ class MidweekScheduleService {
             if (isWeekInMonth) {
                 schedulesToReturn.push(newSchedule);
             }
+        }
+        // Sincroniza automaticamente com eventos especiais da congregação
+        try {
+            const specialEvents = await specialEventRepository_1.specialEventRepository.find({
+                where: {
+                    congregation_id: congregationId,
+                    startDate: (0, typeorm_1.LessThanOrEqual)(lastDayRange),
+                    endDate: (0, typeorm_1.MoreThanOrEqual)(firstDayRange)
+                }
+            });
+            for (const schedule of schedulesToReturn) {
+                const schedWeekStart = (0, dayjs_1.default)(schedule.weekDate).startOf("isoWeek");
+                const schedWeekEnd = (0, dayjs_1.default)(schedule.weekDate).endOf("isoWeek");
+                const matchingEvent = specialEvents.find(ev => {
+                    const evStart = (0, dayjs_1.default)(ev.startDate);
+                    const evEnd = (0, dayjs_1.default)(ev.endDate);
+                    if (ev.affectsWholeWeek) {
+                        return evStart.startOf("isoWeek").isSameOrBefore(schedWeekEnd) && evEnd.endOf("isoWeek").isSameOrAfter(schedWeekStart);
+                    }
+                    return evStart.isSameOrBefore(schedWeekEnd) && evEnd.isSameOrAfter(schedWeekStart);
+                });
+                if (matchingEvent && (matchingEvent.cancelMidweekMeeting || matchingEvent.isCircuitOverseerVisit)) {
+                    if (!schedule.isSpecial || schedule.specialName !== matchingEvent.title) {
+                        schedule.isSpecial = true;
+                        schedule.specialName = matchingEvent.title;
+                        if (matchingEvent.cancelMidweekMeeting) {
+                            schedule.specialType = (0, SpecialEventController_1.mapSpecialEventTypeToMidweek)(matchingEvent.type);
+                        }
+                        else if (matchingEvent.isCircuitOverseerVisit) {
+                            schedule.specialType = MidweekSchedule_1.MidweekSpecialType.CIRCUIT_OVERSEER_VISIT;
+                        }
+                        await midweekScheduleRepository_1.midweekScheduleRepository.save(schedule);
+                    }
+                }
+                else if (schedule.isSpecial) {
+                    // Não há evento especial ativo para esta semana. Reverte para reunião normal!
+                    schedule.isSpecial = false;
+                    schedule.specialType = MidweekSchedule_1.MidweekSpecialType.NONE;
+                    schedule.specialName = null;
+                    await midweekScheduleRepository_1.midweekScheduleRepository.save(schedule);
+                }
+            }
+        }
+        catch (error) {
+            console.error("Erro ao sincronizar eventos especiais em MidweekScheduleService:", error);
         }
         return schedulesToReturn.sort((a, b) => a.weekDate.localeCompare(b.weekDate));
     }

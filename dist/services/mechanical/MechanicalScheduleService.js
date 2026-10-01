@@ -18,6 +18,7 @@ const midweekScheduleRepository_1 = require("../../repositories/midweekScheduleR
 const privilegeRepository_1 = require("../../repositories/privilegeRepository");
 const publisherPrivilegeRepository_1 = require("../../repositories/publisherPrivilegeRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
 const mechanical_1 = require("../../types/mechanical");
 dayjs_1.default.extend(isBetween_1.default);
 class MechanicalScheduleService {
@@ -87,6 +88,15 @@ class MechanicalScheduleService {
             .createQueryBuilder("mid")
             .where("mid.congregation_id = :congregationId", { congregationId })
             .andWhere("mid.weekDate IN (:...allWeekKeys)", { allWeekKeys })
+            .getMany();
+        // Busca registros de SpecialEvent no mesmo período para checar cancelamento de partes mecânicas
+        const specialEvents = await specialEventRepository_1.specialEventRepository
+            .createQueryBuilder("evt")
+            .where("evt.congregation_id = :congregationId", { congregationId })
+            .andWhere("evt.startDate <= :endPeriod AND evt.endDate >= :startPeriod", {
+            startPeriod: firstWeekMonday,
+            endPeriod: lastWeekSunday
+        })
             .getMany();
         // Agrupa por semana (weekStartDate) e reconcilia alterações de dias de reunião
         const weeksMap = new Map();
@@ -172,6 +182,13 @@ class MechanicalScheduleService {
                     fallbackEventTitle = "Evento Especial";
                 }
             }
+            // Verifica se há evento especial registrado com cancelMechanical = true
+            const sundayStr = sunday.format("YYYY-MM-DD");
+            const specialEvt = specialEvents.find(evt => evt.cancelMechanical &&
+                evt.startDate <= sundayStr &&
+                evt.endDate >= weekStartDate);
+            const specialEventNoMeeting = !!specialEvt;
+            const specialEventTitle = (specialEvt === null || specialEvt === void 0 ? void 0 : specialEvt.title) || null;
             const isManuallyActivated = weekSchedules.some(s => s.notes === "MANUALLY_ACTIVATED");
             const isManuallyDeactivated = weekSchedules.some(s => s.hasNoMeeting);
             let hasNoMeeting = false;
@@ -182,7 +199,11 @@ class MechanicalScheduleService {
             }
             else if (isManuallyDeactivated) {
                 hasNoMeeting = true;
-                eventTitle = explicitEventTitle || fallbackEventTitle || "Sem Reunião";
+                eventTitle = explicitEventTitle || specialEventTitle || fallbackEventTitle || "Sem Reunião";
+            }
+            else if (specialEventNoMeeting) {
+                hasNoMeeting = true;
+                eventTitle = specialEventTitle;
             }
             else if (isMidweekSpecialNoMeeting) {
                 hasNoMeeting = true;
@@ -198,6 +219,8 @@ class MechanicalScheduleService {
                 formattedWeek: `Semana de ${monday.format("DD/MM")} a ${sunday.format("DD/MM/YYYY")}`,
                 hasNoMeeting,
                 eventTitle,
+                isSpecialEvent: specialEventNoMeeting,
+                specialEventId: specialEventNoMeeting ? ((specialEvt === null || specialEvt === void 0 ? void 0 : specialEvt.id) || null) : null,
                 schedules: weekSchedules
             };
         });
