@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const Congregation_1 = require("../../entities/Congregation");
+const WeekendSchedule_1 = require("../../entities/WeekendSchedule");
 const permissions_1 = require("../../middlewares/permissions");
 const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepository");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
@@ -160,12 +161,44 @@ class FormDataController {
                                 if (!ws.specialName)
                                     ws.specialName = se.title;
                                 if (se.cancelWeekendMeeting) {
+                                    const hasParts = Boolean(ws.speaker || ws.talk || ws.chairman || ws.reader || ws.visitingCongregation || ws.manualSpeaker || ws.manualTalk || ws.watchTowerStudyTitle);
+                                    if (hasParts) {
+                                        await weekendScheduleRepository_1.weekendScheduleRepository
+                                            .createQueryBuilder()
+                                            .update(WeekendSchedule_1.WeekendSchedule)
+                                            .set({
+                                            speaker: null,
+                                            speaker_id: null,
+                                            talk: null,
+                                            talk_id: null,
+                                            chairman: null,
+                                            chairman_id: null,
+                                            reader: null,
+                                            reader_id: null,
+                                            visitingCongregation: null,
+                                            visitingCongregation_id: null,
+                                            manualSpeaker: null,
+                                            manualTalk: null,
+                                            watchTowerStudyTitle: null,
+                                            isSpecial: true,
+                                            specialName: se.title
+                                        })
+                                            .where("id = :id", { id: ws.id })
+                                            .execute();
+                                    }
                                     ws.speaker = null;
+                                    ws.speaker_id = null;
                                     ws.talk = null;
+                                    ws.talk_id = null;
                                     ws.chairman = null;
+                                    ws.chairman_id = null;
                                     ws.reader = null;
+                                    ws.reader_id = null;
+                                    ws.visitingCongregation = null;
+                                    ws.visitingCongregation_id = null;
                                     ws.manualSpeaker = null;
                                     ws.manualTalk = null;
+                                    ws.watchTowerStudyTitle = null;
                                 }
                             }
                             else {
@@ -176,9 +209,15 @@ class FormDataController {
                                     specialName: se.title,
                                     watchTowerStudyTitle: null,
                                     chairman: null,
+                                    chairman_id: null,
                                     reader: null,
+                                    reader_id: null,
                                     speaker: null,
+                                    speaker_id: null,
                                     talk: null,
+                                    talk_id: null,
+                                    visitingCongregation: null,
+                                    visitingCongregation_id: null,
                                     manualSpeaker: null,
                                     manualTalk: null
                                 });

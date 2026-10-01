@@ -7,6 +7,7 @@ const dayjs_1 = __importDefault(require("dayjs"));
 const moment_1 = __importDefault(require("moment"));
 const typeorm_1 = require("typeorm");
 const Notification_1 = require("../../entities/Notification");
+const WeekendSchedule_1 = require("../../entities/WeekendSchedule");
 const normalize_1 = require("../../functions/normalize");
 const api_errors_1 = require("../../helpers/api-errors");
 const handleWeekend_1 = require("../../helpers/handleWeekend");
@@ -234,24 +235,65 @@ class WeekendScheduleController {
         const congregation = await congregationRepository_1.congregationRepository.findOne({ where: { id: congregation_id } });
         const specialEvents = await specialEventRepository_1.specialEventRepository.find({
             where: {
-                congregation: { id: congregation_id },
-                cancelWeekendMeeting: true
+                congregation: { id: congregation_id }
             }
         });
         const activeSpecialDates = new Map();
         for (const se of specialEvents) {
             const dates = (0, SpecialEventController_1.getAffectedWeekendDates)(se.startDate, se.endDate, se.affectsWholeWeek, congregation === null || congregation === void 0 ? void 0 : congregation.dayMeetingPublic);
             for (const d of dates) {
-                activeSpecialDates.set(d, se.title);
+                activeSpecialDates.set(d, { title: se.title, cancelMeeting: Boolean(se.cancelWeekendMeeting) });
             }
         }
-        for (const [date, title] of activeSpecialDates.entries()) {
+        for (const [date, info] of activeSpecialDates.entries()) {
             let ws = schedules.find(s => s.date === date);
             if (ws) {
-                if (!ws.isSpecial || ws.specialName !== title) {
+                const needsSpecialUpdate = !ws.isSpecial || ws.specialName !== info.title;
+                const hasPartsAssigned = Boolean(ws.speaker || ws.talk || ws.chairman || ws.reader || ws.visitingCongregation || ws.manualSpeaker || ws.manualTalk || ws.watchTowerStudyTitle);
+                const needsCancel = info.cancelMeeting && hasPartsAssigned;
+                if (needsSpecialUpdate || needsCancel) {
                     ws.isSpecial = true;
-                    ws.specialName = title;
-                    await weekendScheduleRepository_1.weekendScheduleRepository.save(ws);
+                    ws.specialName = info.title;
+                    if (info.cancelMeeting) {
+                        ws.speaker = null;
+                        ws.speaker_id = null;
+                        ws.talk = null;
+                        ws.talk_id = null;
+                        ws.chairman = null;
+                        ws.chairman_id = null;
+                        ws.reader = null;
+                        ws.reader_id = null;
+                        ws.visitingCongregation = null;
+                        ws.visitingCongregation_id = null;
+                        ws.manualSpeaker = null;
+                        ws.manualTalk = null;
+                        ws.watchTowerStudyTitle = null;
+                        await weekendScheduleRepository_1.weekendScheduleRepository
+                            .createQueryBuilder()
+                            .update(WeekendSchedule_1.WeekendSchedule)
+                            .set({
+                            speaker: null,
+                            speaker_id: null,
+                            talk: null,
+                            talk_id: null,
+                            chairman: null,
+                            chairman_id: null,
+                            reader: null,
+                            reader_id: null,
+                            visitingCongregation: null,
+                            visitingCongregation_id: null,
+                            manualSpeaker: null,
+                            manualTalk: null,
+                            watchTowerStudyTitle: null,
+                            isSpecial: true,
+                            specialName: info.title
+                        })
+                            .where("id = :id", { id: ws.id })
+                            .execute();
+                    }
+                    else {
+                        await weekendScheduleRepository_1.weekendScheduleRepository.save(ws);
+                    }
                 }
             }
             else {
@@ -259,12 +301,18 @@ class WeekendScheduleController {
                     congregation: { id: congregation_id },
                     date,
                     isSpecial: true,
-                    specialName: title,
+                    specialName: info.title,
                     watchTowerStudyTitle: null,
                     chairman: null,
+                    chairman_id: null,
                     reader: null,
+                    reader_id: null,
                     speaker: null,
+                    speaker_id: null,
                     talk: null,
+                    talk_id: null,
+                    visitingCongregation: null,
+                    visitingCongregation_id: null,
                     manualSpeaker: null,
                     manualTalk: null
                 });
@@ -339,11 +387,18 @@ class WeekendScheduleController {
                 ws.specialName = info.title;
                 if (info.cancelMeeting) {
                     ws.speaker = null;
+                    ws.speaker_id = null;
                     ws.talk = null;
+                    ws.talk_id = null;
                     ws.chairman = null;
+                    ws.chairman_id = null;
                     ws.reader = null;
+                    ws.reader_id = null;
+                    ws.visitingCongregation = null;
+                    ws.visitingCongregation_id = null;
                     ws.manualSpeaker = null;
                     ws.manualTalk = null;
+                    ws.watchTowerStudyTitle = null;
                 }
             }
             else {
@@ -354,9 +409,15 @@ class WeekendScheduleController {
                     specialName: info.title,
                     watchTowerStudyTitle: null,
                     chairman: null,
+                    chairman_id: null,
                     reader: null,
+                    reader_id: null,
                     speaker: null,
+                    speaker_id: null,
                     talk: null,
+                    talk_id: null,
+                    visitingCongregation: null,
+                    visitingCongregation_id: null,
                     manualSpeaker: null,
                     manualTalk: null
                 });

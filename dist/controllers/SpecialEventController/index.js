@@ -12,6 +12,7 @@ const typeorm_1 = require("typeorm");
 const MidweekMeetingPart_1 = require("../../entities/MidweekMeetingPart");
 const MidweekSchedule_1 = require("../../entities/MidweekSchedule");
 const SpecialEvent_1 = require("../../entities/SpecialEvent");
+const WeekendSchedule_1 = require("../../entities/WeekendSchedule");
 const api_errors_1 = require("../../helpers/api-errors");
 const permissions_1 = require("../../middlewares/permissions");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
@@ -329,13 +330,14 @@ function getAffectedWeekendDates(startDate, endDate, affectsWholeWeek, dayMeetin
     const rangeStart = affectsWholeWeek ? start.startOf("isoWeek") : start;
     const rangeEnd = affectsWholeWeek ? end.endOf("isoWeek") : end;
     let targetWeekdays = [6, 7]; // Padrão: Sábado e Domingo
-    if (dayMeetingPublic === "Sábado" || dayMeetingPublic === "Sabado") {
+    const dmp = (dayMeetingPublic || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (dmp.includes("sabado")) {
         targetWeekdays = [6];
     }
-    else if (dayMeetingPublic === "Domingo") {
+    else if (dmp.includes("domingo")) {
         targetWeekdays = [7];
     }
-    else if (dayMeetingPublic === "Sexta-feira" || dayMeetingPublic === "Sexta") {
+    else if (dmp.includes("sexta")) {
         targetWeekdays = [5];
     }
     let cur = rangeStart.clone();
@@ -427,14 +429,44 @@ async function syncEventImpacts(event) {
                 ws.specialName = event.title;
             if (event.cancelWeekendMeeting) {
                 ws.speaker = null;
+                ws.speaker_id = null;
                 ws.talk = null;
+                ws.talk_id = null;
                 ws.chairman = null;
+                ws.chairman_id = null;
                 ws.reader = null;
+                ws.reader_id = null;
                 ws.visitingCongregation = null;
+                ws.visitingCongregation_id = null;
                 ws.manualSpeaker = null;
                 ws.manualTalk = null;
+                ws.watchTowerStudyTitle = null;
+                await weekendScheduleRepository_1.weekendScheduleRepository
+                    .createQueryBuilder()
+                    .update(WeekendSchedule_1.WeekendSchedule)
+                    .set({
+                    speaker: null,
+                    speaker_id: null,
+                    talk: null,
+                    talk_id: null,
+                    chairman: null,
+                    chairman_id: null,
+                    reader: null,
+                    reader_id: null,
+                    visitingCongregation: null,
+                    visitingCongregation_id: null,
+                    manualSpeaker: null,
+                    manualTalk: null,
+                    watchTowerStudyTitle: null,
+                    isSpecial: true,
+                    specialName: event.title
+                })
+                    .where("id = :id", { id: ws.id })
+                    .execute();
             }
-            await weekendScheduleRepository_1.weekendScheduleRepository.save(ws);
+            else {
+                await weekendScheduleRepository_1.weekendScheduleRepository.save(ws);
+            }
         }
         else {
             ws = weekendScheduleRepository_1.weekendScheduleRepository.create({
@@ -444,9 +476,15 @@ async function syncEventImpacts(event) {
                 specialName: event.title,
                 watchTowerStudyTitle: null,
                 chairman: null,
+                chairman_id: null,
                 reader: null,
+                reader_id: null,
                 speaker: null,
+                speaker_id: null,
                 talk: null,
+                talk_id: null,
+                visitingCongregation: null,
+                visitingCongregation_id: null,
                 manualSpeaker: null,
                 manualTalk: null
             });

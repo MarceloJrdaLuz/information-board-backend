@@ -17,21 +17,36 @@ export class WeekendSchedule {
     @JoinColumn({ name: "chairman_id" })
     chairman: Publisher | null
 
+    @Column({ name: "chairman_id", type: "uuid", nullable: true })
+    chairman_id?: string | null
+
     @ManyToOne(() => Publisher, { nullable: true, onDelete: "SET NULL" })
     @JoinColumn({ name: "reader_id" })
     reader: Publisher | null
+
+    @Column({ name: "reader_id", type: "uuid", nullable: true })
+    reader_id?: string | null
 
     @ManyToOne(() => Congregation, { nullable: true, onDelete: "SET NULL" })
     @JoinColumn({ name: "visiting_congregation_id" })
     visitingCongregation: Congregation | null
 
+    @Column({ name: "visiting_congregation_id", type: "uuid", nullable: true })
+    visitingCongregation_id?: string | null
+
     @ManyToOne(() => Speaker, { nullable: true, onDelete: "SET NULL" })
     @JoinColumn({ name: "speaker_id" })
     speaker: Speaker | null
 
+    @Column({ name: "speaker_id", type: "uuid", nullable: true })
+    speaker_id?: string | null
+
     @ManyToOne(() => Talk, { nullable: true, onDelete: "SET NULL" })
     @JoinColumn({ name: "talk_id" })
     talk: Talk | null
+
+    @Column({ name: "talk_id", type: "uuid", nullable: true })
+    talk_id?: string | null
 
     @Column({ type: "text", nullable: true })
     watchTowerStudyTitle?: string | null
