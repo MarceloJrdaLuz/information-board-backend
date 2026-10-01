@@ -258,6 +258,8 @@ export class MechanicalScheduleService {
                 formattedWeek: `Semana de ${monday.format("DD/MM")} a ${sunday.format("DD/MM/YYYY")}`,
                 hasNoMeeting,
                 eventTitle,
+                isSpecialEvent: specialEventNoMeeting,
+                specialEventId: specialEventNoMeeting ? (specialEvt?.id || null) : null,
                 schedules: weekSchedules
             };
         });
