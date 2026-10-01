@@ -43,6 +43,7 @@ const PushNotificationController_1 = __importDefault(require("./controllers/Push
 const ReportController_1 = __importDefault(require("./controllers/ReportController"));
 const RoleController_1 = __importDefault(require("./controllers/RoleController"));
 const SpeakerController_1 = __importDefault(require("./controllers/SpeakerController"));
+const SpecialEventController_1 = __importDefault(require("./controllers/SpecialEventController"));
 const TalkController_1 = __importDefault(require("./controllers/TalkController"));
 const TermsOfUseController_1 = __importDefault(require("./controllers/TermsOfUseController"));
 const TerritoryController_1 = __importDefault(require("./controllers/TerritoryController"));
@@ -86,6 +87,9 @@ routes.get('/congregation/:congregation_id/weekendSchedules/public', WeekendSche
 routes.get('/congregation/:congregation_id/midweekSchedules/public', midweekController.getPublicSchedules.bind(midweekController));
 // Tarefas mecânicas (público)
 routes.get('/congregation/:congregation_id/mechanical-schedules/public', mechanicalController.getPublicSchedules.bind(mechanicalController));
+// Eventos especiais (dados públicos)
+routes.get('/congregation/:congregation_id/special-events/public', SpecialEventController_1.default.getPublicEvents);
+routes.get('/congregation/number/:number/special-events/public', SpecialEventController_1.default.getPublicEventsByNumber);
 // Consentimentos (público)
 routes.post("/consent/accept", DataProcessingAgreement_1.default.accept);
 routes.get("/consent", DataProcessingAgreement_1.default.list);
@@ -330,6 +334,11 @@ routes.delete("/terms/:term_id", (0, permissions_1.is)(['ADMIN']), TermsOfUseCon
 routes.get("/consent/congregation/:congregation_id", (0, permissions_1.is)(['ADMIN_CONGREGATION']), DataProcessingAgreement_1.default.getByCongregation);
 /* === Formulários === */
 routes.get('/form-data', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'TALK_MANAGER']), FormDataController_1.default.getFormData);
+/* === Eventos Especiais === */
+routes.get('/congregation/:congregation_id/special-events', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER', 'VIEWER']), SpecialEventController_1.default.list);
+routes.post('/congregation/:congregation_id/special-events', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER']), SpecialEventController_1.default.create);
+routes.put('/special-events/:id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER']), SpecialEventController_1.default.update);
+routes.delete('/special-events/:id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER']), SpecialEventController_1.default.delete);
 /* === Cron Jobs === */
 routes.get('/deleteExpiredNotices', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.deleteExpiredNotices);
 routes.delete('/cron/clean-old-territoryHistory', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.cleanTerritoryHistory);

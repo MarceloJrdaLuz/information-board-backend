@@ -1,13 +1,17 @@
 import dayjs from "dayjs";
+import isoWeek from "dayjs/plugin/isoWeek";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { Between, In, LessThan } from "typeorm";
+import { EventImpactScope } from "../../entities/SpecialEvent";
 import { fieldServiceExceptionRepository } from "../../repositories/fieldServiceExceptionRepository";
 import { fieldServiceRotationMemberRepository } from "../../repositories/fieldServiceRotationMembersRepository";
 import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository";
 import { fieldServiceTemplateRepository } from "../../repositories/fieldServiceTemplateRepository";
 import { publisherUnavailabilityRepository } from "../../repositories/publisherUnavailabilityRepository";
+import { specialEventRepository } from "../../repositories/specialEventRepository";
 
+dayjs.extend(isoWeek);
 dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
 
@@ -57,12 +61,33 @@ export async function generateFieldServiceSchedules({
     relations: ["template"],
   });
 
+  const specialEvents = await specialEventRepository.find({
+    where: {
+      congregation: { id: template.congregation.id }
+    }
+  });
+
+  const isSpecialEventException = (date: string) => {
+    return specialEvents.some((se) => {
+      if (se.fieldServiceImpact === EventImpactScope.NONE) return false;
+      if (se.fieldServiceImpact === EventImpactScope.EVENT_DAYS_ONLY) {
+        return date >= se.startDate && date <= se.endDate;
+      }
+      if (se.fieldServiceImpact === EventImpactScope.ALL_DAYS) {
+        const eventStartWeek = dayjs(se.startDate).startOf("isoWeek").format("YYYY-MM-DD");
+        const eventEndWeek = dayjs(se.endDate).endOf("isoWeek").format("YYYY-MM-DD");
+        return date >= eventStartWeek && date <= eventEndWeek;
+      }
+      return false;
+    });
+  };
+
   const hasException = (date: string) =>
     exceptions.some(
       (e) =>
         e.date === date &&
         (!e.template || e.template.id === template.id)
-    );
+    ) || isSpecialEventException(date);
 
   /* ===============================
    * 4. Buscar indisponibilidades ativas no período

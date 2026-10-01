@@ -7,12 +7,14 @@ const congregationRepository_1 = require("../../repositories/congregationReposit
 const externalTalkRepository_1 = require("../../repositories/externalTalkRepository");
 const familyRepository_1 = require("../../repositories/familyRepository");
 const hospitalityGroupRepository_1 = require("../../repositories/hospitalityGroupRepository");
+const midweekWorkbookWeekRepository_1 = require("../../repositories/midweekWorkbookWeekRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const speakerRepository_1 = require("../../repositories/speakerRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
-const midweekWorkbookWeekRepository_1 = require("../../repositories/midweekWorkbookWeekRepository");
+const SpecialEventController_1 = require("../SpecialEventController");
 class FormDataController {
     async getFormData(req, res) {
         const requestUser = await (0, permissions_1.decoder)(req);
@@ -143,6 +145,48 @@ class FormDataController {
                     const mainCongregation = await congregationRepository_1.congregationRepository.findOne({
                         where: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id }
                     });
+                    // Sincroniza e garante reconhecimento de eventos especiais no fim de semana
+                    const specialEvents = await specialEventRepository_1.specialEventRepository.find({
+                        where: {
+                            congregation: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id }
+                        }
+                    });
+                    for (const se of specialEvents) {
+                        const dates = (0, SpecialEventController_1.getAffectedWeekendDates)(se.startDate, se.endDate, se.affectsWholeWeek, mainCongregation === null || mainCongregation === void 0 ? void 0 : mainCongregation.dayMeetingPublic);
+                        for (const date of dates) {
+                            let ws = weekendSchedules.find(s => s.date === date);
+                            if (ws) {
+                                ws.isSpecial = true;
+                                if (!ws.specialName)
+                                    ws.specialName = se.title;
+                                if (se.cancelWeekendMeeting) {
+                                    ws.speaker = null;
+                                    ws.talk = null;
+                                    ws.chairman = null;
+                                    ws.reader = null;
+                                    ws.manualSpeaker = null;
+                                    ws.manualTalk = null;
+                                }
+                            }
+                            else {
+                                const newWs = weekendScheduleRepository_1.weekendScheduleRepository.create({
+                                    congregation: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id },
+                                    date,
+                                    isSpecial: true,
+                                    specialName: se.title,
+                                    watchTowerStudyTitle: null,
+                                    chairman: null,
+                                    reader: null,
+                                    speaker: null,
+                                    talk: null,
+                                    manualSpeaker: null,
+                                    manualTalk: null
+                                });
+                                await weekendScheduleRepository_1.weekendScheduleRepository.save(newWs);
+                                weekendSchedules.push(newWs);
+                            }
+                        }
+                    }
                     const congregations = [
                         ...(mainCongregation ? [mainCongregation] : []),
                         ...auxiliaryCongregations

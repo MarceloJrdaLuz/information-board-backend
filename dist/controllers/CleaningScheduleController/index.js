@@ -15,6 +15,7 @@ const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepos
 const cleaningScheduleConfigRepository_1 = require("../../repositories/cleaningScheduleConfigRepository");
 const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
 const cleaning_1 = require("../../types/cleaning");
 dayjs_1.default.extend(isoWeek_1.default);
 dayjs_1.default.extend(isSameOrBefore_1.default);
@@ -51,6 +52,23 @@ class CleaningScheduleController {
             where: { congregation: { id: congregation.id } }
         });
         const exceptionDates = new Set(exceptions.map(e => e.date));
+        const cleaningSpecialEvents = await specialEventRepository_1.specialEventRepository.find({
+            where: {
+                congregation: { id: congregation.id },
+                cancelCleaning: true
+            }
+        });
+        for (const se of cleaningSpecialEvents) {
+            const seStart = (0, dayjs_1.default)(se.startDate);
+            const seEnd = (0, dayjs_1.default)(se.endDate);
+            const rangeStart = se.affectsWholeWeek ? seStart.startOf("isoWeek") : seStart;
+            const rangeEnd = se.affectsWholeWeek ? seEnd.endOf("isoWeek") : seEnd;
+            let cur = rangeStart.clone();
+            while (cur.isSameOrBefore(rangeEnd)) {
+                exceptionDates.add(cur.format("YYYY-MM-DD"));
+                cur = cur.add(1, "day");
+            }
+        }
         // 🔹 BUSCA o último agendamento ANTES de deletar
         const lastSchedule = await cleaningScheduleRepository_1.cleaningScheduleRepository.findOne({
             where: { congregation: { id: congregation.id } },

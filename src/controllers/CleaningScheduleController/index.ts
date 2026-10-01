@@ -11,6 +11,7 @@ import { cleaningGroupRepository } from "../../repositories/cleaningGroupReposit
 import { cleaningScheduleConfigRepository } from "../../repositories/cleaningScheduleConfigRepository";
 import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository";
 import { congregationRepository } from "../../repositories/congregationRepository";
+import { specialEventRepository } from "../../repositories/specialEventRepository";
 import { CleaningScheduleMode } from "../../types/cleaning";
 import { ParamsCustomRequest } from "../../types/customRequest";
 
@@ -67,6 +68,25 @@ class CleaningScheduleController {
         });
 
         const exceptionDates = new Set(exceptions.map(e => e.date));
+
+        const cleaningSpecialEvents = await specialEventRepository.find({
+            where: {
+                congregation: { id: congregation.id },
+                cancelCleaning: true
+            }
+        });
+
+        for (const se of cleaningSpecialEvents) {
+            const seStart = dayjs(se.startDate);
+            const seEnd = dayjs(se.endDate);
+            const rangeStart = se.affectsWholeWeek ? seStart.startOf("isoWeek") : seStart;
+            const rangeEnd = se.affectsWholeWeek ? seEnd.endOf("isoWeek") : seEnd;
+            let cur = rangeStart.clone();
+            while (cur.isSameOrBefore(rangeEnd)) {
+                exceptionDates.add(cur.format("YYYY-MM-DD"));
+                cur = cur.add(1, "day");
+            }
+        }
 
         // 🔹 BUSCA o último agendamento ANTES de deletar
         const lastSchedule = await cleaningScheduleRepository.findOne({

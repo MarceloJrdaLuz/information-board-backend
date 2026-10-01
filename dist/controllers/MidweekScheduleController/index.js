@@ -10,6 +10,7 @@ const MidweekMeetingPart_1 = require("../../entities/MidweekMeetingPart");
 const api_errors_1 = require("../../helpers/api-errors");
 const publisherMidweekQualificationRepository_1 = require("../../repositories/publisherMidweekQualificationRepository");
 const publisherUnavailabilityRepository_1 = require("../../repositories/publisherUnavailabilityRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
 const MidweekAutoAssignService_1 = require("../../services/midweek/MidweekAutoAssignService");
 const MidweekScheduleService_1 = require("../../services/midweek/MidweekScheduleService");
 const MidweekSuggestionService_1 = require("../../services/midweek/MidweekSuggestionService");
@@ -174,12 +175,23 @@ class MidweekScheduleController {
                 return null;
             return ((_a = pub.nickname) === null || _a === void 0 ? void 0 : _a.trim()) || pub.fullName || null;
         };
+        const specialEvents = await specialEventRepository_1.specialEventRepository.find({
+            where: {
+                congregation: { id: congregation_id }
+            }
+        });
         const mapped = sorted.map(s => {
             var _a;
             const dateObj = (0, dayjs_1.default)(s.meetingDate || s.weekDate);
             const monthName = dateObj.locale("pt-br").format("MMMM");
             const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
             const cbsPart = (s.parts || []).find((p) => { var _a; return p.partType === "CBS" || ((_a = p.title) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes("estudo bíblico")); });
+            const matchingEvent = specialEvents.find(se => {
+                const startWeek = (0, dayjs_1.default)(se.startDate).startOf("isoWeek").format("YYYY-MM-DD");
+                const endWeek = (0, dayjs_1.default)(se.endDate).endOf("isoWeek").format("YYYY-MM-DD");
+                const sWeek = (0, dayjs_1.default)(s.weekDate).format("YYYY-MM-DD");
+                return sWeek >= startWeek && sWeek <= endWeek;
+            });
             return {
                 id: s.id,
                 weekDate: s.weekDate,
@@ -192,7 +204,9 @@ class MidweekScheduleController {
                 songEnd: s.songEnd,
                 isSpecial: Boolean(s.isSpecial),
                 specialType: s.specialType,
-                specialName: s.specialName,
+                specialName: s.specialName || (matchingEvent === null || matchingEvent === void 0 ? void 0 : matchingEvent.title) || null,
+                specialTheme: (matchingEvent === null || matchingEvent === void 0 ? void 0 : matchingEvent.theme) || null,
+                specialLocation: (matchingEvent === null || matchingEvent === void 0 ? void 0 : matchingEvent.location) || null,
                 notes: s.notes || null,
                 isCurrentWeek: (0, dayjs_1.default)().isSame(dateObj, "week") || (0, dayjs_1.default)().isSame((0, dayjs_1.default)(s.weekDate), "week"),
                 chairman: getDisplayName(s.chairman),

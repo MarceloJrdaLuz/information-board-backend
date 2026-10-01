@@ -5,14 +5,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateFieldServiceSchedules = void 0;
 const dayjs_1 = __importDefault(require("dayjs"));
+const isoWeek_1 = __importDefault(require("dayjs/plugin/isoWeek"));
 const isSameOrAfter_1 = __importDefault(require("dayjs/plugin/isSameOrAfter"));
 const isSameOrBefore_1 = __importDefault(require("dayjs/plugin/isSameOrBefore"));
 const typeorm_1 = require("typeorm");
+const SpecialEvent_1 = require("../../entities/SpecialEvent");
 const fieldServiceExceptionRepository_1 = require("../../repositories/fieldServiceExceptionRepository");
 const fieldServiceRotationMembersRepository_1 = require("../../repositories/fieldServiceRotationMembersRepository");
 const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 const fieldServiceTemplateRepository_1 = require("../../repositories/fieldServiceTemplateRepository");
 const publisherUnavailabilityRepository_1 = require("../../repositories/publisherUnavailabilityRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
+dayjs_1.default.extend(isoWeek_1.default);
 dayjs_1.default.extend(isSameOrBefore_1.default);
 dayjs_1.default.extend(isSameOrAfter_1.default);
 async function generateFieldServiceSchedules({ template_id, startDate, endDate, mode = "append", }) {
@@ -44,8 +48,28 @@ async function generateFieldServiceSchedules({ template_id, startDate, endDate, 
         where: { date: (0, typeorm_1.Between)(startDate, endDate) },
         relations: ["template"],
     });
+    const specialEvents = await specialEventRepository_1.specialEventRepository.find({
+        where: {
+            congregation: { id: template.congregation.id }
+        }
+    });
+    const isSpecialEventException = (date) => {
+        return specialEvents.some((se) => {
+            if (se.fieldServiceImpact === SpecialEvent_1.EventImpactScope.NONE)
+                return false;
+            if (se.fieldServiceImpact === SpecialEvent_1.EventImpactScope.EVENT_DAYS_ONLY) {
+                return date >= se.startDate && date <= se.endDate;
+            }
+            if (se.fieldServiceImpact === SpecialEvent_1.EventImpactScope.ALL_DAYS) {
+                const eventStartWeek = (0, dayjs_1.default)(se.startDate).startOf("isoWeek").format("YYYY-MM-DD");
+                const eventEndWeek = (0, dayjs_1.default)(se.endDate).endOf("isoWeek").format("YYYY-MM-DD");
+                return date >= eventStartWeek && date <= eventEndWeek;
+            }
+            return false;
+        });
+    };
     const hasException = (date) => exceptions.some((e) => e.date === date &&
-        (!e.template || e.template.id === template.id));
+        (!e.template || e.template.id === template.id)) || isSpecialEventException(date);
     /* ===============================
      * 4. Buscar indisponibilidades ativas no período
      =============================== */
