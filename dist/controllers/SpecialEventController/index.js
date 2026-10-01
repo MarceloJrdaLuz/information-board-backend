@@ -13,10 +13,12 @@ const MidweekMeetingPart_1 = require("../../entities/MidweekMeetingPart");
 const MidweekSchedule_1 = require("../../entities/MidweekSchedule");
 const SpecialEvent_1 = require("../../entities/SpecialEvent");
 const api_errors_1 = require("../../helpers/api-errors");
+const permissions_1 = require("../../middlewares/permissions");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const midweekMeetingPartRepository_1 = require("../../repositories/midweekMeetingPartRepository");
 const midweekScheduleRepository_1 = require("../../repositories/midweekScheduleRepository");
 const specialEventRepository_1 = require("../../repositories/specialEventRepository");
+const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 dayjs_1.default.extend(isoWeek_1.default);
 dayjs_1.default.extend(isSameOrBefore_1.default);
@@ -162,6 +164,7 @@ class SpecialEventController {
      * Atualiza um evento especial e re-sincroniza os impactos
      */
     async update(req, res) {
+        var _a;
         const { id } = req.params;
         const event = await specialEventRepository_1.specialEventRepository.findOne({
             where: { id },
@@ -169,6 +172,19 @@ class SpecialEventController {
         });
         if (!event) {
             throw new api_errors_1.NotFoundError("Evento especial não encontrado.");
+        }
+        const user = await (0, permissions_1.decoder)(req);
+        const userRoles = (_a = user === null || user === void 0 ? void 0 : user.roles) === null || _a === void 0 ? void 0 : _a.map(role => role.name);
+        if (!(userRoles === null || userRoles === void 0 ? void 0 : userRoles.includes("ADMIN"))) {
+            const userCongregation = await userRepository_1.userRepository.find({
+                where: {
+                    id: user.id,
+                    congregation: { id: event.congregation_id }
+                }
+            });
+            if (userCongregation.length < 1) {
+                throw new api_errors_1.UnauthorizedError('Usuário não tem permissão nesta congregação.');
+            }
         }
         const { type, title, startDate, endDate, affectsWholeWeek, cancelMidweekMeeting, cancelWeekendMeeting, isCircuitOverseerVisit, cancelCleaning, fieldServiceImpact, publicWitnessingImpact, showOnPublicBoard, theme, location, notes } = req.body;
         if (title !== undefined)
@@ -210,6 +226,7 @@ class SpecialEventController {
      * Exclui o evento especial e reverte status de reuniões caso tenham sido marcadas
      */
     async delete(req, res) {
+        var _a;
         const { id } = req.params;
         const event = await specialEventRepository_1.specialEventRepository.findOne({
             where: { id },
@@ -217,6 +234,19 @@ class SpecialEventController {
         });
         if (!event) {
             throw new api_errors_1.NotFoundError("Evento especial não encontrado.");
+        }
+        const user = await (0, permissions_1.decoder)(req);
+        const userRoles = (_a = user === null || user === void 0 ? void 0 : user.roles) === null || _a === void 0 ? void 0 : _a.map(role => role.name);
+        if (!(userRoles === null || userRoles === void 0 ? void 0 : userRoles.includes("ADMIN"))) {
+            const userCongregation = await userRepository_1.userRepository.find({
+                where: {
+                    id: user.id,
+                    congregation: { id: event.congregation_id }
+                }
+            });
+            if (userCongregation.length < 1) {
+                throw new api_errors_1.UnauthorizedError('Usuário não tem permissão nesta congregação.');
+            }
         }
         // Reverte marcação em MidweekSchedules que tinham o nome deste evento
         const startWeek = (0, dayjs_1.default)(event.startDate).startOf("isoWeek").format("YYYY-MM-DD");

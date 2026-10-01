@@ -7,11 +7,13 @@ import { Between, MoreThanOrEqual } from "typeorm";
 import { MidweekMeetingPart } from "../../entities/MidweekMeetingPart";
 import { MidweekSpecialType } from "../../entities/MidweekSchedule";
 import { EventImpactScope, SpecialEvent, SpecialEventType } from "../../entities/SpecialEvent";
-import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "../../helpers/api-errors";
+import { decoder } from "../../middlewares/permissions";
 import { congregationRepository } from "../../repositories/congregationRepository";
 import { midweekMeetingPartRepository } from "../../repositories/midweekMeetingPartRepository";
 import { midweekScheduleRepository } from "../../repositories/midweekScheduleRepository";
 import { specialEventRepository } from "../../repositories/specialEventRepository";
+import { userRepository } from "../../repositories/userRepository";
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository";
 
 dayjs.extend(isoWeek);
@@ -210,6 +212,21 @@ class SpecialEventController {
             throw new NotFoundError("Evento especial não encontrado.");
         }
 
+        const user = await decoder(req);
+        const userRoles = user?.roles?.map(role => role.name);
+        if (!userRoles?.includes("ADMIN")) {
+            const userCongregation = await userRepository.find({
+                where: {
+                    id: user.id,
+                    congregation: { id: event.congregation_id }
+                }
+            });
+
+            if (userCongregation.length < 1) {
+                throw new UnauthorizedError('Usuário não tem permissão nesta congregação.');
+            }
+        }
+
         const {
             type,
             title,
@@ -264,6 +281,21 @@ class SpecialEventController {
 
         if (!event) {
             throw new NotFoundError("Evento especial não encontrado.");
+        }
+
+        const user = await decoder(req);
+        const userRoles = user?.roles?.map(role => role.name);
+        if (!userRoles?.includes("ADMIN")) {
+            const userCongregation = await userRepository.find({
+                where: {
+                    id: user.id,
+                    congregation: { id: event.congregation_id }
+                }
+            });
+
+            if (userCongregation.length < 1) {
+                throw new UnauthorizedError('Usuário não tem permissão nesta congregação.');
+            }
         }
 
         // Reverte marcação em MidweekSchedules que tinham o nome deste evento

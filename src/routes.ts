@@ -228,6 +228,7 @@ routes.delete("/cleaning-exception/:groupId", is(['ADMIN_CONGREGATION', 'CLEANIN
 /* === Gerar programação de limpeza === */
 routes.post("/cleaning/generate-schedule/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController.generate);
 routes.get("/cleaning/schedule/congregation/:congregation_id", CleaningScheduleController.getFutureSchedules);
+routes.delete("/cleaning/schedule/:id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController.delete);
 
 /* === Famílias === */
 

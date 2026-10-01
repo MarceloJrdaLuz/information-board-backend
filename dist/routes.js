@@ -199,6 +199,7 @@ routes.delete("/cleaning-exception/:groupId", (0, permissions_1.is)(['ADMIN_CONG
 /* === Gerar programação de limpeza === */
 routes.post("/cleaning/generate-schedule/congregation/:congregation_id", (0, permissions_1.is)(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController_1.default.generate);
 routes.get("/cleaning/schedule/congregation/:congregation_id", CleaningScheduleController_1.default.getFutureSchedules);
+routes.delete("/cleaning/schedule/:id", (0, permissions_1.is)(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController_1.default.delete);
 /* === Famílias === */
 routes.post("/families/congregation/:congregation_id", (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHER_MANAGER']), FamilyController_1.default.create);
 routes.get("/families/congregation/:congregation_id", (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHER_MANAGER']), FamilyController_1.default.getFamilies);
