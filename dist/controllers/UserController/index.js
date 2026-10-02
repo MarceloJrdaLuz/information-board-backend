@@ -325,12 +325,19 @@ class UserController {
         const { congregation_id } = req.params;
         const users = await userRepository_1.userRepository.find({
             where: { congregation: { id: congregation_id } },
-            select: ["id", "email", "fullName"]
+            relations: ["publisher"]
         });
         if (!users || users.length === 0) {
             throw new api_errors_1.NotFoundError("No users found in this congregation");
         }
-        return res.status(200).json(users);
+        const safeUsers = users.map(user => ({
+            id: user.id,
+            email: user.email,
+            fullName: user.fullName,
+            code: user.code,
+            publisher: user.publisher ? { id: user.publisher.id, fullName: user.publisher.fullName } : null
+        }));
+        return res.status(200).json(safeUsers);
     }
 }
 exports.default = new UserController();

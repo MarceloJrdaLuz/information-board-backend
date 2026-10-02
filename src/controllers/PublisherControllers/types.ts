@@ -25,12 +25,13 @@ export interface BodyPublisherCreateTypes {
     startPioneer?: string
     gender: Gender
     privileges?: Privileges[]
-    pioneerMonths: string[]
+    pioneerMonths?: string[]
     congregation_id: string
     situation: Situation
     phone: string
     address: string
     emergencyContact_id?: string
+    user_id?: string
 }
 export interface BodyPublisherUpdateTypes {
     fullName?: string
@@ -39,13 +40,14 @@ export interface BodyPublisherUpdateTypes {
     startPioneer?: string
     birthDate?: string
     privileges?: Privileges[]
-    pioneerMonths: string[]
+    pioneerMonths?: string[]
     hope: Hope
     gender: Gender
     situation?: Situation
     phone?: string
     address?: string
     emergencyContact_id?: string
+    user_id?: string | null
 }
 
 export type ParamsPublisherUpdateTypes = {
@@ -54,4 +56,14 @@ export type ParamsPublisherUpdateTypes = {
 
 export type ParamsUnLinkPublisherToUserTypes = {
     publisher_id: string
+}
+
+export type ParamsCongregationAuxiliaryPioneersTypes = {
+    congregation_id: string
+}
+
+export interface BodySetAuxiliaryPioneersTypes {
+    month: string
+    year: string
+    publisherIds: string[]
 }

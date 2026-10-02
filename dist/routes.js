@@ -121,7 +121,7 @@ routes.patch('/access-requests/:request_id/reject', (0, permissions_1.is)(['ADMI
 routes.patch('/access-requests/congregation/:congregation_id/:request_id/approve', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.approve);
 routes.patch('/access-requests/congregation/:congregation_id/:request_id/reject', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController_1.default.reject);
 /* === Publicadores === */
-routes.get('/publishers/congregationId/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers_1.default.getPublishers);
+routes.get('/publishers/congregationId/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER', 'REPORTS_MANAGER']), PublisherControllers_1.default.getPublishers);
 routes.get('/publisher/:publisher_id/assignment', PublisherControllers_1.default.getAssignmentPublisher);
 routes.get('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.getPublisher);
 routes.post('/publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.create);
@@ -129,6 +129,8 @@ routes.delete('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGA
 routes.put('/publisher/:publisher_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.update);
 routes.patch('/publisher/:publisher_id/unlink-publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION']), PublisherControllers_1.default.unlinkPublisherFromUser);
 routes.put('/publishers/transfer-congregation', (0, permissions_1.is)(['ADMIN_CONGREGATION']), PublisherControllers_1.default.transferPublishers);
+routes.get('/congregations/:congregation_id/auxiliary-pioneers', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers_1.default.getAuxiliaryPioneersByMonth);
+routes.post('/congregations/:congregation_id/auxiliary-pioneers', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'PUBLISHERS_MANAGER']), PublisherControllers_1.default.setAuxiliaryPioneersByMonth);
 /* === Lembretes pessoais === */
 routes.post("/reminders/publishers/:publisher_id", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.create);
 routes.post("/reminders/:reminder_id/complete", (0, permissions_1.requirePublisher)(), PublisherReminderController_1.default.complete);

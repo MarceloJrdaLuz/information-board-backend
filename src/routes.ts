@@ -137,7 +137,7 @@ routes.patch('/access-requests/congregation/:congregation_id/:request_id/approve
 routes.patch('/access-requests/congregation/:congregation_id/:request_id/reject', is(['ADMIN', 'ADMIN_CONGREGATION']), AccessRequestController.reject)
 
 /* === Publicadores === */
-routes.get('/publishers/congregationId/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers.getPublishers)
+routes.get('/publishers/congregationId/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER', 'REPORTS_MANAGER']), PublisherControllers.getPublishers)
 routes.get('/publisher/:publisher_id/assignment', PublisherControllers.getAssignmentPublisher)
 routes.get('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.getPublisher)
 routes.post('/publisher', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.create)
@@ -145,6 +145,8 @@ routes.delete('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_
 routes.put('/publisher/:publisher_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), PublisherControllers.update)
 routes.patch('/publisher/:publisher_id/unlink-publisher', is(['ADMIN_CONGREGATION']), PublisherControllers.unlinkPublisherFromUser)
 routes.put('/publishers/transfer-congregation', is(['ADMIN_CONGREGATION']), PublisherControllers.transferPublishers)
+routes.get('/congregations/:congregation_id/auxiliary-pioneers', is(['ADMIN', 'ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'PUBLISHERS_MANAGER', 'PUBLISHERS_VIEWER']), PublisherControllers.getAuxiliaryPioneersByMonth)
+routes.post('/congregations/:congregation_id/auxiliary-pioneers', is(['ADMIN', 'ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'PUBLISHERS_MANAGER']), PublisherControllers.setAuxiliaryPioneersByMonth)
 
 /* === Lembretes pessoais === */
 routes.post("/reminders/publishers/:publisher_id", requirePublisher(), PublisherReminderController.create)

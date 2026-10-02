@@ -83,7 +83,7 @@ class ReportController {
           },
         },
       },
-      relations: ["publisher"],
+      relations: ["publisher", "publisher.privilegesRelation", "publisher.privilegesRelation.privilege"],
     })
 
     if (reports.length === 0) throw new NotFoundError('Any report in this congregation was found')
@@ -138,7 +138,7 @@ class ReportController {
           },
         },
       },
-      relations: ["publisher"],
+      relations: ["publisher", "publisher.privilegesRelation", "publisher.privilegesRelation.privilege"],
     })
 
     if (reports.length === 0) throw new NotFoundError('Any report in this congregation was found')

@@ -70,7 +70,7 @@ class ReportController {
                     },
                 },
             },
-            relations: ["publisher"],
+            relations: ["publisher", "publisher.privilegesRelation", "publisher.privilegesRelation.privilege"],
         });
         if (reports.length === 0)
             throw new api_errors_1.NotFoundError('Any report in this congregation was found');
@@ -118,7 +118,7 @@ class ReportController {
                     },
                 },
             },
-            relations: ["publisher"],
+            relations: ["publisher", "publisher.privilegesRelation", "publisher.privilegesRelation.privilege"],
         });
         if (reports.length === 0)
             throw new api_errors_1.NotFoundError('Any report in this congregation was found');

@@ -1,4 +1,3 @@
-
 export enum Privileges {
     PUBLICADOR = "Publicador",
     ANCIAO = "Ancião",
@@ -6,6 +5,7 @@ export enum Privileges {
     PIONEIROAUXILIAR = 'Pioneiro Auxiliar',
     PIONEIROREGULAR = 'Pioneiro Regular',
     PIONEIROESPECIAL = 'Pioneiro Especial',
+    AUXILIARTEMPOINDETERMINADO = 'Auxiliar por Tempo Indeterminado',
     AUXILIARINDETERMINADO = 'Auxiliar Indeterminado',
     ORADOR = "Orador",
     PRESIDENTE = 'Presidente',
