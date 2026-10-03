@@ -7,6 +7,8 @@ const talkRepository_1 = require("../../repositories/talkRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
 const typeorm_1 = require("typeorm");
+const privileges_1 = require("../../types/privileges");
+const publisherPrivilegeHelper_1 = require("../../helpers/publisherPrivilegeHelper");
 const permissions_1 = require("../../middlewares/permissions");
 const userRepository_1 = require("../../repositories/userRepository");
 class SpeakerController {
@@ -27,7 +29,7 @@ class SpeakerController {
         let speakerPhone = phone;
         let speakerAddress = address;
         if (publisher_id) {
-            publisher = await (0, publisherRepository_1.findPublisherWithPrivilege)(publisher_id, "Speaker");
+            publisher = await (0, publisherRepository_1.findPublisherWithPrivilege)(publisher_id, privileges_1.PrivilegeCode.SPEAKER);
             if (!publisher)
                 throw new api_errors_1.BadRequestError("Publisher not found or does not have 'Speaker'");
             if (publisher.congregation.id !== originCongregation_id) {
@@ -169,7 +171,7 @@ class SpeakerController {
             relations: ["privilegesRelation", "privilegesRelation.privilege", "congregation"],
             order: { fullName: "ASC" },
         });
-        const speakers = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Speaker"));
+        const speakers = publishers.filter(pp => (0, publisherPrivilegeHelper_1.hasPrivilege)(pp, privileges_1.PrivilegeCode.SPEAKER));
         return res.json(speakers);
     }
     async getSpeaker(req, res) {

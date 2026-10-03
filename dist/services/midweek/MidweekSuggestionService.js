@@ -10,6 +10,8 @@ const Publisher_1 = require("../../entities/Publisher");
 const midweekMeetingPartRepository_1 = require("../../repositories/midweekMeetingPartRepository");
 const midweekScheduleRepository_1 = require("../../repositories/midweekScheduleRepository");
 const publisherRepository_1 = require("../../repositories/publisherRepository");
+const privileges_1 = require("../../types/privileges");
+const publisherPrivilegeHelper_1 = require("../../helpers/publisherPrivilegeHelper");
 class MidweekSuggestionService {
     async getSuggestionsForPart(partId, congregationId, isForAssistant = false) {
         var _a;
@@ -360,8 +362,8 @@ class MidweekSuggestionService {
             return q ? q.canBeAssistant : true;
         }
         // 2. FALLBACK/PADRÃO: Privilégios de publisher_privileges + privileges + Gênero
-        const isElder = this.hasPrivilege(pub, "Ancião", "Anciao", "Presidente", "Elder");
-        const isMinisterialServant = this.hasPrivilege(pub, "Servo Ministerial", "Servo ministerial", "Ministerial Servant");
+        const isElder = (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.ELDER) || this.hasPrivilege(pub, "Ancião", "Anciao", "Presidente", "Elder");
+        const isMinisterialServant = (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.MINISTERIAL_SERVANT) || this.hasPrivilege(pub, "Servo Ministerial", "Servo ministerial", "Ministerial Servant");
         const isElderOrMS = isElder || isMinisterialServant;
         const isMale = pub.gender === Publisher_1.Gender.Masculino;
         if (role) {

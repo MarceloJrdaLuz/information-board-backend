@@ -20,6 +20,10 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({ unique: true }),
     __metadata("design:type", String)
+], Privilege.prototype, "code", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ unique: true }),
+    __metadata("design:type", String)
 ], Privilege.prototype, "name", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),

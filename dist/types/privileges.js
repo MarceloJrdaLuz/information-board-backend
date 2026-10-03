@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Privileges = void 0;
+exports.PrivilegeCode = exports.Privileges = void 0;
 var Privileges;
 (function (Privileges) {
     Privileges["PUBLICADOR"] = "Publicador";
@@ -23,3 +23,25 @@ var Privileges;
     Privileges["SOMEMIDIAS"] = "Som e M\u00EDdias";
     Privileges["PEDESTAL"] = "Pedestal";
 })(Privileges = exports.Privileges || (exports.Privileges = {}));
+var PrivilegeCode;
+(function (PrivilegeCode) {
+    PrivilegeCode["PUBLISHER"] = "PUBLISHER";
+    PrivilegeCode["ELDER"] = "ELDER";
+    PrivilegeCode["MINISTERIAL_SERVANT"] = "MINISTERIAL_SERVANT";
+    PrivilegeCode["REGULAR_PIONEER"] = "REGULAR_PIONEER";
+    PrivilegeCode["SPECIAL_PIONEER"] = "SPECIAL_PIONEER";
+    PrivilegeCode["MISSIONARY_WORLDWIDE"] = "MISSIONARY_WORLDWIDE";
+    PrivilegeCode["CONTINUOUS_AUXILIARY_PIONEER"] = "CONTINUOUS_AUXILIARY_PIONEER";
+    PrivilegeCode["AUXILIARY_PIONEER"] = "AUXILIARY_PIONEER";
+    PrivilegeCode["SPEAKER"] = "SPEAKER";
+    PrivilegeCode["READER"] = "READER";
+    PrivilegeCode["CHAIRMAN"] = "CHAIRMAN";
+    PrivilegeCode["ATTENDANT"] = "ATTENDANT";
+    PrivilegeCode["MICROPHONE_ATTENDANT"] = "MICROPHONE_ATTENDANT";
+    PrivilegeCode["FIELD_CONDUCTOR"] = "FIELD_CONDUCTOR";
+    PrivilegeCode["PUBLIC_WITNESS"] = "PUBLIC_WITNESS";
+    PrivilegeCode["SOUND"] = "SOUND";
+    PrivilegeCode["MEDIA"] = "MEDIA";
+    PrivilegeCode["SOUND_AND_MEDIA"] = "SOUND_AND_MEDIA";
+    PrivilegeCode["STAGE_ATTENDANT"] = "STAGE_ATTENDANT";
+})(PrivilegeCode = exports.PrivilegeCode || (exports.PrivilegeCode = {}));

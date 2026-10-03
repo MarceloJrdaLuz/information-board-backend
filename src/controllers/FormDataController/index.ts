@@ -15,6 +15,8 @@ import { talkRepository } from "../../repositories/talkRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
 import { getAffectedWeekendDates } from "../SpecialEventController"
+import { PrivilegeCode } from "../../types/privileges"
+import { hasPrivilege } from "../../helpers/publisherPrivilegeHelper"
 
 class FormDataController {
     async getFormData(req: Request, res: Response) {
@@ -35,7 +37,7 @@ class FormDataController {
                     })
 
                     const speakers = publishers.filter(pp =>
-                        pp.privilegesRelation.some(p => p.privilege.name === "Speaker")
+                        hasPrivilege(pp, PrivilegeCode.SPEAKER)
                     )
 
                     const talks = await talkRepository.find({
@@ -62,7 +64,7 @@ class FormDataController {
                     })
 
                     const fieldConductors = publishers.filter(pp =>
-                        pp.privilegesRelation.some(p => p.privilege.name === "Field Conductor")
+                        hasPrivilege(pp, PrivilegeCode.FIELD_CONDUCTOR)
                     )
 
                     return res.json({ publishers: fieldConductors })
@@ -75,7 +77,7 @@ class FormDataController {
                     })
 
                     const publicWitnesses = publishers.filter(pp =>
-                        pp.privilegesRelation.some(p => p.privilege.name === "Public Witness")
+                        hasPrivilege(pp, PrivilegeCode.PUBLIC_WITNESS)
                     )
 
                     return res.json(publicWitnesses)
@@ -89,7 +91,7 @@ class FormDataController {
                     })
 
                     const fieldConductors = publishers.filter(pp =>
-                        pp.privilegesRelation.some(p => p.privilege.name === "Field Conductor")
+                        hasPrivilege(pp, PrivilegeCode.FIELD_CONDUCTOR)
                     )
 
                     return res.json(fieldConductors)
@@ -153,11 +155,11 @@ class FormDataController {
                     })
 
                     const chairmans = publishers.filter(pp =>
-                        pp.privilegesRelation.some(p => p.privilege.name === "Chairman")
+                        hasPrivilege(pp, PrivilegeCode.CHAIRMAN)
                     )
 
                     const readers = publishers.filter(pp =>
-                        pp.privilegesRelation.some(p => p.privilege.name === "Reader")
+                        hasPrivilege(pp, PrivilegeCode.READER)
                     )
 
                     const talks = await talkRepository.find({
@@ -305,13 +307,15 @@ class FormDataController {
                 }
 
                 case "cleaningGroup": {
-                    const publishers = await publisherRepository.find({
+                    const allPublishers = await publisherRepository.find({
                         where: {
                             congregation: {
                                 id: userReq?.congregation.id
                             }
-                        }
+                        },
+                        relations: ["privilegesRelation", "privilegesRelation.privilege"]
                     })
+                    const publishers = allPublishers.filter(p => hasPrivilege(p, PrivilegeCode.PUBLISHER))
 
                     const cleaningGroups = await cleaningGroupRepository.find({
                         where: {
@@ -319,8 +323,14 @@ class FormDataController {
                                 id: userReq?.congregation.id
                             }
                         },
-                        relations: ["publishers"]
+                        relations: ["publishers", "publishers.privilegesRelation", "publishers.privilegesRelation.privilege"]
                     })
+
+                    for (const g of cleaningGroups) {
+                        if (g.publishers) {
+                            g.publishers = g.publishers.filter(p => hasPrivilege(p, PrivilegeCode.PUBLISHER))
+                        }
+                    }
 
                     return res.json({ publishers, cleaningGroups })
                 }

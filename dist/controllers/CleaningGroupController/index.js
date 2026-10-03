@@ -7,6 +7,8 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepository");
 const typeorm_1 = require("typeorm");
 const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
+const publisherPrivilegeHelper_1 = require("../../helpers/publisherPrivilegeHelper");
+const privileges_1 = require("../../types/privileges");
 class CleaningGroupController {
     async create(req, res) {
         const { congregation_id } = req.params;
@@ -41,9 +43,11 @@ class CleaningGroupController {
                 throw new api_errors_1.BadRequestError("One or more publishers are already assigned to another group");
             }
             // Se não tem conflito, busca os publishers de fato
-            publishers = await publisherRepository_1.publisherRepository.find({
-                where: { id: (0, typeorm_1.In)(publisherIds), congregation: { id: congregation.id } }
+            const rawPublishers = await publisherRepository_1.publisherRepository.find({
+                where: { id: (0, typeorm_1.In)(publisherIds), congregation: { id: congregation.id } },
+                relations: ["privilegesRelation", "privilegesRelation.privilege"]
             });
+            publishers = rawPublishers.filter(p => (0, publisherPrivilegeHelper_1.hasPrivilege)(p, privileges_1.PrivilegeCode.PUBLISHER));
         }
         const newGroup = cleaningGroupRepository_1.cleaningGroupRepository.create({
             name,
@@ -79,12 +83,13 @@ class CleaningGroupController {
                 throw new api_errors_1.BadRequestError("One or more publishers are already assigned to another group");
             }
             // Busca os publishers válidos
-            const publishers = publisherIds.length
+            const rawPublishers = publisherIds.length
                 ? await publisherRepository_1.publisherRepository.find({
-                    where: { id: (0, typeorm_1.In)(publisherIds), congregation: { id: congregationId } }
+                    where: { id: (0, typeorm_1.In)(publisherIds), congregation: { id: congregationId } },
+                    relations: ["privilegesRelation", "privilegesRelation.privilege"]
                 })
                 : [];
-            group.publishers = publishers;
+            group.publishers = rawPublishers.filter(p => (0, publisherPrivilegeHelper_1.hasPrivilege)(p, privileges_1.PrivilegeCode.PUBLISHER));
         }
         if (name)
             group.name = name;
@@ -123,10 +128,13 @@ class CleaningGroupController {
         const { group_id: id } = req.params;
         const group = await cleaningGroupRepository_1.cleaningGroupRepository.findOne({
             where: { id },
-            relations: ["publishers"]
+            relations: ["publishers", "publishers.privilegesRelation", "publishers.privilegesRelation.privilege"]
         });
         if (!group)
             throw new api_errors_1.NotFoundError("Cleaning group not found");
+        if (group.publishers) {
+            group.publishers = group.publishers.filter(p => (0, publisherPrivilegeHelper_1.hasPrivilege)(p, privileges_1.PrivilegeCode.PUBLISHER));
+        }
         return res.status(200).json(group);
     }
     async getGroups(req, res) {
@@ -136,9 +144,14 @@ class CleaningGroupController {
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.congregation);
         const groups = await cleaningGroupRepository_1.cleaningGroupRepository.find({
             where: { congregation: { id: congregation.id } },
-            relations: ["publishers"],
+            relations: ["publishers", "publishers.privilegesRelation", "publishers.privilegesRelation.privilege"],
             order: { order: "ASC" }
         });
+        for (const g of groups) {
+            if (g.publishers) {
+                g.publishers = g.publishers.filter(p => (0, publisherPrivilegeHelper_1.hasPrivilege)(p, privileges_1.PrivilegeCode.PUBLISHER));
+            }
+        }
         return res.status(200).json(groups);
     }
 }

@@ -5,14 +5,19 @@ import { publisherRepository } from "../../repositories/publisherRepository"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { reportRepository } from "../../repositories/reportRepository"
 import { Months } from "../../types/enumWeekDays"
-import { Publisher } from "../../entities/Publisher"
+import { Publisher, Situation } from "../../entities/Publisher"
 import { FindOperator, Not } from "typeorm"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { Report } from "../../entities/Report"
-import { Privileges } from "../../types/privileges"
+import { PrivilegeCode, Privileges } from "../../types/privileges"
 import { userRepository } from "../../repositories/userRepository"
 import { messageErrors } from "../../helpers/messageErrors"
 import { decoder } from "../../middlewares/permissions"
+import { getActivePrivilegeNamesPT, hasPrivilege } from "../../helpers/publisherPrivilegeHelper"
+import { getMonthDateRange, PT_MONTH_NAMES } from "../../helpers/privilegesTranslations"
+import { privilegeRepository } from "../../repositories/privilegeRepository"
+import { publisherPrivilegeRepository } from "../../repositories/publisherPrivilegeRepository"
+import dayjs from "dayjs"
 
 class ReportController {
   async create(req: CustomRequest<BodyReportCreateTypes>, res: Response) {
@@ -25,10 +30,23 @@ class ReportController {
     const publisherExists = await publisherRepository.findOne({
       where: {
         id: publisher_id
-      }
+      },
+      relations: ["privilegesRelation", "privilegesRelation.privilege"]
     })
 
     if (!publisherExists) throw new NotFoundError('Publisher was not found')
+
+    if (!hasPrivilege(publisherExists, PrivilegeCode.PUBLISHER)) {
+      throw new BadRequestError('This person is not an approved publisher')
+    }
+
+    if (publisherExists.situation === Situation.Removido || publisherExists.situation === Situation.Desassociado) {
+      throw new BadRequestError('Publisher is not authorized to submit reports')
+    }
+
+    const monthRange = getMonthDateRange(month, year)
+    const targetDate = monthRange ? new Date(monthRange.startDate) : new Date()
+    const activePrivileges = getActivePrivilegeNamesPT(publisherExists, targetDate)
 
     let existingReport = await reportRepository.findOne({
       where: {
@@ -44,6 +62,9 @@ class ReportController {
       existingReport.hours = hours
       existingReport.studies = studies
       existingReport.observations = observations
+      if (!existingReport.privileges || existingReport.privileges.length === 0) {
+        existingReport.privileges = activePrivileges
+      }
 
       await reportRepository.save(existingReport).then(updatedReport => {
         return res.status(200).json(updatedReport)
@@ -55,6 +76,7 @@ class ReportController {
         month: month as Months,
         year,
         publisher: publisherExists,
+        privileges: activePrivileges,
         hours,
         studies,
         observations
@@ -207,11 +229,102 @@ class ReportController {
     const publisherExists = await publisherRepository.findOne({
       where: {
         id: publisher.id
-      }
+      },
+      relations: ["privilegesRelation", "privilegesRelation.privilege"]
     })
 
     if (!publisherExists) throw new NotFoundError('Publisher was not found')
 
+    const monthRange = getMonthDateRange(month, year)
+    const targetDate = monthRange ? new Date(monthRange.startDate) : new Date()
+
+    let reportPrivileges: string[]
+    if (publisher?.privileges && Array.isArray(publisher.privileges) && publisher.privileges.length > 0) {
+      reportPrivileges = publisher.privileges
+    } else {
+      reportPrivileges = getActivePrivilegeNamesPT(publisherExists, targetDate)
+    }
+
+    // Sincroniza designação de Pioneiro Auxiliar para o mês
+    if (monthRange) {
+      const formattedLegacyMonth = `${PT_MONTH_NAMES[monthRange.monthIndex]}-${year}`
+      const isAuxSelected = reportPrivileges.some(
+        p => p === "Pioneiro Auxiliar" || p === Privileges.PIONEIROAUXILIAR
+      )
+
+      let auxPrivilege = await privilegeRepository.findOne({
+        where: [{ code: PrivilegeCode.AUXILIARY_PIONEER }, { name: "Auxiliary Pioneer" }]
+      })
+      if (!auxPrivilege) {
+        auxPrivilege = await privilegeRepository.save({
+          code: PrivilegeCode.AUXILIARY_PIONEER,
+          name: "Auxiliary Pioneer"
+        })
+      }
+
+      let pubMonths = publisherExists.pioneerMonths ? [...publisherExists.pioneerMonths] : []
+      let publisherUpdated = false
+
+      if (isAuxSelected) {
+        if (!pubMonths.some(pm => pm.trim().toLowerCase() === formattedLegacyMonth.toLowerCase())) {
+          pubMonths.push(formattedLegacyMonth)
+          publisherExists.pioneerMonths = pubMonths
+          publisherUpdated = true
+        }
+
+        const existingAuxPrivilege = publisherExists.privilegesRelation?.find(
+          pp =>
+            (pp.privilege?.code === PrivilegeCode.AUXILIARY_PIONEER ||
+              pp.privilege?.name === "Auxiliary Pioneer") &&
+            dayjs(pp.startDate).format("YYYY-MM-DD") === monthRange.startDate &&
+            dayjs(pp.endDate).format("YYYY-MM-DD") === monthRange.endDate
+        )
+
+        if (!existingAuxPrivilege) {
+          const newPriv = await publisherPrivilegeRepository.save({
+            publisher: publisherExists,
+            publisherId: publisherExists.id,
+            privilege: auxPrivilege,
+            privilegeId: auxPrivilege.id,
+            startDate: monthRange.startDate as any,
+            endDate: monthRange.endDate as any
+          })
+          if (!publisherExists.privilegesRelation) {
+            publisherExists.privilegesRelation = []
+          }
+          publisherExists.privilegesRelation.push(newPriv)
+        }
+      } else {
+        if (pubMonths.some(pm => pm.trim().toLowerCase() === formattedLegacyMonth.toLowerCase())) {
+          pubMonths = pubMonths.filter(
+            pm => pm.trim().toLowerCase() !== formattedLegacyMonth.toLowerCase()
+          )
+          publisherExists.pioneerMonths = pubMonths
+          publisherUpdated = true
+        }
+
+        const existingAuxPrivilege = publisherExists.privilegesRelation?.find(
+          pp =>
+            (pp.privilege?.code === PrivilegeCode.AUXILIARY_PIONEER ||
+              pp.privilege?.name === "Auxiliary Pioneer") &&
+            dayjs(pp.startDate).format("YYYY-MM-DD") === monthRange.startDate &&
+            dayjs(pp.endDate).format("YYYY-MM-DD") === monthRange.endDate
+        )
+
+        if (existingAuxPrivilege) {
+          await publisherPrivilegeRepository.remove(existingAuxPrivilege)
+          publisherExists.privilegesRelation = publisherExists.privilegesRelation.filter(
+            pp => pp.id !== existingAuxPrivilege.id
+          )
+        }
+      }
+
+      if (publisherUpdated) {
+        await publisherRepository.update(publisherExists.id, {
+          pioneerMonths: pubMonths
+        })
+      }
+    }
 
     let existingReport = await reportRepository.findOne({
       where: {
@@ -224,40 +337,26 @@ class ReportController {
     })
 
     if (existingReport) {
-      const privilegesExists = publisher.privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
-
-      if (!privilegesExists) throw new BadRequestError('Some privilege not exists')
-
       existingReport.hours = hours
       existingReport.studies = studies
       existingReport.observations = observations
-      existingReport.privileges = publisher.privileges
+      existingReport.privileges = reportPrivileges
 
-      await reportRepository.save(existingReport).then(updatedReport => {
-        return res.status(200).json(updatedReport)
-      }).catch(err => {
-        console.log(err)
-      })
+      const updatedReport = await reportRepository.save(existingReport)
+      return res.status(200).json(updatedReport)
     } else {
-      const privilegesExists = publisher.privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
-
-      if (!privilegesExists) throw new BadRequestError('Some privilege not exists')
-
       const newReport = reportRepository.create({
         month: month as Months,
         year,
         publisher: publisherExists,
-        privileges: publisher.privileges,
+        privileges: reportPrivileges,
         hours,
         studies,
         observations
       })
 
-      await reportRepository.save(newReport).then(createdReport => {
-        return res.status(201).json(createdReport)
-      }).catch(err => {
-        console.log(err)
-      })
+      const createdReport = await reportRepository.save(newReport)
+      return res.status(201).json(createdReport)
     }
   }
 }

@@ -6,6 +6,9 @@ export class Privilege {
   id: string
 
   @Column({ unique: true })
+  code: string
+
+  @Column({ unique: true })
   name: string 
 
   @CreateDateColumn()

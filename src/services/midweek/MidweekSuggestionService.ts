@@ -4,6 +4,8 @@ import { Gender, Publisher, Situation } from "../../entities/Publisher";
 import { midweekMeetingPartRepository } from "../../repositories/midweekMeetingPartRepository";
 import { midweekScheduleRepository } from "../../repositories/midweekScheduleRepository";
 import { publisherRepository } from "../../repositories/publisherRepository";
+import { PrivilegeCode } from "../../types/privileges";
+import { hasPrivilege } from "../../helpers/publisherPrivilegeHelper";
 
 export interface PublisherSuggestion {
     id: string;
@@ -441,8 +443,8 @@ export class MidweekSuggestionService {
         }
 
         // 2. FALLBACK/PADRÃO: Privilégios de publisher_privileges + privileges + Gênero
-        const isElder = this.hasPrivilege(pub, "Ancião", "Anciao", "Presidente", "Elder");
-        const isMinisterialServant = this.hasPrivilege(pub, "Servo Ministerial", "Servo ministerial", "Ministerial Servant");
+        const isElder = hasPrivilege(pub, PrivilegeCode.ELDER) || this.hasPrivilege(pub, "Ancião", "Anciao", "Presidente", "Elder");
+        const isMinisterialServant = hasPrivilege(pub, PrivilegeCode.MINISTERIAL_SERVANT) || this.hasPrivilege(pub, "Servo Ministerial", "Servo ministerial", "Ministerial Servant");
         const isElderOrMS = isElder || isMinisterialServant;
         const isMale = pub.gender === Gender.Masculino;
 

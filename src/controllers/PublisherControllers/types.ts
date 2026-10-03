@@ -32,12 +32,13 @@ export interface BodyPublisherCreateTypes {
     address: string
     emergencyContact_id?: string
     user_id?: string
+    startDatePublisher?: string | null
 }
 export interface BodyPublisherUpdateTypes {
     fullName?: string
     nickname?: string
     dateImmersed?: string
-    startPioneer?: string
+    startPioneer?: string | null
     birthDate?: string
     privileges?: Privileges[]
     pioneerMonths?: string[]
@@ -48,6 +49,7 @@ export interface BodyPublisherUpdateTypes {
     address?: string
     emergencyContact_id?: string
     user_id?: string | null
+    startDatePublisher?: string | null
 }
 
 export type ParamsPublisherUpdateTypes = {
