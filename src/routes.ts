@@ -447,15 +447,13 @@ routes.post(
 // Programação do Mês e Detalhes da Semana
 routes.get(
     "/midweek/schedules/congregation/:congregation_id",
-    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER"]),
-    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER", "MIDWEEK_VIEWER"]),
+    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "MIDWEEK_VIEWER"]),
     midweekController.getMonthSchedules.bind(midweekController)
 );
 
 routes.get(
     "/midweek/schedules/:schedule_id/congregation/:congregation_id",
-    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER"]),
-    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "VIEWER", "MIDWEEK_VIEWER"]),
+    is(["ADMIN", "ADMIN_CONGREGATION", "MIDWEEK_MANAGER", "MIDWEEK_VIEWER"]),
     midweekController.getScheduleById.bind(midweekController)
 );
 
