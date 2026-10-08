@@ -7,8 +7,21 @@ const privileges_1 = require("../types/privileges");
  * If targetDate is omitted, current date is used.
  */
 function isPrivilegeActiveAt(pp, targetDate = new Date()) {
+    var _a, _b, _c;
     const target = new Date(targetDate);
     target.setHours(0, 0, 0, 0);
+    const isAux = ((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.code) === privileges_1.PrivilegeCode.AUXILIARY_PIONEER ||
+        ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.name) === "Auxiliary Pioneer" ||
+        ((_c = pp.privilege) === null || _c === void 0 ? void 0 : _c.name) === "Pioneiro Auxiliar";
+    if (isAux && !pp.endDate) {
+        if (!pp.startDate)
+            return false;
+        const start = new Date(pp.startDate);
+        if (target.getFullYear() !== start.getFullYear() ||
+            target.getMonth() !== start.getMonth()) {
+            return false;
+        }
+    }
     if (pp.startDate) {
         const start = new Date(pp.startDate);
         start.setHours(0, 0, 0, 0);
@@ -70,6 +83,9 @@ function hasPrivilege(publisher, code, targetDate = new Date()) {
     }
     // Fallback: check publisher.privileges string array
     if (publisher.privileges && Array.isArray(publisher.privileges)) {
+        if (code === privileges_1.PrivilegeCode.AUXILIARY_PIONEER) {
+            return false;
+        }
         const names = codeToNamesMap[code];
         return publisher.privileges.some(p => p === code ||
             (names && (p === names.en || p === names.pt)));

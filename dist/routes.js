@@ -106,7 +106,7 @@ routes.get('/push/public-key', PushNotificationController_1.default.getPublicKey
 routes.post('/add-domain', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.addUserDomain);
 routes.put('/user/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.updateRoles);
 routes.get('/users', (0, permissions_1.is)(['ADMIN']), UserController_1.default.getUsers);
-routes.get('/users/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController_1.default.getUsersByCongregation);
+routes.get('/users/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController_1.default.getUsersByCongregation);
 routes.patch('/users/:user_id/link-publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION']), UserController_1.default.linkPublisherToUser);
 /* === Solicitações de Acesso ao Domínio === */
 routes.post('/access-requests', AccessRequestController_1.default.create);

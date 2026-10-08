@@ -314,18 +314,26 @@ class UserController {
     }
     async getUsers(req, res) {
         const users = await userRepository_1.userRepository.find({
-            select: ["id", "email", "fullName"]
+            relations: ["roles", "publisher", "congregation"]
         });
         if (!users || users.length === 0) {
             throw new api_errors_1.NotFoundError("No users found");
         }
-        return res.status(200).json(users);
+        const safeUsers = users.map(user => ({
+            id: user.id,
+            email: user.email,
+            fullName: user.fullName,
+            code: user.code,
+            publisher: user.publisher ? { id: user.publisher.id, fullName: user.publisher.fullName } : null,
+            roles: user.roles ? user.roles.map(r => ({ id: r.id, name: r.name, description: r.description })) : []
+        }));
+        return res.status(200).json(safeUsers);
     }
     async getUsersByCongregation(req, res) {
         const { congregation_id } = req.params;
         const users = await userRepository_1.userRepository.find({
             where: { congregation: { id: congregation_id } },
-            relations: ["publisher"]
+            relations: ["publisher", "roles"]
         });
         if (!users || users.length === 0) {
             throw new api_errors_1.NotFoundError("No users found in this congregation");
@@ -335,7 +343,8 @@ class UserController {
             email: user.email,
             fullName: user.fullName,
             code: user.code,
-            publisher: user.publisher ? { id: user.publisher.id, fullName: user.publisher.fullName } : null
+            publisher: user.publisher ? { id: user.publisher.id, fullName: user.publisher.fullName } : null,
+            roles: user.roles ? user.roles.map(r => ({ id: r.id, name: r.name, description: r.description })) : []
         }));
         return res.status(200).json(safeUsers);
     }
