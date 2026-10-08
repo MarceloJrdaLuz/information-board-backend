@@ -120,7 +120,7 @@ routes.get('/push/public-key', PushNotificationController.getPublicKey)
 routes.post('/add-domain', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.addUserDomain)
 routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.updateRoles)
 routes.get('/users', is(['ADMIN']), UserController.getUsers)
-routes.get('/users/:congregation_id', is(['ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController.getUsersByCongregation)
+routes.get('/users/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController.getUsersByCongregation)
 routes.patch('/users/:user_id/link-publisher', is(['ADMIN_CONGREGATION']), UserController.linkPublisherToUser)
 
 /* === Solicitações de Acesso ao Domínio === */
