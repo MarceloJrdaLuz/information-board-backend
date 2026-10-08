@@ -532,32 +532,36 @@ class PublisherControler {
     const result = allPublishers
       .filter(pub => {
         const isContinuous =
-          pub.privileges?.includes("Auxiliar por Tempo Indeterminado") ||
-          pub.privileges?.includes("Auxiliar Indeterminado") ||
-          pub.privilegesRelation?.some(pp => pp.privilege?.name === "Continuous Auxiliary Pioneer")
-
-        const isMonthAux =
-          pub.pioneerMonths?.some(pm => pm.trim().toLowerCase() === formattedLegacyMonth.toLowerCase()) ||
-          pub.privilegesRelation?.some(
-            pp => pp.privilege?.name === "Auxiliary Pioneer" &&
-                  dayjs(pp.startDate).format("YYYY-MM-DD") <= range.endDate &&
-                  dayjs(pp.endDate).format("YYYY-MM-DD") >= range.startDate
+          pub.privilegesRelation?.some(pp =>
+            (pp.privilege?.name === "Continuous Auxiliary Pioneer" || pp.privilege?.code === PrivilegeCode.CONTINUOUS_AUXILIARY_PIONEER) &&
+            (!pp.endDate || dayjs(pp.endDate).format("YYYY-MM-DD") >= range.startDate) &&
+            (!pp.startDate || dayjs(pp.startDate).format("YYYY-MM-DD") <= range.endDate)
           )
 
-        return isContinuous || isMonthAux
+        const isMonthAux =
+          pub.privilegesRelation?.some(
+            pp =>
+              (pp.privilege?.name === "Auxiliary Pioneer" || pp.privilege?.code === PrivilegeCode.AUXILIARY_PIONEER) &&
+              dayjs(pp.startDate).format("YYYY-MM-DD") <= range.endDate &&
+              dayjs(pp.endDate).format("YYYY-MM-DD") >= range.startDate
+          )
+
+        return Boolean(isContinuous || isMonthAux)
       })
       .map(pub => {
         const isContinuous =
-          pub.privileges?.includes("Auxiliar por Tempo Indeterminado") ||
-          pub.privileges?.includes("Auxiliar Indeterminado") ||
-          pub.privilegesRelation?.some(pp => pp.privilege?.name === "Continuous Auxiliary Pioneer")
+          pub.privilegesRelation?.some(pp =>
+            (pp.privilege?.name === "Continuous Auxiliary Pioneer" || pp.privilege?.code === PrivilegeCode.CONTINUOUS_AUXILIARY_PIONEER) &&
+            (!pp.endDate || dayjs(pp.endDate).format("YYYY-MM-DD") >= range.startDate) &&
+            (!pp.startDate || dayjs(pp.startDate).format("YYYY-MM-DD") <= range.endDate)
+          )
 
         return {
           publisherId: pub.id,
           fullName: pub.fullName,
           nickname: pub.nickname,
           privilegeName: isContinuous ? "Continuous Auxiliary Pioneer" : "Auxiliary Pioneer",
-          isContinuous,
+          isContinuous: Boolean(isContinuous),
         }
       })
 

@@ -421,30 +421,35 @@ class PublisherControler {
         });
         const result = allPublishers
             .filter(pub => {
-            var _a, _b, _c, _d, _e;
-            const isContinuous = ((_a = pub.privileges) === null || _a === void 0 ? void 0 : _a.includes("Auxiliar por Tempo Indeterminado")) ||
-                ((_b = pub.privileges) === null || _b === void 0 ? void 0 : _b.includes("Auxiliar Indeterminado")) ||
-                ((_c = pub.privilegesRelation) === null || _c === void 0 ? void 0 : _c.some(pp => { var _a; return ((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Continuous Auxiliary Pioneer"; }));
-            const isMonthAux = ((_d = pub.pioneerMonths) === null || _d === void 0 ? void 0 : _d.some(pm => pm.trim().toLowerCase() === formattedLegacyMonth.toLowerCase())) ||
-                ((_e = pub.privilegesRelation) === null || _e === void 0 ? void 0 : _e.some(pp => {
-                    var _a;
-                    return ((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Auxiliary Pioneer" &&
-                        (0, dayjs_1.default)(pp.startDate).format("YYYY-MM-DD") <= range.endDate &&
-                        (0, dayjs_1.default)(pp.endDate).format("YYYY-MM-DD") >= range.startDate;
-                }));
-            return isContinuous || isMonthAux;
+            var _a, _b;
+            const isContinuous = (_a = pub.privilegesRelation) === null || _a === void 0 ? void 0 : _a.some(pp => {
+                var _a, _b;
+                return (((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Continuous Auxiliary Pioneer" || ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.code) === privileges_1.PrivilegeCode.CONTINUOUS_AUXILIARY_PIONEER) &&
+                    (!pp.endDate || (0, dayjs_1.default)(pp.endDate).format("YYYY-MM-DD") >= range.startDate) &&
+                    (!pp.startDate || (0, dayjs_1.default)(pp.startDate).format("YYYY-MM-DD") <= range.endDate);
+            });
+            const isMonthAux = (_b = pub.privilegesRelation) === null || _b === void 0 ? void 0 : _b.some(pp => {
+                var _a, _b;
+                return (((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Auxiliary Pioneer" || ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.code) === privileges_1.PrivilegeCode.AUXILIARY_PIONEER) &&
+                    (0, dayjs_1.default)(pp.startDate).format("YYYY-MM-DD") <= range.endDate &&
+                    (0, dayjs_1.default)(pp.endDate).format("YYYY-MM-DD") >= range.startDate;
+            });
+            return Boolean(isContinuous || isMonthAux);
         })
             .map(pub => {
-            var _a, _b, _c;
-            const isContinuous = ((_a = pub.privileges) === null || _a === void 0 ? void 0 : _a.includes("Auxiliar por Tempo Indeterminado")) ||
-                ((_b = pub.privileges) === null || _b === void 0 ? void 0 : _b.includes("Auxiliar Indeterminado")) ||
-                ((_c = pub.privilegesRelation) === null || _c === void 0 ? void 0 : _c.some(pp => { var _a; return ((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Continuous Auxiliary Pioneer"; }));
+            var _a;
+            const isContinuous = (_a = pub.privilegesRelation) === null || _a === void 0 ? void 0 : _a.some(pp => {
+                var _a, _b;
+                return (((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Continuous Auxiliary Pioneer" || ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.code) === privileges_1.PrivilegeCode.CONTINUOUS_AUXILIARY_PIONEER) &&
+                    (!pp.endDate || (0, dayjs_1.default)(pp.endDate).format("YYYY-MM-DD") >= range.startDate) &&
+                    (!pp.startDate || (0, dayjs_1.default)(pp.startDate).format("YYYY-MM-DD") <= range.endDate);
+            });
             return {
                 publisherId: pub.id,
                 fullName: pub.fullName,
                 nickname: pub.nickname,
                 privilegeName: isContinuous ? "Continuous Auxiliary Pioneer" : "Auxiliary Pioneer",
-                isContinuous,
+                isContinuous: Boolean(isContinuous),
             };
         });
         return res.status(200).json(result);
