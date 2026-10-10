@@ -782,10 +782,7 @@ class CronJobController {
             // ==========================================
             // 10. LEMBRETES DE RELATÓRIO DE SERVIÇO DE CAMPO (Dias 1 a 20)
             // ==========================================
-            const querySimulateDay = req.query.simulateDay ? parseInt(req.query.simulateDay, 10) : undefined;
-            const forceTest = req.query.force === "true";
-            const targetPublisherId = req.query.publisher_id;
-            const currentDay = querySimulateDay !== null && querySimulateDay !== void 0 ? querySimulateDay : today.date();
+            const currentDay = today.date();
             if (currentDay >= 1 && currentDay <= 20) {
                 const targetPeriodDate = today.subtract(1, "month");
                 const targetMonthIndex = targetPeriodDate.month(); // 0 a 11
@@ -817,8 +814,6 @@ class CronJobController {
                 for (const user of usersWithPush) {
                     if (!user.publisher)
                         continue;
-                    if (targetPublisherId && user.publisher.id !== targetPublisherId)
-                        continue;
                     // Verifica se já enviou o relatório para o mês de referência (case-insensitive)
                     const pubReports = await reportRepository_1.reportRepository.find({
                         where: {
@@ -830,10 +825,9 @@ class CronJobController {
                         return ((_a = r.year) === null || _a === void 0 ? void 0 : _a.toString().trim()) === targetYear.trim() &&
                             ((_b = r.month) === null || _b === void 0 ? void 0 : _b.toString().trim().toLowerCase()) === targetMonthName.toLowerCase();
                     });
-                    // 1. Se já enviou o relatório, NUNCA notifica (a menos que ignoreReport=true para teste explícito)
-                    if (existingReport && req.query.ignoreReport !== "true") {
+                    // Se já enviou o relatório, não envia notificação
+                    if (existingReport)
                         continue;
-                    }
                     // Verifica a última notificação de relatório deste usuário
                     const lastReportNotification = await notificationRepository_1.notificationRepository.findOne({
                         where: {
@@ -843,21 +837,19 @@ class CronJobController {
                         order: { created_at: "DESC" },
                     });
                     const isDayOne = currentDay === 1;
-                    if (!forceTest) {
-                        if (isDayOne) {
-                            // No dia 1, se já enviou hoje, não duplica
-                            const alreadySentToday = lastReportNotification &&
-                                (0, dayjs_1.default)(lastReportNotification.created_at).isSame(today, "day");
-                            if (alreadySentToday)
+                    if (isDayOne) {
+                        // No dia 1, se já enviou hoje, não duplica
+                        const alreadySentToday = lastReportNotification &&
+                            (0, dayjs_1.default)(lastReportNotification.created_at).isSame(today, "day");
+                        if (alreadySentToday)
+                            continue;
+                    }
+                    else {
+                        // Dias 2 a 20: notifica apenas se passaram 2 ou mais dias desde a última notificação
+                        if (lastReportNotification) {
+                            const daysSinceLast = today.diff((0, dayjs_1.default)(lastReportNotification.created_at).startOf("day"), "day");
+                            if (daysSinceLast < 2) {
                                 continue;
-                        }
-                        else {
-                            // Dias 2 a 20: notifica apenas se passaram 2 ou mais dias desde a última notificação
-                            if (lastReportNotification) {
-                                const daysSinceLast = today.diff((0, dayjs_1.default)(lastReportNotification.created_at).startOf("day"), "day");
-                                if (daysSinceLast < 2) {
-                                    continue;
-                                }
                             }
                         }
                     }

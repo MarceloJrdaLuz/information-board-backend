@@ -898,11 +898,7 @@ class CronJobController {
             // ==========================================
             // 10. LEMBRETES DE RELATÓRIO DE SERVIÇO DE CAMPO (Dias 1 a 20)
             // ==========================================
-            const querySimulateDay = req.query.simulateDay ? parseInt(req.query.simulateDay as string, 10) : undefined
-            const forceTest = req.query.force === "true"
-            const targetPublisherId = req.query.publisher_id as string | undefined
-
-            const currentDay = querySimulateDay ?? today.date()
+            const currentDay = today.date()
             if (currentDay >= 1 && currentDay <= 20) {
                 const targetPeriodDate = today.subtract(1, "month")
                 const targetMonthIndex = targetPeriodDate.month() // 0 a 11
@@ -936,7 +932,6 @@ class CronJobController {
 
                 for (const user of usersWithPush) {
                     if (!user.publisher) continue
-                    if (targetPublisherId && user.publisher.id !== targetPublisherId) continue
 
                     // Verifica se já enviou o relatório para o mês de referência (case-insensitive)
                     const pubReports = await reportRepository.find({
@@ -951,10 +946,8 @@ class CronJobController {
                             r.month?.toString().trim().toLowerCase() === targetMonthName.toLowerCase()
                     )
 
-                    // 1. Se já enviou o relatório, NUNCA notifica (a menos que ignoreReport=true para teste explícito)
-                    if (existingReport && req.query.ignoreReport !== "true") {
-                        continue
-                    }
+                    // Se já enviou o relatório, não envia notificação
+                    if (existingReport) continue
 
                     // Verifica a última notificação de relatório deste usuário
                     const lastReportNotification = await notificationRepository.findOne({
@@ -967,23 +960,21 @@ class CronJobController {
 
                     const isDayOne = currentDay === 1
 
-                    if (!forceTest) {
-                        if (isDayOne) {
-                            // No dia 1, se já enviou hoje, não duplica
-                            const alreadySentToday =
-                                lastReportNotification &&
-                                dayjs(lastReportNotification.created_at).isSame(today, "day")
-                            if (alreadySentToday) continue
-                        } else {
-                            // Dias 2 a 20: notifica apenas se passaram 2 ou mais dias desde a última notificação
-                            if (lastReportNotification) {
-                                const daysSinceLast = today.diff(
-                                    dayjs(lastReportNotification.created_at).startOf("day"),
-                                    "day"
-                                )
-                                if (daysSinceLast < 2) {
-                                    continue
-                                }
+                    if (isDayOne) {
+                        // No dia 1, se já enviou hoje, não duplica
+                        const alreadySentToday =
+                            lastReportNotification &&
+                            dayjs(lastReportNotification.created_at).isSame(today, "day")
+                        if (alreadySentToday) continue
+                    } else {
+                        // Dias 2 a 20: notifica apenas se passaram 2 ou mais dias desde a última notificação
+                        if (lastReportNotification) {
+                            const daysSinceLast = today.diff(
+                                dayjs(lastReportNotification.created_at).startOf("day"),
+                                "day"
+                            )
+                            if (daysSinceLast < 2) {
+                                continue
                             }
                         }
                     }

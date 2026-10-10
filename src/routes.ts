@@ -162,7 +162,6 @@ routes.post("/push/subscribe", PushNotificationController.subscribe)
 routes.post("/push/unsubscribe", PushNotificationController.unsubscribe)
 routes.get("/push/status", PushNotificationController.getStatus)
 routes.post("/push/test", PushNotificationController.testNotification)
-routes.post("/push/test-report", PushNotificationController.testReportNotification)
 
 /* === Histórico de Notificações === */
 routes.get("/notifications", NotificationController.list)

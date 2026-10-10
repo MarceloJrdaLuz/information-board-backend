@@ -1,14 +1,9 @@
 import { Request, Response } from "express"
-import dayjs from "dayjs"
-import moment from "moment-timezone"
 import { BadRequestError } from "../../helpers/api-errors"
 import { decoder } from "../../middlewares/permissions"
 import { pushSubscriptionRepository } from "../../repositories/pushSubscriptionRepository"
 import { pushNotificationService } from "../../services/pushNotificationService"
-import { userRepository } from "../../repositories/userRepository"
-import { reportRepository } from "../../repositories/reportRepository"
 import { NotificationType } from "../../entities/Notification"
-import { Months } from "../../types/enumWeekDays"
 
 class PushNotificationController {
     /**
@@ -115,101 +110,6 @@ class PushNotificationController {
 
         return res.json({
             message: "Test notification sent",
-            ...result,
-        })
-    }
-
-    /**
-     * Envia notificação push de teste simulando lembrete de relatório para o usuário logado
-     */
-    async testReportNotification(req: Request, res: Response) {
-        const user = await decoder(req)
-        const isDayOne = req.query.dayOne === "true"
-        const force = req.query.force === "true"
-
-        const today = dayjs(moment().tz("America/Sao_Paulo").format("YYYY-MM-DD")).startOf("day")
-        const targetPeriodDate = today.subtract(1, "month")
-        const targetMonthIndex = targetPeriodDate.month()
-        const targetYear = targetPeriodDate.format("YYYY")
-
-        const MONTHS_BY_INDEX: Months[] = [
-            Months.JANEIRO,
-            Months.FEVEREIRO,
-            Months.MARCO,
-            Months.ABRIL,
-            Months.MAIO,
-            Months.JUNHO,
-            Months.JULHO,
-            Months.AGOSTO,
-            Months.SETEMBRO,
-            Months.OUTUBRO,
-            Months.NOVEMBRO,
-            Months.DEZEMBRO,
-        ]
-        const targetMonthName = MONTHS_BY_INDEX[targetMonthIndex]
-
-        const userWithRelations = await userRepository.findOne({
-            where: { id: user.id },
-            relations: ["publisher", "publisher.congregation", "congregation"],
-        })
-
-        if (!userWithRelations?.publisher) {
-            return res.status(400).json({
-                message: "Usuário não está vinculado a nenhum publicador.",
-            })
-        }
-
-        const publisherId = userWithRelations.publisher.id
-
-        // Verifica se já enviou o relatório para o mês de referência (case-insensitive)
-        const pubReports = await reportRepository.find({
-            where: {
-                publisher: { id: publisherId },
-            },
-        })
-
-        const existingReport = pubReports.find(
-            r =>
-                r.year?.toString().trim() === targetYear.trim() &&
-                r.month?.toString().trim().toLowerCase() === targetMonthName.toLowerCase()
-        )
-
-        if (existingReport && req.query.ignoreReport !== "true") {
-            return res.json({
-                message: `Você já enviou o relatório de ${targetMonthName}/${targetYear}! Por isso, a notificação não foi disparada.`,
-                alreadySubmitted: true,
-                report: existingReport,
-            })
-        }
-
-        const cong = userWithRelations?.publisher?.congregation || userWithRelations?.congregation
-        const congNumber = cong?.number
-        const reportUrl = congNumber ? `/${congNumber}/relatorio` : "/dashboard"
-
-        const title = isDayOne
-            ? `Relatório de Serviço de Campo`
-            : `Lembrete: Relatório de ${targetMonthName}`
-
-        const body = isDayOne
-            ? `O mês de ${targetMonthName} encerrou! Não se esqueça de enviar seu relatório de atividade.`
-            : `Você ainda não enviou seu relatório de ${targetMonthName}. Toque aqui para enviar.`
-
-        const result = await pushNotificationService.sendToUser(user.id, {
-            title,
-            body,
-            type: NotificationType.REPORT,
-            data: {
-                url: reportUrl,
-                type: NotificationType.REPORT,
-                month: targetMonthName,
-                year: targetYear,
-                isTest: true,
-            },
-        })
-
-        return res.json({
-            message: "Test report notification sent",
-            reportUrl,
             ...result,
         })
     }
