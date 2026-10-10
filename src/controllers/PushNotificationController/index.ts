@@ -6,6 +6,7 @@ import { decoder } from "../../middlewares/permissions"
 import { pushSubscriptionRepository } from "../../repositories/pushSubscriptionRepository"
 import { pushNotificationService } from "../../services/pushNotificationService"
 import { userRepository } from "../../repositories/userRepository"
+import { reportRepository } from "../../repositories/reportRepository"
 import { NotificationType } from "../../entities/Notification"
 import { Months } from "../../types/enumWeekDays"
 
@@ -124,6 +125,7 @@ class PushNotificationController {
     async testReportNotification(req: Request, res: Response) {
         const user = await decoder(req)
         const isDayOne = req.query.dayOne === "true"
+        const force = req.query.force === "true"
 
         const today = dayjs(moment().tz("America/Sao_Paulo").format("YYYY-MM-DD")).startOf("day")
         const targetPeriodDate = today.subtract(1, "month")
@@ -150,6 +152,34 @@ class PushNotificationController {
             where: { id: user.id },
             relations: ["publisher", "publisher.congregation", "congregation"],
         })
+
+        if (!userWithRelations?.publisher) {
+            return res.status(400).json({
+                message: "Usuário não está vinculado a nenhum publicador.",
+            })
+        }
+
+        const publisherId = userWithRelations.publisher.id
+
+        // Verifica se já enviou o relatório para o mês de referência (case-insensitive)
+        const pubReports = await reportRepository.find({
+            where: {
+                publisher: { id: publisherId },
+                year: targetYear,
+            },
+        })
+
+        const existingReport = pubReports.find(
+            r => r.month && r.month.toString().trim().toLowerCase() === targetMonthName.toLowerCase()
+        )
+
+        if (existingReport && !force) {
+            return res.json({
+                message: `Você já enviou o relatório de ${targetMonthName}/${targetYear}! Por isso, a notificação não foi disparada.`,
+                alreadySubmitted: true,
+                report: existingReport,
+            })
+        }
 
         const cong = userWithRelations?.publisher?.congregation || userWithRelations?.congregation
         const congNumber = cong?.number

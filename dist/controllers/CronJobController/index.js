@@ -819,14 +819,14 @@ class CronJobController {
                         continue;
                     if (targetPublisherId && user.publisher.id !== targetPublisherId)
                         continue;
-                    // Verifica se já enviou o relatório para o mês de referência
-                    const existingReport = await reportRepository_1.reportRepository.findOne({
+                    // Verifica se já enviou o relatório para o mês de referência (case-insensitive)
+                    const pubReports = await reportRepository_1.reportRepository.find({
                         where: {
                             publisher: { id: user.publisher.id },
-                            month: targetMonthName,
                             year: targetYear,
                         },
                     });
+                    const existingReport = pubReports.find(r => r.month && r.month.toString().trim().toLowerCase() === targetMonthName.toLowerCase());
                     // Verifica a última notificação de relatório deste usuário
                     const lastReportNotification = await notificationRepository_1.notificationRepository.findOne({
                         where: {

@@ -10,6 +10,7 @@ const permissions_1 = require("../../middlewares/permissions");
 const pushSubscriptionRepository_1 = require("../../repositories/pushSubscriptionRepository");
 const pushNotificationService_1 = require("../../services/pushNotificationService");
 const userRepository_1 = require("../../repositories/userRepository");
+const reportRepository_1 = require("../../repositories/reportRepository");
 const Notification_1 = require("../../entities/Notification");
 const enumWeekDays_1 = require("../../types/enumWeekDays");
 class PushNotificationController {
@@ -111,6 +112,7 @@ class PushNotificationController {
         var _a;
         const user = await (0, permissions_1.decoder)(req);
         const isDayOne = req.query.dayOne === "true";
+        const force = req.query.force === "true";
         const today = (0, dayjs_1.default)((0, moment_timezone_1.default)().tz("America/Sao_Paulo").format("YYYY-MM-DD")).startOf("day");
         const targetPeriodDate = today.subtract(1, "month");
         const targetMonthIndex = targetPeriodDate.month();
@@ -134,6 +136,27 @@ class PushNotificationController {
             where: { id: user.id },
             relations: ["publisher", "publisher.congregation", "congregation"],
         });
+        if (!(userWithRelations === null || userWithRelations === void 0 ? void 0 : userWithRelations.publisher)) {
+            return res.status(400).json({
+                message: "Usuário não está vinculado a nenhum publicador.",
+            });
+        }
+        const publisherId = userWithRelations.publisher.id;
+        // Verifica se já enviou o relatório para o mês de referência (case-insensitive)
+        const pubReports = await reportRepository_1.reportRepository.find({
+            where: {
+                publisher: { id: publisherId },
+                year: targetYear,
+            },
+        });
+        const existingReport = pubReports.find(r => r.month && r.month.toString().trim().toLowerCase() === targetMonthName.toLowerCase());
+        if (existingReport && !force) {
+            return res.json({
+                message: `Você já enviou o relatório de ${targetMonthName}/${targetYear}! Por isso, a notificação não foi disparada.`,
+                alreadySubmitted: true,
+                report: existingReport,
+            });
+        }
         const cong = ((_a = userWithRelations === null || userWithRelations === void 0 ? void 0 : userWithRelations.publisher) === null || _a === void 0 ? void 0 : _a.congregation) || (userWithRelations === null || userWithRelations === void 0 ? void 0 : userWithRelations.congregation);
         const congNumber = cong === null || cong === void 0 ? void 0 : cong.number;
         const reportUrl = congNumber ? `/${congNumber}/relatorio` : "/dashboard";
