@@ -125,6 +125,21 @@ class PublisherControler {
 
     if (!privilegesExists) throw new BadRequestError('Some privilege not exists')
 
+    const finalPrivileges = privileges ? [...privileges] : []
+    const hasAnyEcclesiasticalPrivilege = finalPrivileges.some(p =>
+      p === Privileges.PIONEIROREGULAR ||
+      p === Privileges.PIONEIROAUXILIAR ||
+      p === Privileges.AUXILIARINDETERMINADO ||
+      p === Privileges.AUXILIARTEMPOINDETERMINADO ||
+      p === Privileges.PIONEIROESPECIAL ||
+      p === Privileges.MISSIONARIOEMCAMPO ||
+      p === Privileges.ANCIAO ||
+      p === Privileges.SM
+    )
+    if ((hasAnyEcclesiasticalPrivilege || startDatePublisher) && !finalPrivileges.includes(Privileges.PUBLICADOR)) {
+      finalPrivileges.push(Privileges.PUBLICADOR)
+    }
+
     const newPublisher = publisherRepository.create({
       fullName,
       nickname,
@@ -132,7 +147,7 @@ class PublisherControler {
       hope,
       dateImmersed,
       birthDate,
-      privileges,
+      privileges: finalPrivileges,
       pioneerMonths: pioneerMonths || [],
       congregation,
       startPioneer,
@@ -149,8 +164,8 @@ class PublisherControler {
       throw new BadRequestError(err)
     })
 
-    if (privileges?.length) {
-      for (const privilegePT of privileges) {
+    if (finalPrivileges?.length) {
+      for (const privilegePT of finalPrivileges) {
         const privilegeEN = privilegePTtoEN[privilegePT];
         if (!privilegeEN || privilegeEN === "Auxiliary Pioneer") continue;
 
@@ -257,23 +272,40 @@ class PublisherControler {
       if (nicknameAlreadyExists) throw new BadRequestError('Nickname already exists too')
     }
 
+    let finalPrivileges = privileges !== undefined ? [...privileges] : undefined
+    if (finalPrivileges) {
+      const hasAnyEcclesiasticalPrivilege = finalPrivileges.some(p =>
+        p === Privileges.PIONEIROREGULAR ||
+        p === Privileges.PIONEIROAUXILIAR ||
+        p === Privileges.AUXILIARINDETERMINADO ||
+        p === Privileges.AUXILIARTEMPOINDETERMINADO ||
+        p === Privileges.PIONEIROESPECIAL ||
+        p === Privileges.MISSIONARIOEMCAMPO ||
+        p === Privileges.ANCIAO ||
+        p === Privileges.SM
+      )
+      if ((hasAnyEcclesiasticalPrivilege || startDatePublisher) && !finalPrivileges.includes(Privileges.PUBLICADOR)) {
+        finalPrivileges.push(Privileges.PUBLICADOR)
+      }
+    }
+
     const hasPioneerPrivilege =
-      privileges?.includes(Privileges.PIONEIROREGULAR) ||
-      privileges?.includes(Privileges.PIONEIROAUXILIAR) ||
-      privileges?.includes(Privileges.AUXILIARINDETERMINADO) ||
-      privileges?.includes(Privileges.AUXILIARTEMPOINDETERMINADO)
+      finalPrivileges?.includes(Privileges.PIONEIROREGULAR) ||
+      finalPrivileges?.includes(Privileges.PIONEIROAUXILIAR) ||
+      finalPrivileges?.includes(Privileges.AUXILIARINDETERMINADO) ||
+      finalPrivileges?.includes(Privileges.AUXILIARTEMPOINDETERMINADO)
 
     // Atualizar as propriedades do publisher
     publisher.fullName = fullName !== undefined ? fullName : publisher.fullName
     publisher.nickname = nickname !== undefined ? nickname : publisher.nickname
     publisher.gender = gender !== undefined ? gender : publisher.gender
     publisher.hope = hope !== undefined ? hope : publisher.hope
-    publisher.privileges = privileges !== undefined ? privileges : publisher.privileges
+    publisher.privileges = finalPrivileges !== undefined ? finalPrivileges : publisher.privileges
     publisher.pioneerMonths = pioneerMonths !== undefined ? pioneerMonths : publisher.pioneerMonths
     publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate
     publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed
     publisher.situation = situation !== undefined ? situation : publisher.situation
-    if (privileges && !hasPioneerPrivilege) {
+    if (finalPrivileges && !hasPioneerPrivilege) {
       publisher.startPioneer = null
     } else {
       publisher.startPioneer =
@@ -287,8 +319,8 @@ class PublisherControler {
     await publisherRepository.save(publisher)
 
     // Sincroniza privilégios contínuos / eclesiásticos
-    if (privileges !== undefined) {
-      const continuousPrivilegesPT = privileges.filter(p => p !== Privileges.PIONEIROAUXILIAR)
+    if (finalPrivileges !== undefined) {
+      const continuousPrivilegesPT = finalPrivileges.filter(p => p !== Privileges.PIONEIROAUXILIAR)
       const continuousPrivilegesEN = translatePrivilegesPTToEN(continuousPrivilegesPT)
       const codesGuess = continuousPrivilegesEN.map(n => n.toUpperCase().replace(/\s+/g, '_'))
 
@@ -310,6 +342,8 @@ class PublisherControler {
       // Encerra privilégios que deixaram de existir com endDate para preservar histórico
       for (const cp of currentPrivileges) {
         if (cp.privilege?.code === PrivilegeCode.AUXILIARY_PIONEER || cp.privilege?.name === "Auxiliary Pioneer") continue
+        // Nunca encerra Publisher se a pessoa ainda possui algum privilégio contínuo ativo
+        if ((cp.privilege?.code === PrivilegeCode.PUBLISHER || cp.privilege?.name === "Publisher") && continuousIds.length > 0) continue
         if (!continuousIds.includes(cp.privilege?.id)) {
           if (!cp.endDate) {
             cp.endDate = new Date()
@@ -319,10 +353,25 @@ class PublisherControler {
       }
 
       for (const privEntity of privilegeEntities) {
-        const activeInstance = currentPrivileges.find(cp => cp.privilege?.id === privEntity.id && !cp.endDate)
+        let activeInstance = currentPrivileges.find(cp => cp.privilege?.id === privEntity.id && !cp.endDate)
         const isPioneerRole = ["Regular Pioneer", "Continuous Auxiliary Pioneer", "Special Pioneer"].includes(privEntity.name) ||
           ["REGULAR_PIONEER", "CONTINUOUS_AUXILIARY_PIONEER", "SPECIAL_PIONEER"].includes(privEntity.code)
         const isPublisherRole = ["Publisher"].includes(privEntity.name) || privEntity.code === PrivilegeCode.PUBLISHER
+
+        // Se o privilégio foi encerrado previamente (por exemplo, por este bug), reabre-o limpando endDate
+        if (!activeInstance) {
+          const previouslyClosedInstance = currentPrivileges.find(cp => cp.privilege?.id === privEntity.id && cp.endDate)
+          if (previouslyClosedInstance) {
+            previouslyClosedInstance.endDate = null
+            if (isPioneerRole && startPioneer !== undefined) {
+              previouslyClosedInstance.startDate = startPioneer ? new Date(startPioneer) : previouslyClosedInstance.startDate
+            } else if (isPublisherRole && startDatePublisher !== undefined) {
+              previouslyClosedInstance.startDate = startDatePublisher ? new Date(startDatePublisher) : previouslyClosedInstance.startDate
+            }
+            await publisherPrivilegeRepository.save(previouslyClosedInstance)
+            activeInstance = previouslyClosedInstance
+          }
+        }
 
         if (!activeInstance) {
           let sDate: Date | null = null

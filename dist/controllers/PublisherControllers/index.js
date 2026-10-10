@@ -64,6 +64,18 @@ class PublisherControler {
         }
         if (!privilegesExists)
             throw new api_errors_1.BadRequestError('Some privilege not exists');
+        const finalPrivileges = privileges ? [...privileges] : [];
+        const hasAnyEcclesiasticalPrivilege = finalPrivileges.some(p => p === privileges_1.Privileges.PIONEIROREGULAR ||
+            p === privileges_1.Privileges.PIONEIROAUXILIAR ||
+            p === privileges_1.Privileges.AUXILIARINDETERMINADO ||
+            p === privileges_1.Privileges.AUXILIARTEMPOINDETERMINADO ||
+            p === privileges_1.Privileges.PIONEIROESPECIAL ||
+            p === privileges_1.Privileges.MISSIONARIOEMCAMPO ||
+            p === privileges_1.Privileges.ANCIAO ||
+            p === privileges_1.Privileges.SM);
+        if ((hasAnyEcclesiasticalPrivilege || startDatePublisher) && !finalPrivileges.includes(privileges_1.Privileges.PUBLICADOR)) {
+            finalPrivileges.push(privileges_1.Privileges.PUBLICADOR);
+        }
         const newPublisher = publisherRepository_1.publisherRepository.create({
             fullName,
             nickname,
@@ -71,7 +83,7 @@ class PublisherControler {
             hope,
             dateImmersed,
             birthDate,
-            privileges,
+            privileges: finalPrivileges,
             pioneerMonths: pioneerMonths || [],
             congregation,
             startPioneer,
@@ -86,8 +98,8 @@ class PublisherControler {
         await publisherRepository_1.publisherRepository.save(newPublisher).catch(err => {
             throw new api_errors_1.BadRequestError(err);
         });
-        if (privileges === null || privileges === void 0 ? void 0 : privileges.length) {
-            for (const privilegePT of privileges) {
+        if (finalPrivileges === null || finalPrivileges === void 0 ? void 0 : finalPrivileges.length) {
+            for (const privilegePT of finalPrivileges) {
                 const privilegeEN = privilegesTranslations_1.privilegePTtoEN[privilegePT];
                 if (!privilegeEN || privilegeEN === "Auxiliary Pioneer")
                     continue;
@@ -144,7 +156,7 @@ class PublisherControler {
         return res.status(201).json(newPublisher);
     }
     async update(req, res) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d, _e;
         const { publisher_id: id } = req.params;
         const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, startDatePublisher, emergencyContact_id, user_id } = req.body;
         const publisher = await publisherRepository_1.publisherRepository.findOne({
@@ -183,21 +195,35 @@ class PublisherControler {
             if (nicknameAlreadyExists)
                 throw new api_errors_1.BadRequestError('Nickname already exists too');
         }
-        const hasPioneerPrivilege = (privileges === null || privileges === void 0 ? void 0 : privileges.includes(privileges_1.Privileges.PIONEIROREGULAR)) ||
-            (privileges === null || privileges === void 0 ? void 0 : privileges.includes(privileges_1.Privileges.PIONEIROAUXILIAR)) ||
-            (privileges === null || privileges === void 0 ? void 0 : privileges.includes(privileges_1.Privileges.AUXILIARINDETERMINADO)) ||
-            (privileges === null || privileges === void 0 ? void 0 : privileges.includes(privileges_1.Privileges.AUXILIARTEMPOINDETERMINADO));
+        let finalPrivileges = privileges !== undefined ? [...privileges] : undefined;
+        if (finalPrivileges) {
+            const hasAnyEcclesiasticalPrivilege = finalPrivileges.some(p => p === privileges_1.Privileges.PIONEIROREGULAR ||
+                p === privileges_1.Privileges.PIONEIROAUXILIAR ||
+                p === privileges_1.Privileges.AUXILIARINDETERMINADO ||
+                p === privileges_1.Privileges.AUXILIARTEMPOINDETERMINADO ||
+                p === privileges_1.Privileges.PIONEIROESPECIAL ||
+                p === privileges_1.Privileges.MISSIONARIOEMCAMPO ||
+                p === privileges_1.Privileges.ANCIAO ||
+                p === privileges_1.Privileges.SM);
+            if ((hasAnyEcclesiasticalPrivilege || startDatePublisher) && !finalPrivileges.includes(privileges_1.Privileges.PUBLICADOR)) {
+                finalPrivileges.push(privileges_1.Privileges.PUBLICADOR);
+            }
+        }
+        const hasPioneerPrivilege = (finalPrivileges === null || finalPrivileges === void 0 ? void 0 : finalPrivileges.includes(privileges_1.Privileges.PIONEIROREGULAR)) ||
+            (finalPrivileges === null || finalPrivileges === void 0 ? void 0 : finalPrivileges.includes(privileges_1.Privileges.PIONEIROAUXILIAR)) ||
+            (finalPrivileges === null || finalPrivileges === void 0 ? void 0 : finalPrivileges.includes(privileges_1.Privileges.AUXILIARINDETERMINADO)) ||
+            (finalPrivileges === null || finalPrivileges === void 0 ? void 0 : finalPrivileges.includes(privileges_1.Privileges.AUXILIARTEMPOINDETERMINADO));
         // Atualizar as propriedades do publisher
         publisher.fullName = fullName !== undefined ? fullName : publisher.fullName;
         publisher.nickname = nickname !== undefined ? nickname : publisher.nickname;
         publisher.gender = gender !== undefined ? gender : publisher.gender;
         publisher.hope = hope !== undefined ? hope : publisher.hope;
-        publisher.privileges = privileges !== undefined ? privileges : publisher.privileges;
+        publisher.privileges = finalPrivileges !== undefined ? finalPrivileges : publisher.privileges;
         publisher.pioneerMonths = pioneerMonths !== undefined ? pioneerMonths : publisher.pioneerMonths;
         publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate;
         publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed;
         publisher.situation = situation !== undefined ? situation : publisher.situation;
-        if (privileges && !hasPioneerPrivilege) {
+        if (finalPrivileges && !hasPioneerPrivilege) {
             publisher.startPioneer = null;
         }
         else {
@@ -210,8 +236,8 @@ class PublisherControler {
         publisher.address = address !== undefined ? address : publisher.address;
         await publisherRepository_1.publisherRepository.save(publisher);
         // Sincroniza privilégios contínuos / eclesiásticos
-        if (privileges !== undefined) {
-            const continuousPrivilegesPT = privileges.filter(p => p !== privileges_1.Privileges.PIONEIROAUXILIAR);
+        if (finalPrivileges !== undefined) {
+            const continuousPrivilegesPT = finalPrivileges.filter(p => p !== privileges_1.Privileges.PIONEIROAUXILIAR);
             const continuousPrivilegesEN = (0, privilegesTranslations_1.translatePrivilegesPTToEN)(continuousPrivilegesPT);
             const codesGuess = continuousPrivilegesEN.map(n => n.toUpperCase().replace(/\s+/g, '_'));
             const privilegeEntities = continuousPrivilegesEN.length > 0
@@ -231,7 +257,10 @@ class PublisherControler {
             for (const cp of currentPrivileges) {
                 if (((_a = cp.privilege) === null || _a === void 0 ? void 0 : _a.code) === privileges_1.PrivilegeCode.AUXILIARY_PIONEER || ((_b = cp.privilege) === null || _b === void 0 ? void 0 : _b.name) === "Auxiliary Pioneer")
                     continue;
-                if (!continuousIds.includes((_c = cp.privilege) === null || _c === void 0 ? void 0 : _c.id)) {
+                // Nunca encerra Publisher se a pessoa ainda possui algum privilégio contínuo ativo
+                if ((((_c = cp.privilege) === null || _c === void 0 ? void 0 : _c.code) === privileges_1.PrivilegeCode.PUBLISHER || ((_d = cp.privilege) === null || _d === void 0 ? void 0 : _d.name) === "Publisher") && continuousIds.length > 0)
+                    continue;
+                if (!continuousIds.includes((_e = cp.privilege) === null || _e === void 0 ? void 0 : _e.id)) {
                     if (!cp.endDate) {
                         cp.endDate = new Date();
                         await publisherPrivilegeRepository_1.publisherPrivilegeRepository.save(cp);
@@ -239,10 +268,25 @@ class PublisherControler {
                 }
             }
             for (const privEntity of privilegeEntities) {
-                const activeInstance = currentPrivileges.find(cp => { var _a; return ((_a = cp.privilege) === null || _a === void 0 ? void 0 : _a.id) === privEntity.id && !cp.endDate; });
+                let activeInstance = currentPrivileges.find(cp => { var _a; return ((_a = cp.privilege) === null || _a === void 0 ? void 0 : _a.id) === privEntity.id && !cp.endDate; });
                 const isPioneerRole = ["Regular Pioneer", "Continuous Auxiliary Pioneer", "Special Pioneer"].includes(privEntity.name) ||
                     ["REGULAR_PIONEER", "CONTINUOUS_AUXILIARY_PIONEER", "SPECIAL_PIONEER"].includes(privEntity.code);
                 const isPublisherRole = ["Publisher"].includes(privEntity.name) || privEntity.code === privileges_1.PrivilegeCode.PUBLISHER;
+                // Se o privilégio foi encerrado previamente (por exemplo, por este bug), reabre-o limpando endDate
+                if (!activeInstance) {
+                    const previouslyClosedInstance = currentPrivileges.find(cp => { var _a; return ((_a = cp.privilege) === null || _a === void 0 ? void 0 : _a.id) === privEntity.id && cp.endDate; });
+                    if (previouslyClosedInstance) {
+                        previouslyClosedInstance.endDate = null;
+                        if (isPioneerRole && startPioneer !== undefined) {
+                            previouslyClosedInstance.startDate = startPioneer ? new Date(startPioneer) : previouslyClosedInstance.startDate;
+                        }
+                        else if (isPublisherRole && startDatePublisher !== undefined) {
+                            previouslyClosedInstance.startDate = startDatePublisher ? new Date(startDatePublisher) : previouslyClosedInstance.startDate;
+                        }
+                        await publisherPrivilegeRepository_1.publisherPrivilegeRepository.save(previouslyClosedInstance);
+                        activeInstance = previouslyClosedInstance;
+                    }
+                }
                 if (!activeInstance) {
                     let sDate = null;
                     if (isPioneerRole) {

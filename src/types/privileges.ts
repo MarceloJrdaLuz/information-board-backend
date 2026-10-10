@@ -5,6 +5,7 @@ export enum Privileges {
     PIONEIROAUXILIAR = 'Pioneiro Auxiliar',
     PIONEIROREGULAR = 'Pioneiro Regular',
     PIONEIROESPECIAL = 'Pioneiro Especial',
+    MISSIONARIOEMCAMPO = 'Missionário em Campo',
     AUXILIARTEMPOINDETERMINADO = 'Auxiliar por Tempo Indeterminado',
     AUXILIARINDETERMINADO = 'Auxiliar Indeterminado',
     ORADOR = "Orador",

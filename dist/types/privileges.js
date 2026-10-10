@@ -9,6 +9,7 @@ var Privileges;
     Privileges["PIONEIROAUXILIAR"] = "Pioneiro Auxiliar";
     Privileges["PIONEIROREGULAR"] = "Pioneiro Regular";
     Privileges["PIONEIROESPECIAL"] = "Pioneiro Especial";
+    Privileges["MISSIONARIOEMCAMPO"] = "Mission\u00E1rio em Campo";
     Privileges["AUXILIARTEMPOINDETERMINADO"] = "Auxiliar por Tempo Indeterminado";
     Privileges["AUXILIARINDETERMINADO"] = "Auxiliar Indeterminado";
     Privileges["ORADOR"] = "Orador";
