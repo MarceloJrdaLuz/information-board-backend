@@ -27,6 +27,10 @@ import { publisherReminderRepository } from "../../repositories/publisherReminde
 import { territoryHistoryRepository } from "../../repositories/territoryHistoryRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
 import { pushNotificationService } from "../../services/pushNotificationService"
+import { notificationRepository } from "../../repositories/notificationRepository"
+import { userRepository } from "../../repositories/userRepository"
+import { Situation } from "../../entities/Publisher"
+import { Months } from "../../types/enumWeekDays"
 import { MechanicalMeetingType, MechanicalRole, MechanicalRoleLabels } from "../../types/mechanical"
 
 class CronJobController {
@@ -379,7 +383,7 @@ class CronJobController {
      * Cron Job diário para disparar notificações push de lembretes pessoais e designações
      */
     async dispatchDailyNotifications(req: Request, res: Response) {
-        const today = dayjs().startOf("day")
+        const today = dayjs(moment().tz("America/Sao_Paulo").format("YYYY-MM-DD")).startOf("day")
         const todayStr = today.format("YYYY-MM-DD")
         const tomorrow = today.add(1, "day")
         const tomorrowStr = tomorrow.format("YYYY-MM-DD")
@@ -888,6 +892,117 @@ class CronJobController {
                             }
                         }, "MIDWEEK_WEEKLY_DIGEST", { scheduleId: mechSched.id })
                     }
+                }
+            }
+
+            // ==========================================
+            // 10. LEMBRETES DE RELATÓRIO DE SERVIÇO DE CAMPO (Dias 1 a 20)
+            // ==========================================
+            const currentDay = today.date()
+            if (currentDay >= 1 && currentDay <= 20) {
+                const targetPeriodDate = today.subtract(1, "month")
+                const targetMonthIndex = targetPeriodDate.month() // 0 a 11
+                const targetYear = targetPeriodDate.format("YYYY")
+
+                const MONTHS_BY_INDEX: Months[] = [
+                    Months.JANEIRO,
+                    Months.FEVEREIRO,
+                    Months.MARCO,
+                    Months.ABRIL,
+                    Months.MAIO,
+                    Months.JUNHO,
+                    Months.JULHO,
+                    Months.AGOSTO,
+                    Months.SETEMBRO,
+                    Months.OUTUBRO,
+                    Months.NOVEMBRO,
+                    Months.DEZEMBRO,
+                ]
+                const targetMonthName = MONTHS_BY_INDEX[targetMonthIndex]
+
+                // Buscar usuários com notificações ativas vinculados a publicadores ativos
+                const usersWithPush = await userRepository
+                    .createQueryBuilder("user")
+                    .innerJoinAndSelect("user.pushSubscriptions", "sub")
+                    .innerJoinAndSelect("user.publisher", "publisher")
+                    .leftJoinAndSelect("publisher.congregation", "congregation")
+                    .leftJoinAndSelect("user.congregation", "userCongregation")
+                    .where("publisher.situation = :situation", { situation: Situation.Ativo })
+                    .getMany()
+
+                for (const user of usersWithPush) {
+                    if (!user.publisher) continue
+
+                    // Verifica se já enviou o relatório para o mês de referência
+                    const existingReport = await reportRepository.findOne({
+                        where: {
+                            publisher: { id: user.publisher.id },
+                            month: targetMonthName,
+                            year: targetYear,
+                        },
+                    })
+
+                    // Se já enviou, não notifica
+                    if (existingReport) continue
+
+                    // Verifica a última notificação de relatório deste usuário
+                    const lastReportNotification = await notificationRepository.findOne({
+                        where: {
+                            user_id: user.id,
+                            type: NotificationType.REPORT,
+                        },
+                        order: { created_at: "DESC" },
+                    })
+
+                    const isDayOne = currentDay === 1
+
+                    if (isDayOne) {
+                        // No dia 1, se já enviou hoje, não duplica
+                        const alreadySentToday =
+                            lastReportNotification &&
+                            dayjs(lastReportNotification.created_at).isSame(today, "day")
+                        if (alreadySentToday) continue
+                    } else {
+                        // Dias 2 a 20: notifica apenas se passaram 2 ou mais dias desde a última notificação
+                        if (lastReportNotification) {
+                            const daysSinceLast = today.diff(
+                                dayjs(lastReportNotification.created_at).startOf("day"),
+                                "day"
+                            )
+                            if (daysSinceLast < 2) {
+                                continue
+                            }
+                        }
+                    }
+
+                    const cong = user.publisher.congregation || user.congregation
+                    const congNumber = cong?.number
+                    const reportUrl = congNumber ? `/${congNumber}/relatorio` : "/dashboard"
+
+                    const title = isDayOne
+                        ? `Relatório de Serviço de Campo`
+                        : `Lembrete: Relatório de ${targetMonthName}`
+
+                    const body = isDayOne
+                        ? `O mês de ${targetMonthName} encerrou! Não se esqueça de enviar seu relatório de atividade.`
+                        : `Você ainda não enviou seu relatório de ${targetMonthName}. Toque aqui para enviar.`
+
+                    await sendNotification(
+                        user.publisher.id,
+                        {
+                            title,
+                            body,
+                            type: NotificationType.REPORT,
+                            data: {
+                                url: reportUrl,
+                                type: NotificationType.REPORT,
+                                month: targetMonthName,
+                                year: targetYear,
+                            },
+                        },
+                        "REPORT_REMINDER",
+                        { publisherId: user.publisher.id, month: targetMonthName, year: targetYear }
+                    )
                 }
             }
 

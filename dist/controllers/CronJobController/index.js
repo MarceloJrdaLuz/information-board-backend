@@ -31,6 +31,10 @@ const publisherReminderRepository_1 = require("../../repositories/publisherRemin
 const territoryHistoryRepository_1 = require("../../repositories/territoryHistoryRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 const pushNotificationService_1 = require("../../services/pushNotificationService");
+const notificationRepository_1 = require("../../repositories/notificationRepository");
+const userRepository_1 = require("../../repositories/userRepository");
+const Publisher_1 = require("../../entities/Publisher");
+const enumWeekDays_1 = require("../../types/enumWeekDays");
 const mechanical_1 = require("../../types/mechanical");
 class CronJobController {
     async deleteExpiredNotices(req, res) {
@@ -315,7 +319,7 @@ class CronJobController {
      */
     async dispatchDailyNotifications(req, res) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20;
-        const today = (0, dayjs_1.default)().startOf("day");
+        const today = (0, dayjs_1.default)((0, moment_timezone_1.default)().tz("America/Sao_Paulo").format("YYYY-MM-DD")).startOf("day");
         const todayStr = today.format("YYYY-MM-DD");
         const tomorrow = today.add(1, "day");
         const tomorrowStr = tomorrow.format("YYYY-MM-DD");
@@ -773,6 +777,99 @@ class CronJobController {
                             }
                         }, "MIDWEEK_WEEKLY_DIGEST", { scheduleId: mechSched.id });
                     }
+                }
+            }
+            // ==========================================
+            // 10. LEMBRETES DE RELATÓRIO DE SERVIÇO DE CAMPO (Dias 1 a 20)
+            // ==========================================
+            const currentDay = today.date();
+            if (currentDay >= 1 && currentDay <= 20) {
+                const targetPeriodDate = today.subtract(1, "month");
+                const targetMonthIndex = targetPeriodDate.month(); // 0 a 11
+                const targetYear = targetPeriodDate.format("YYYY");
+                const MONTHS_BY_INDEX = [
+                    enumWeekDays_1.Months.JANEIRO,
+                    enumWeekDays_1.Months.FEVEREIRO,
+                    enumWeekDays_1.Months.MARCO,
+                    enumWeekDays_1.Months.ABRIL,
+                    enumWeekDays_1.Months.MAIO,
+                    enumWeekDays_1.Months.JUNHO,
+                    enumWeekDays_1.Months.JULHO,
+                    enumWeekDays_1.Months.AGOSTO,
+                    enumWeekDays_1.Months.SETEMBRO,
+                    enumWeekDays_1.Months.OUTUBRO,
+                    enumWeekDays_1.Months.NOVEMBRO,
+                    enumWeekDays_1.Months.DEZEMBRO,
+                ];
+                const targetMonthName = MONTHS_BY_INDEX[targetMonthIndex];
+                // Buscar usuários com notificações ativas vinculados a publicadores ativos
+                const usersWithPush = await userRepository_1.userRepository
+                    .createQueryBuilder("user")
+                    .innerJoinAndSelect("user.pushSubscriptions", "sub")
+                    .innerJoinAndSelect("user.publisher", "publisher")
+                    .leftJoinAndSelect("publisher.congregation", "congregation")
+                    .leftJoinAndSelect("user.congregation", "userCongregation")
+                    .where("publisher.situation = :situation", { situation: Publisher_1.Situation.Ativo })
+                    .getMany();
+                for (const user of usersWithPush) {
+                    if (!user.publisher)
+                        continue;
+                    // Verifica se já enviou o relatório para o mês de referência
+                    const existingReport = await reportRepository_1.reportRepository.findOne({
+                        where: {
+                            publisher: { id: user.publisher.id },
+                            month: targetMonthName,
+                            year: targetYear,
+                        },
+                    });
+                    // Se já enviou, não notifica
+                    if (existingReport)
+                        continue;
+                    // Verifica a última notificação de relatório deste usuário
+                    const lastReportNotification = await notificationRepository_1.notificationRepository.findOne({
+                        where: {
+                            user_id: user.id,
+                            type: Notification_1.NotificationType.REPORT,
+                        },
+                        order: { created_at: "DESC" },
+                    });
+                    const isDayOne = currentDay === 1;
+                    if (isDayOne) {
+                        // No dia 1, se já enviou hoje, não duplica
+                        const alreadySentToday = lastReportNotification &&
+                            (0, dayjs_1.default)(lastReportNotification.created_at).isSame(today, "day");
+                        if (alreadySentToday)
+                            continue;
+                    }
+                    else {
+                        // Dias 2 a 20: notifica apenas se passaram 2 ou mais dias desde a última notificação
+                        if (lastReportNotification) {
+                            const daysSinceLast = today.diff((0, dayjs_1.default)(lastReportNotification.created_at).startOf("day"), "day");
+                            if (daysSinceLast < 2) {
+                                continue;
+                            }
+                        }
+                    }
+                    const cong = user.publisher.congregation || user.congregation;
+                    const congNumber = cong === null || cong === void 0 ? void 0 : cong.number;
+                    const reportUrl = congNumber ? `/${congNumber}/relatorio` : "/dashboard";
+                    const title = isDayOne
+                        ? `Relatório de Serviço de Campo`
+                        : `Lembrete: Relatório de ${targetMonthName}`;
+                    const body = isDayOne
+                        ? `O mês de ${targetMonthName} encerrou! Não se esqueça de enviar seu relatório de atividade.`
+                        : `Você ainda não enviou seu relatório de ${targetMonthName}. Toque aqui para enviar.`;
+                    await sendNotification(user.publisher.id, {
+                        title,
+                        body,
+                        type: Notification_1.NotificationType.REPORT,
+                        data: {
+                            url: reportUrl,
+                            type: Notification_1.NotificationType.REPORT,
+                            month: targetMonthName,
+                            year: targetYear,
+                        },
+                    }, "REPORT_REMINDER", { publisherId: user.publisher.id, month: targetMonthName, year: targetYear });
                 }
             }
             return res.json({
