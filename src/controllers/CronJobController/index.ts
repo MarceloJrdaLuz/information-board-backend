@@ -942,13 +942,19 @@ class CronJobController {
                     const pubReports = await reportRepository.find({
                         where: {
                             publisher: { id: user.publisher.id },
-                            year: targetYear,
                         },
                     })
 
                     const existingReport = pubReports.find(
-                        r => r.month && r.month.toString().trim().toLowerCase() === targetMonthName.toLowerCase()
+                        r =>
+                            r.year?.toString().trim() === targetYear.trim() &&
+                            r.month?.toString().trim().toLowerCase() === targetMonthName.toLowerCase()
                     )
+
+                    // 1. Se já enviou o relatório, NUNCA notifica (a menos que ignoreReport=true para teste explícito)
+                    if (existingReport && req.query.ignoreReport !== "true") {
+                        continue
+                    }
 
                     // Verifica a última notificação de relatório deste usuário
                     const lastReportNotification = await notificationRepository.findOne({
@@ -962,9 +968,6 @@ class CronJobController {
                     const isDayOne = currentDay === 1
 
                     if (!forceTest) {
-                        // Se já enviou, não notifica
-                        if (existingReport) continue
-
                         if (isDayOne) {
                             // No dia 1, se já enviou hoje, não duplica
                             const alreadySentToday =

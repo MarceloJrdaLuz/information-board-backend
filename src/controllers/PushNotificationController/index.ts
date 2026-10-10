@@ -165,15 +165,16 @@ class PushNotificationController {
         const pubReports = await reportRepository.find({
             where: {
                 publisher: { id: publisherId },
-                year: targetYear,
             },
         })
 
         const existingReport = pubReports.find(
-            r => r.month && r.month.toString().trim().toLowerCase() === targetMonthName.toLowerCase()
+            r =>
+                r.year?.toString().trim() === targetYear.trim() &&
+                r.month?.toString().trim().toLowerCase() === targetMonthName.toLowerCase()
         )
 
-        if (existingReport && !force) {
+        if (existingReport && req.query.ignoreReport !== "true") {
             return res.json({
                 message: `Você já enviou o relatório de ${targetMonthName}/${targetYear}! Por isso, a notificação não foi disparada.`,
                 alreadySubmitted: true,
