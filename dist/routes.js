@@ -144,6 +144,7 @@ routes.post("/push/subscribe", PushNotificationController_1.default.subscribe);
 routes.post("/push/unsubscribe", PushNotificationController_1.default.unsubscribe);
 routes.get("/push/status", PushNotificationController_1.default.getStatus);
 routes.post("/push/test", PushNotificationController_1.default.testNotification);
+routes.post("/push/test-report", PushNotificationController_1.default.testReportNotification);
 /* === Histórico de Notificações === */
 routes.get("/notifications", NotificationController_1.default.list);
 routes.get("/notifications/unread-count", NotificationController_1.default.getUnreadCount);

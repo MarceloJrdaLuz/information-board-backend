@@ -1,10 +1,17 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const dayjs_1 = __importDefault(require("dayjs"));
+const moment_timezone_1 = __importDefault(require("moment-timezone"));
 const api_errors_1 = require("../../helpers/api-errors");
 const permissions_1 = require("../../middlewares/permissions");
 const pushSubscriptionRepository_1 = require("../../repositories/pushSubscriptionRepository");
 const pushNotificationService_1 = require("../../services/pushNotificationService");
+const userRepository_1 = require("../../repositories/userRepository");
 const Notification_1 = require("../../entities/Notification");
+const enumWeekDays_1 = require("../../types/enumWeekDays");
 class PushNotificationController {
     /**
      * Retorna a chave pública VAPID para registro no navegador
@@ -94,6 +101,63 @@ class PushNotificationController {
         });
         return res.json({
             message: "Test notification sent",
+            ...result,
+        });
+    }
+    /**
+     * Envia notificação push de teste simulando lembrete de relatório para o usuário logado
+     */
+    async testReportNotification(req, res) {
+        var _a;
+        const user = await (0, permissions_1.decoder)(req);
+        const isDayOne = req.query.dayOne === "true";
+        const today = (0, dayjs_1.default)((0, moment_timezone_1.default)().tz("America/Sao_Paulo").format("YYYY-MM-DD")).startOf("day");
+        const targetPeriodDate = today.subtract(1, "month");
+        const targetMonthIndex = targetPeriodDate.month();
+        const targetYear = targetPeriodDate.format("YYYY");
+        const MONTHS_BY_INDEX = [
+            enumWeekDays_1.Months.JANEIRO,
+            enumWeekDays_1.Months.FEVEREIRO,
+            enumWeekDays_1.Months.MARCO,
+            enumWeekDays_1.Months.ABRIL,
+            enumWeekDays_1.Months.MAIO,
+            enumWeekDays_1.Months.JUNHO,
+            enumWeekDays_1.Months.JULHO,
+            enumWeekDays_1.Months.AGOSTO,
+            enumWeekDays_1.Months.SETEMBRO,
+            enumWeekDays_1.Months.OUTUBRO,
+            enumWeekDays_1.Months.NOVEMBRO,
+            enumWeekDays_1.Months.DEZEMBRO,
+        ];
+        const targetMonthName = MONTHS_BY_INDEX[targetMonthIndex];
+        const userWithRelations = await userRepository_1.userRepository.findOne({
+            where: { id: user.id },
+            relations: ["publisher", "publisher.congregation", "congregation"],
+        });
+        const cong = ((_a = userWithRelations === null || userWithRelations === void 0 ? void 0 : userWithRelations.publisher) === null || _a === void 0 ? void 0 : _a.congregation) || (userWithRelations === null || userWithRelations === void 0 ? void 0 : userWithRelations.congregation);
+        const congNumber = cong === null || cong === void 0 ? void 0 : cong.number;
+        const reportUrl = congNumber ? `/${congNumber}/relatorio` : "/dashboard";
+        const title = isDayOne
+            ? `Relatório de Serviço de Campo`
+            : `Lembrete: Relatório de ${targetMonthName}`;
+        const body = isDayOne
+            ? `O mês de ${targetMonthName} encerrou! Não se esqueça de enviar seu relatório de atividade.`
+            : `Você ainda não enviou seu relatório de ${targetMonthName}. Toque aqui para enviar.`;
+        const result = await pushNotificationService_1.pushNotificationService.sendToUser(user.id, {
+            title,
+            body,
+            type: Notification_1.NotificationType.REPORT,
+            data: {
+                url: reportUrl,
+                type: Notification_1.NotificationType.REPORT,
+                month: targetMonthName,
+                year: targetYear,
+                isTest: true,
+            },
+        });
+        return res.json({
+            message: "Test report notification sent",
+            reportUrl,
             ...result,
         });
     }
