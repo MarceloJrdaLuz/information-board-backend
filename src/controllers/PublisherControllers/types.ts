@@ -37,9 +37,9 @@ export interface BodyPublisherCreateTypes {
 export interface BodyPublisherUpdateTypes {
     fullName?: string
     nickname?: string
-    dateImmersed?: string
+    dateImmersed?: string | null
     startPioneer?: string | null
-    birthDate?: string
+    birthDate?: string | null
     privileges?: Privileges[]
     pioneerMonths?: string[]
     hope: Hope
@@ -47,7 +47,7 @@ export interface BodyPublisherUpdateTypes {
     situation?: Situation
     phone?: string
     address?: string
-    emergencyContact_id?: string
+    emergencyContact_id?: string | null
     user_id?: string | null
     startDatePublisher?: string | null
 }

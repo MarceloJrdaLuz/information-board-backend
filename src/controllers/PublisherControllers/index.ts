@@ -248,9 +248,13 @@ class PublisherControler {
       }
     }
 
-    if (emergencyContact_id) {
-      const contact = await emergencyContactRepository.findOneBy({ id: emergencyContact_id })
-      publisher.emergencyContact = contact ?? null
+    if (emergencyContact_id !== undefined) {
+      if (!emergencyContact_id) {
+        publisher.emergencyContact = null
+      } else {
+        const contact = await emergencyContactRepository.findOneBy({ id: emergencyContact_id })
+        publisher.emergencyContact = contact ?? null
+      }
     }
 
     if (fullName && fullName !== publisher.fullName) {
@@ -302,15 +306,15 @@ class PublisherControler {
     publisher.hope = hope !== undefined ? hope : publisher.hope
     publisher.privileges = finalPrivileges !== undefined ? finalPrivileges : publisher.privileges
     publisher.pioneerMonths = pioneerMonths !== undefined ? pioneerMonths : publisher.pioneerMonths
-    publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate
-    publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed
+    publisher.birthDate = birthDate !== undefined ? (birthDate ? birthDate : null) as any : publisher.birthDate
+    publisher.dateImmersed = dateImmersed !== undefined ? (dateImmersed ? dateImmersed : null) as any : publisher.dateImmersed
     publisher.situation = situation !== undefined ? situation : publisher.situation
     if (finalPrivileges && !hasPioneerPrivilege) {
       publisher.startPioneer = null
     } else {
       publisher.startPioneer =
         startPioneer !== undefined
-          ? startPioneer
+          ? (startPioneer ? startPioneer : null)
           : publisher.startPioneer
     }
     publisher.phone = phone !== undefined ? phone : publisher.phone

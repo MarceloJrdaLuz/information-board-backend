@@ -175,9 +175,14 @@ class PublisherControler {
                 throw new api_errors_1.BadRequestError('Some privilege not exists');
             }
         }
-        if (emergencyContact_id) {
-            const contact = await emergencyContact_1.emergencyContactRepository.findOneBy({ id: emergencyContact_id });
-            publisher.emergencyContact = contact !== null && contact !== void 0 ? contact : null;
+        if (emergencyContact_id !== undefined) {
+            if (!emergencyContact_id) {
+                publisher.emergencyContact = null;
+            }
+            else {
+                const contact = await emergencyContact_1.emergencyContactRepository.findOneBy({ id: emergencyContact_id });
+                publisher.emergencyContact = contact !== null && contact !== void 0 ? contact : null;
+            }
         }
         if (fullName && fullName !== publisher.fullName) {
             const existingPublisherSomeFullName = await publisherRepository_1.publisherRepository.find({
@@ -220,8 +225,8 @@ class PublisherControler {
         publisher.hope = hope !== undefined ? hope : publisher.hope;
         publisher.privileges = finalPrivileges !== undefined ? finalPrivileges : publisher.privileges;
         publisher.pioneerMonths = pioneerMonths !== undefined ? pioneerMonths : publisher.pioneerMonths;
-        publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate;
-        publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed;
+        publisher.birthDate = birthDate !== undefined ? (birthDate ? birthDate : null) : publisher.birthDate;
+        publisher.dateImmersed = dateImmersed !== undefined ? (dateImmersed ? dateImmersed : null) : publisher.dateImmersed;
         publisher.situation = situation !== undefined ? situation : publisher.situation;
         if (finalPrivileges && !hasPioneerPrivilege) {
             publisher.startPioneer = null;
@@ -229,7 +234,7 @@ class PublisherControler {
         else {
             publisher.startPioneer =
                 startPioneer !== undefined
-                    ? startPioneer
+                    ? (startPioneer ? startPioneer : null)
                     : publisher.startPioneer;
         }
         publisher.phone = phone !== undefined ? phone : publisher.phone;
