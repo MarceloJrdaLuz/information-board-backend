@@ -912,22 +912,25 @@ class PublisherControler {
       return explicitMeetingDate || weekDate;
     };
 
+    // Início da semana atual (segunda-feira) para não filtrar a semana corrente se a reunião for na quarta/quinta
+    const currentWeekStartStr = dayjs().startOf("isoWeek").format("YYYY-MM-DD")
+
     const midweekSchedules = await midweekScheduleRepository.find({
       where: [
-        { chairman_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-        { chairman_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-        { opening_prayer_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-        { opening_prayer_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-        { closing_prayer_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-        { closing_prayer_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-        { aux_counselor_1_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-        { aux_counselor_1_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-        { aux_counselor_2_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-        { aux_counselor_2_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-        { cbs_conductor_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-        { cbs_conductor_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
-        { cbs_reader_id: publisher_id, meetingDate: MoreThanOrEqual(todayStr) },
-        { cbs_reader_id: publisher_id, weekDate: MoreThanOrEqual(todayStr) },
+        { chairman_id: publisher_id, meetingDate: MoreThanOrEqual(currentWeekStartStr) },
+        { chairman_id: publisher_id, weekDate: MoreThanOrEqual(currentWeekStartStr) },
+        { opening_prayer_id: publisher_id, meetingDate: MoreThanOrEqual(currentWeekStartStr) },
+        { opening_prayer_id: publisher_id, weekDate: MoreThanOrEqual(currentWeekStartStr) },
+        { closing_prayer_id: publisher_id, meetingDate: MoreThanOrEqual(currentWeekStartStr) },
+        { closing_prayer_id: publisher_id, weekDate: MoreThanOrEqual(currentWeekStartStr) },
+        { aux_counselor_1_id: publisher_id, meetingDate: MoreThanOrEqual(currentWeekStartStr) },
+        { aux_counselor_1_id: publisher_id, weekDate: MoreThanOrEqual(currentWeekStartStr) },
+        { aux_counselor_2_id: publisher_id, meetingDate: MoreThanOrEqual(currentWeekStartStr) },
+        { aux_counselor_2_id: publisher_id, weekDate: MoreThanOrEqual(currentWeekStartStr) },
+        { cbs_conductor_id: publisher_id, meetingDate: MoreThanOrEqual(currentWeekStartStr) },
+        { cbs_conductor_id: publisher_id, weekDate: MoreThanOrEqual(currentWeekStartStr) },
+        { cbs_reader_id: publisher_id, meetingDate: MoreThanOrEqual(currentWeekStartStr) },
+        { cbs_reader_id: publisher_id, weekDate: MoreThanOrEqual(currentWeekStartStr) },
       ],
       relations: ["congregation"],
       order: { meetingDate: "ASC" }
