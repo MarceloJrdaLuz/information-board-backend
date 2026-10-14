@@ -239,10 +239,13 @@ class ReportController {
     const targetDate = monthRange ? new Date(monthRange.startDate) : new Date()
 
     let reportPrivileges: string[]
-    if (publisher?.privileges && Array.isArray(publisher.privileges) && publisher.privileges.length > 0) {
+    const activeFromRelation = getActivePrivilegeNamesPT(publisherExists, targetDate)
+    if (activeFromRelation && activeFromRelation.length > 0) {
+      reportPrivileges = activeFromRelation
+    } else if (publisher?.privileges && Array.isArray(publisher.privileges) && publisher.privileges.length > 0) {
       reportPrivileges = publisher.privileges
     } else {
-      reportPrivileges = getActivePrivilegeNamesPT(publisherExists, targetDate)
+      reportPrivileges = ["Publicador"]
     }
 
     // Sincroniza designação de Pioneiro Auxiliar para o mês

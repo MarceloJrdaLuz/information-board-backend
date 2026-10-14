@@ -206,11 +206,15 @@ class ReportController {
         const monthRange = (0, privilegesTranslations_1.getMonthDateRange)(month, year);
         const targetDate = monthRange ? new Date(monthRange.startDate) : new Date();
         let reportPrivileges;
-        if ((publisher === null || publisher === void 0 ? void 0 : publisher.privileges) && Array.isArray(publisher.privileges) && publisher.privileges.length > 0) {
+        const activeFromRelation = (0, publisherPrivilegeHelper_1.getActivePrivilegeNamesPT)(publisherExists, targetDate);
+        if (activeFromRelation && activeFromRelation.length > 0) {
+            reportPrivileges = activeFromRelation;
+        }
+        else if ((publisher === null || publisher === void 0 ? void 0 : publisher.privileges) && Array.isArray(publisher.privileges) && publisher.privileges.length > 0) {
             reportPrivileges = publisher.privileges;
         }
         else {
-            reportPrivileges = (0, publisherPrivilegeHelper_1.getActivePrivilegeNamesPT)(publisherExists, targetDate);
+            reportPrivileges = ["Publicador"];
         }
         // Sincroniza designação de Pioneiro Auxiliar para o mês
         if (monthRange) {
