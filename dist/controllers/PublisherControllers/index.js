@@ -469,38 +469,48 @@ class PublisherControler {
             relations: ["privilegesRelation", "privilegesRelation.privilege"]
         });
         const result = allPublishers
-            .filter(pub => {
+            .map(pub => {
             var _a, _b;
             const isContinuous = (_a = pub.privilegesRelation) === null || _a === void 0 ? void 0 : _a.some(pp => {
                 var _a, _b;
-                return (((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Continuous Auxiliary Pioneer" || ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.code) === privileges_1.PrivilegeCode.CONTINUOUS_AUXILIARY_PIONEER) &&
-                    (!pp.endDate || (0, dayjs_1.default)(pp.endDate).format("YYYY-MM-DD") >= range.startDate) &&
-                    (!pp.startDate || (0, dayjs_1.default)(pp.startDate).format("YYYY-MM-DD") <= range.endDate);
+                const isCont = ((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Continuous Auxiliary Pioneer" ||
+                    ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.code) === privileges_1.PrivilegeCode.CONTINUOUS_AUXILIARY_PIONEER;
+                if (!isCont)
+                    return false;
+                const endValid = pp.endDate && (0, dayjs_1.default)(pp.endDate).isValid();
+                const startValid = pp.startDate && (0, dayjs_1.default)(pp.startDate).isValid();
+                if (endValid && (0, dayjs_1.default)(pp.endDate).format("YYYY-MM-DD") < range.startDate)
+                    return false;
+                if (startValid && (0, dayjs_1.default)(pp.startDate).format("YYYY-MM-DD") > range.endDate)
+                    return false;
+                return true;
             });
             const isMonthAux = (_b = pub.privilegesRelation) === null || _b === void 0 ? void 0 : _b.some(pp => {
                 var _a, _b;
-                return (((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Auxiliary Pioneer" || ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.code) === privileges_1.PrivilegeCode.AUXILIARY_PIONEER) &&
-                    (0, dayjs_1.default)(pp.startDate).format("YYYY-MM-DD") <= range.endDate &&
-                    (0, dayjs_1.default)(pp.endDate).format("YYYY-MM-DD") >= range.startDate;
+                const isAux = ((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Auxiliary Pioneer" ||
+                    ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.code) === privileges_1.PrivilegeCode.AUXILIARY_PIONEER;
+                if (!isAux || !pp.startDate || !(0, dayjs_1.default)(pp.startDate).isValid())
+                    return false;
+                const startStr = (0, dayjs_1.default)(pp.startDate).format("YYYY-MM-DD");
+                if (!pp.endDate || !(0, dayjs_1.default)(pp.endDate).isValid()) {
+                    // Se não possui data de término válida, restringe unicamente ao mês de início
+                    return startStr.substring(0, 7) === range.startDate.substring(0, 7);
+                }
+                const endStr = (0, dayjs_1.default)(pp.endDate).format("YYYY-MM-DD");
+                return startStr <= range.endDate && endStr >= range.startDate;
             });
-            return Boolean(isContinuous || isMonthAux);
-        })
-            .map(pub => {
-            var _a;
-            const isContinuous = (_a = pub.privilegesRelation) === null || _a === void 0 ? void 0 : _a.some(pp => {
-                var _a, _b;
-                return (((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Continuous Auxiliary Pioneer" || ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.code) === privileges_1.PrivilegeCode.CONTINUOUS_AUXILIARY_PIONEER) &&
-                    (!pp.endDate || (0, dayjs_1.default)(pp.endDate).format("YYYY-MM-DD") >= range.startDate) &&
-                    (!pp.startDate || (0, dayjs_1.default)(pp.startDate).format("YYYY-MM-DD") <= range.endDate);
-            });
+            const isActive = Boolean(isContinuous || isMonthAux);
             return {
                 publisherId: pub.id,
                 fullName: pub.fullName,
                 nickname: pub.nickname,
                 privilegeName: isContinuous ? "Continuous Auxiliary Pioneer" : "Auxiliary Pioneer",
                 isContinuous: Boolean(isContinuous),
+                isActive
             };
-        });
+        })
+            .filter(item => item.isActive)
+            .map(({ isActive, ...rest }) => rest);
         return res.status(200).json(result);
     }
     async setAuxiliaryPioneersByMonth(req, res) {
@@ -527,8 +537,8 @@ class PublisherControler {
         for (const pub of allPublishers) {
             const shouldBeAux = publisherIds.includes(pub.id);
             const existingAuxPrivilege = (_a = pub.privilegesRelation) === null || _a === void 0 ? void 0 : _a.find(pp => {
-                var _a;
-                return ((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Auxiliary Pioneer" &&
+                var _a, _b;
+                return (((_a = pp.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Auxiliary Pioneer" || ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.code) === privileges_1.PrivilegeCode.AUXILIARY_PIONEER) &&
                     (0, dayjs_1.default)(pp.startDate).format("YYYY-MM-DD") === range.startDate &&
                     (0, dayjs_1.default)(pp.endDate).format("YYYY-MM-DD") === range.endDate;
             });
