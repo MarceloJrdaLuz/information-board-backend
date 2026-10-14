@@ -770,22 +770,24 @@ class PublisherControler {
             }
             return explicitMeetingDate || weekDate;
         };
+        // Início da semana atual (segunda-feira) para não filtrar a semana corrente se a reunião for na quarta/quinta
+        const currentWeekStartStr = (0, dayjs_1.default)().startOf("isoWeek").format("YYYY-MM-DD");
         const midweekSchedules = await midweekScheduleRepository_1.midweekScheduleRepository.find({
             where: [
-                { chairman_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { chairman_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { opening_prayer_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { opening_prayer_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { closing_prayer_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { closing_prayer_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { aux_counselor_1_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { aux_counselor_1_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { aux_counselor_2_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { aux_counselor_2_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { cbs_conductor_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { cbs_conductor_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { cbs_reader_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
-                { cbs_reader_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(todayStr) },
+                { chairman_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { chairman_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { opening_prayer_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { opening_prayer_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { closing_prayer_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { closing_prayer_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { aux_counselor_1_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { aux_counselor_1_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { aux_counselor_2_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { aux_counselor_2_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { cbs_conductor_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { cbs_conductor_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { cbs_reader_id: publisher_id, meetingDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
+                { cbs_reader_id: publisher_id, weekDate: (0, typeorm_1.MoreThanOrEqual)(currentWeekStartStr) },
             ],
             relations: ["congregation"],
             order: { meetingDate: "ASC" }
