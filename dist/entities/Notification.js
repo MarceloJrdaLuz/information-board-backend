@@ -22,6 +22,7 @@ var NotificationType;
     NotificationType["READING"] = "READING";
     NotificationType["CHAIRMAN"] = "CHAIRMAN";
     NotificationType["REMINDER"] = "REMINDER";
+    NotificationType["REPORT"] = "REPORT";
 })(NotificationType = exports.NotificationType || (exports.NotificationType = {}));
 let Notification = class Notification {
 };

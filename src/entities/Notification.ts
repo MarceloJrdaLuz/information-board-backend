@@ -18,6 +18,7 @@ export enum NotificationType {
     READING = "READING",
     CHAIRMAN = "CHAIRMAN",
     REMINDER = "REMINDER",
+    REPORT = "REPORT",
 }
 
 @Entity("notifications")

@@ -17,6 +17,8 @@ import {
 import { In, Not } from "typeorm";
 import { Publisher } from "../../entities/Publisher";
 import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository";
+import { hasPrivilege } from "../../helpers/publisherPrivilegeHelper";
+import { PrivilegeCode } from "../../types/privileges";
 
 class CleaningGroupController {
   async create(
@@ -69,9 +71,11 @@ class CleaningGroupController {
       }
 
       // Se não tem conflito, busca os publishers de fato
-      publishers = await publisherRepository.find({
-        where: { id: In(publisherIds), congregation: { id: congregation.id } }
+      const rawPublishers = await publisherRepository.find({
+        where: { id: In(publisherIds), congregation: { id: congregation.id } },
+        relations: ["privilegesRelation", "privilegesRelation.privilege"]
       });
+      publishers = rawPublishers.filter(p => hasPrivilege(p, PrivilegeCode.PUBLISHER));
     }
 
     const newGroup = cleaningGroupRepository.create({
@@ -122,13 +126,14 @@ class CleaningGroupController {
       }
 
       // Busca os publishers válidos
-      const publishers = publisherIds.length
+      const rawPublishers = publisherIds.length
         ? await publisherRepository.find({
-          where: { id: In(publisherIds), congregation: { id: congregationId } }
+          where: { id: In(publisherIds), congregation: { id: congregationId } },
+          relations: ["privilegesRelation", "privilegesRelation.privilege"]
         })
         : [];
 
-      group.publishers = publishers;
+      group.publishers = rawPublishers.filter(p => hasPrivilege(p, PrivilegeCode.PUBLISHER));
     }
 
     if (name) group.name = name;
@@ -181,9 +186,13 @@ class CleaningGroupController {
 
     const group = await cleaningGroupRepository.findOne({
       where: { id },
-      relations: ["publishers"]
+      relations: ["publishers", "publishers.privilegesRelation", "publishers.privilegesRelation.privilege"]
     });
     if (!group) throw new NotFoundError("Cleaning group not found");
+
+    if (group.publishers) {
+      group.publishers = group.publishers.filter(p => hasPrivilege(p, PrivilegeCode.PUBLISHER));
+    }
 
     return res.status(200).json(group);
   }
@@ -198,9 +207,15 @@ class CleaningGroupController {
 
     const groups = await cleaningGroupRepository.find({
       where: { congregation: { id: congregation.id } },
-      relations: ["publishers"],
+      relations: ["publishers", "publishers.privilegesRelation", "publishers.privilegesRelation.privilege"],
       order: { order: "ASC" }
     });
+
+    for (const g of groups) {
+      if (g.publishers) {
+        g.publishers = g.publishers.filter(p => hasPrivilege(p, PrivilegeCode.PUBLISHER));
+      }
+    }
 
     return res.status(200).json(groups);
   }

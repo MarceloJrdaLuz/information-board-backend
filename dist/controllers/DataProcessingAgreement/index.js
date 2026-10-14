@@ -140,6 +140,14 @@ class DataProcessingAgreementController {
         const { publisher_id, congregation_id, type } = req.query;
         if (!type)
             throw new api_errors_1.BadRequestError("Type is required");
+        const validCongregationId = congregation_id && congregation_id !== "undefined" ? congregation_id : undefined;
+        const validPublisherId = publisher_id && publisher_id !== "undefined" ? publisher_id : undefined;
+        if (type === "congregation" && !validCongregationId) {
+            throw new api_errors_1.BadRequestError("congregation_id is required and must be valid");
+        }
+        if (type === "publisher" && !validPublisherId) {
+            throw new api_errors_1.BadRequestError("publisher_id is required and must be valid");
+        }
         // Buscar termo ativo
         const activeTerm = await termsOfUseRepository_1.termsRepository.findOne({
             where: { type: type, is_active: true },
@@ -150,8 +158,8 @@ class DataProcessingAgreementController {
         const lastAgreement = await dataProcessingAgreementRepository_1.agreementRepository.findOne({
             where: {
                 type: type,
-                ...(publisher_id ? { publisher: { id: publisher_id } } : {}),
-                ...(congregation_id ? { congregation: { id: congregation_id } } : {}),
+                ...(validPublisherId ? { publisher: { id: validPublisherId } } : {}),
+                ...(validCongregationId ? { congregation: { id: validCongregationId } } : {}),
             },
             order: { accepted_at: "DESC" },
             relations: ["publisher", "congregation"],

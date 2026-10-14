@@ -8,6 +8,8 @@ import { groupRepository } from "../../repositories/groupRepository";
 import { messageErrors } from "../../helpers/messageErrors";
 import { publisherRepository } from "../../repositories/publisherRepository";
 import { GroupOverseers } from "../../entities/GroupOverseers";
+import { hasPrivilege } from "../../helpers/publisherPrivilegeHelper";
+import { PrivilegeCode } from "../../types/privileges";
 
 class GroupController {
     async create(req: CustomRequest<BodyGroupCreateTypes>, res: Response) {
@@ -84,13 +86,14 @@ class GroupController {
                     id: congregation_id
                 }
             },
-            relations: ["publishers"]
+            relations: ["publishers", "publishers.privilegesRelation", "publishers.privilegesRelation.privilege"]
         })
 
         if (!groups) throw new NotFoundError(messageErrors.notFound.group)
 
         const groupWith = groups.map(group => {
             const { id, name, number, groupOverseers, publishers } = group;
+            const validPublishers = (publishers || []).filter(p => hasPrivilege(p, PrivilegeCode.PUBLISHER));
 
             if (!groupOverseers) {
                 // Handle the case where groupOverseers is null
@@ -99,7 +102,7 @@ class GroupController {
                     name,
                     number,
                     groupOverseers: null,
-                    publishers
+                    publishers: validPublishers
                 };
             }
 
@@ -115,7 +118,7 @@ class GroupController {
                         id: groupOverseersId ?? null,
                         congregation: null, // Set congregation to null if publisher is null
                     },
-                    publishers
+                    publishers: validPublishers
                 };
             }
 
@@ -130,7 +133,7 @@ class GroupController {
                     publisherId,
                     ...rest
                 },
-                publishers
+                publishers: validPublishers
             };
         });
 
@@ -150,14 +153,15 @@ class GroupController {
             const publisher = await publisherRepository.findOne({
                 where: {
                     id: publisher_id
-                }
+                },
+                relations: ["privilegesRelation", "privilegesRelation.privilege"]
             });
 
-            if (publisher) {
+            if (publisher && hasPrivilege(publisher, PrivilegeCode.PUBLISHER)) {
                 publisher.group = group
                 return publisherRepository.save(publisher);
             } else {
-                return null; // Tratar caso o publisher não seja encontrado
+                return null; // Tratar caso não seja encontrado ou não tenha privilégio de publicador
             }
         });
 

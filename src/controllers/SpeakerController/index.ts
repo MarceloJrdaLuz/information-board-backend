@@ -14,6 +14,8 @@ import {
 } from "./types"
 import { In } from "typeorm"
 import { Publisher } from "../../entities/Publisher"
+import { PrivilegeCode } from "../../types/privileges"
+import { hasPrivilege } from "../../helpers/publisherPrivilegeHelper"
 import { decoder } from "../../middlewares/permissions"
 import { userRepository } from "../../repositories/userRepository"
 import { Request } from "express"
@@ -38,7 +40,7 @@ class SpeakerController {
     let speakerAddress = address
 
     if (publisher_id) {
-      publisher = await findPublisherWithPrivilege(publisher_id, "Speaker")
+      publisher = await findPublisherWithPrivilege(publisher_id, PrivilegeCode.SPEAKER)
 
       if (!publisher) throw new BadRequestError("Publisher not found or does not have 'Speaker'")
 
@@ -219,7 +221,7 @@ class SpeakerController {
     })
 
     const speakers = publishers.filter(pp =>
-      pp.privilegesRelation.some(p => p.privilege.name === "Speaker")
+      hasPrivilege(pp, PrivilegeCode.SPEAKER)
     )
 
     return res.json(speakers)

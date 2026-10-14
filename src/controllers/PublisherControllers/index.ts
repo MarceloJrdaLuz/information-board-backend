@@ -1,22 +1,31 @@
 import dayjs from "dayjs"
+import { Request } from "express"
 import { Response } from "express-serve-static-core"
-import { In, MoreThanOrEqual, Not } from "typeorm"
+import { In, MoreThanOrEqual } from "typeorm"
 import { CongregationType } from "../../entities/Congregation"
 import { GroupOverseers } from "../../entities/GroupOverseers"
 import { HospitalityGroup } from "../../entities/HospitalityGroup."
-import { Publisher } from "../../entities/Publisher"
+import { Publisher, Situation } from "../../entities/Publisher"
 import { Speaker } from "../../entities/Speaker"
 import { User } from "../../entities/User"
 import { convertMeetingDayPortugueseToIso } from "../../functions/cleaningFunctions"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
-import { privilegePTtoEN, translatePrivilegesPTToEN } from "../../helpers/privilegesTranslations"
+import {
+  PT_MONTH_NAMES,
+  getMonthDateRange,
+  parsePioneerMonthString,
+  privilegePTtoEN,
+  translatePrivilegesPTToEN
+} from "../../helpers/privilegesTranslations"
+import { hasPrivilege } from "../../helpers/publisherPrivilegeHelper"
 import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository"
 import { congregationRepository } from "../../repositories/congregationRepository"
 import { emergencyContactRepository } from "../../repositories/emergencyContact"
 import { externalTalkRepository } from "../../repositories/externalTalkRepository"
 import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
 import { hospitalityAssignmentRepository } from "../../repositories/hospitalityAssignmentRepository"
+import { mechanicalAssignmentRepository } from "../../repositories/mechanicalAssignmentRepository"
 import { midweekMeetingPartRepository } from "../../repositories/midweekMeetingPartRepository"
 import { midweekScheduleRepository } from "../../repositories/midweekScheduleRepository"
 import { privilegeRepository } from "../../repositories/privilegeRepository"
@@ -25,11 +34,19 @@ import { publisherPrivilegeRepository } from "../../repositories/publisherPrivil
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { userRepository } from "../../repositories/userRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
-import { mechanicalAssignmentRepository } from "../../repositories/mechanicalAssignmentRepository"
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
 import { MechanicalRole, MechanicalRoleLabels } from "../../types/mechanical"
-import { Privileges } from "../../types/privileges"
-import { BodyPublisherCreateTypes, BodyPublisherUpdateTypes, ParamsGetPublisherTypes, ParamsGetPublishersTypes, ParamsGetPublishersWithCongregationNumberTypes, ParamsPublisherDeleteAndUpdateTypes, ParamsUnLinkPublisherToUserTypes } from "./types"
+import { PrivilegeCode, Privileges } from "../../types/privileges"
+import {
+  BodyPublisherCreateTypes,
+  BodyPublisherUpdateTypes,
+  BodySetAuxiliaryPioneersTypes,
+  ParamsGetPublisherTypes,
+  ParamsGetPublishersTypes,
+  ParamsGetPublishersWithCongregationNumberTypes,
+  ParamsPublisherDeleteAndUpdateTypes,
+  ParamsUnLinkPublisherToUserTypes
+} from "./types"
 
 interface UnifiedAssignment {
   id?: string
@@ -73,15 +90,11 @@ interface UnifiedAssignment {
 
 class PublisherControler {
   async create(req: CustomRequest<BodyPublisherCreateTypes>, res: Response) {
-    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, situation, phone, address, emergencyContact_id } = req.body
+    const { fullName, nickname, privileges, congregation_id, gender, hope, dateImmersed, birthDate, pioneerMonths, startPioneer, startDatePublisher, situation, phone, address, emergencyContact_id, user_id } = req.body
 
     if (privileges) {
-      if (privileges.includes(Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
-        throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "Pioneiro Auxiliar" privilege')
-      }
-
       if (privileges.includes(Privileges.PIONEIROREGULAR) && !startPioneer) {
-        throw new BadRequestError('You must provide the "startPioneer" field when assigning the "Pioneiro Regular" ou "Pioneiro auxiliar indeterminado" privilege')
+        throw new BadRequestError('You must provide the "startPioneer" field when assigning the "Pioneiro Regular" privilege')
       }
     }
 
@@ -112,6 +125,21 @@ class PublisherControler {
 
     if (!privilegesExists) throw new BadRequestError('Some privilege not exists')
 
+    const finalPrivileges = privileges ? [...privileges] : []
+    const hasAnyEcclesiasticalPrivilege = finalPrivileges.some(p =>
+      p === Privileges.PIONEIROREGULAR ||
+      p === Privileges.PIONEIROAUXILIAR ||
+      p === Privileges.AUXILIARINDETERMINADO ||
+      p === Privileges.AUXILIARTEMPOINDETERMINADO ||
+      p === Privileges.PIONEIROESPECIAL ||
+      p === Privileges.MISSIONARIOEMCAMPO ||
+      p === Privileges.ANCIAO ||
+      p === Privileges.SM
+    )
+    if ((hasAnyEcclesiasticalPrivilege || startDatePublisher) && !finalPrivileges.includes(Privileges.PUBLICADOR)) {
+      finalPrivileges.push(Privileges.PUBLICADOR)
+    }
+
     const newPublisher = publisherRepository.create({
       fullName,
       nickname,
@@ -119,8 +147,8 @@ class PublisherControler {
       hope,
       dateImmersed,
       birthDate,
-      privileges,
-      pioneerMonths,
+      privileges: finalPrivileges,
+      pioneerMonths: pioneerMonths || [],
       congregation,
       startPioneer,
       situation,
@@ -130,26 +158,67 @@ class PublisherControler {
 
     if (emergencyContact_id) {
       const contact = await emergencyContactRepository.findOneBy({ id: emergencyContact_id })
-      newPublisher.emergencyContact = contact ?? null // permite que seja null
+      newPublisher.emergencyContact = contact ?? null
     }
     await publisherRepository.save(newPublisher).catch(err => {
       throw new BadRequestError(err)
     })
 
-    if (privileges?.length) {
-      for (const privilegePT of privileges) {
+    if (finalPrivileges?.length) {
+      for (const privilegePT of finalPrivileges) {
         const privilegeEN = privilegePTtoEN[privilegePT];
-        if (!privilegeEN) continue; // ou lançar erro se quiser validar
+        if (!privilegeEN || privilegeEN === "Auxiliary Pioneer") continue;
 
-        const privilegeEntity = await privilegeRepository.findOneBy({ name: privilegeEN });
+        const codeGuess = privilegeEN.toUpperCase().replace(/\s+/g, '_');
+        const privilegeEntity = await privilegeRepository.findOne({
+          where: [{ code: codeGuess }, { name: privilegeEN }]
+        });
         if (privilegeEntity) {
+          const isPioneerRole = ["Regular Pioneer", "Continuous Auxiliary Pioneer", "Special Pioneer"].includes(privilegeEN);
+          const isPublisherRole = privilegeEN === "Publisher" || privilegeEntity.code === PrivilegeCode.PUBLISHER;
+          let sDate: Date | null = null;
+          if (isPioneerRole && startPioneer) sDate = new Date(startPioneer);
+          if (isPublisherRole && startDatePublisher) sDate = new Date(startDatePublisher);
+
           await publisherPrivilegeRepository.save({
             publisher: newPublisher,
             privilege: privilegeEntity,
-            startDate: startPioneer ?? null,
+            startDate: sDate,
             endDate: null
           });
         }
+      }
+    }
+
+    if (pioneerMonths?.length) {
+      let auxPrivilege = await privilegeRepository.findOne({
+        where: [{ code: PrivilegeCode.AUXILIARY_PIONEER }, { name: "Auxiliary Pioneer" }]
+      });
+      if (!auxPrivilege) {
+        auxPrivilege = await privilegeRepository.save({
+          code: PrivilegeCode.AUXILIARY_PIONEER,
+          name: "Auxiliary Pioneer"
+        });
+      }
+
+      for (const pm of pioneerMonths) {
+        const range = parsePioneerMonthString(pm);
+        if (range) {
+          await publisherPrivilegeRepository.save({
+            publisher: newPublisher,
+            privilege: auxPrivilege,
+            startDate: new Date(range.startDate + "T00:00:00Z"),
+            endDate: new Date(range.endDate + "T23:59:59Z")
+          });
+        }
+      }
+    }
+
+    if (user_id) {
+      const userToLink = await userRepository.findOne({ where: { id: user_id } });
+      if (userToLink) {
+        userToLink.publisher = newPublisher;
+        await userRepository.save(userToLink);
       }
     }
 
@@ -158,10 +227,10 @@ class PublisherControler {
 
   async update(req: CustomRequest<BodyPublisherUpdateTypes>, res: Response) {
     const { publisher_id: id } = req.params
-    const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, emergencyContact_id } = req.body
+    const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, startDatePublisher, emergencyContact_id, user_id } = req.body
     const publisher = await publisherRepository.findOne({
       where: { id },
-      relations: ["congregation"]
+      relations: ["congregation", "privilegesRelation", "privilegesRelation.privilege"]
     })
 
     if (!publisher) {
@@ -169,13 +238,8 @@ class PublisherControler {
     }
 
     if (privileges) {
-
-      if (privileges.includes(Privileges.PIONEIROAUXILIAR) && !pioneerMonths) {
-        throw new BadRequestError('You must provide the "pioneerMonths" field when assigning the "PIONEIRO AUXILIAR" privilege')
-      }
-
-      if (privileges.includes(Privileges.PIONEIROREGULAR) && !startPioneer) {
-        throw new BadRequestError('You must provide the "startRegularPioneer" field when assigning the "Pioneiro Regular" privilege')
+      if (privileges.includes(Privileges.PIONEIROREGULAR) && !startPioneer && !publisher.startPioneer) {
+        throw new BadRequestError('You must provide the "startPioneer" field when assigning the "Pioneiro Regular" privilege')
       }
 
       const privilegesExists = privileges?.every(privilege => Object.values(Privileges).includes(privilege as Privileges))
@@ -184,9 +248,13 @@ class PublisherControler {
       }
     }
 
-    if (emergencyContact_id) {
-      const contact = await emergencyContactRepository.findOneBy({ id: emergencyContact_id })
-      publisher.emergencyContact = contact ?? null // permite que seja null
+    if (emergencyContact_id !== undefined) {
+      if (!emergencyContact_id) {
+        publisher.emergencyContact = null
+      } else {
+        const contact = await emergencyContactRepository.findOneBy({ id: emergencyContact_id })
+        publisher.emergencyContact = contact ?? null
+      }
     }
 
     if (fullName && fullName !== publisher.fullName) {
@@ -208,70 +276,203 @@ class PublisherControler {
       if (nicknameAlreadyExists) throw new BadRequestError('Nickname already exists too')
     }
 
-    const privilegesEN = translatePrivilegesPTToEN(privileges ?? [])
+    let finalPrivileges = privileges !== undefined ? [...privileges] : undefined
+    if (finalPrivileges) {
+      const hasAnyEcclesiasticalPrivilege = finalPrivileges.some(p =>
+        p === Privileges.PIONEIROREGULAR ||
+        p === Privileges.PIONEIROAUXILIAR ||
+        p === Privileges.AUXILIARINDETERMINADO ||
+        p === Privileges.AUXILIARTEMPOINDETERMINADO ||
+        p === Privileges.PIONEIROESPECIAL ||
+        p === Privileges.MISSIONARIOEMCAMPO ||
+        p === Privileges.ANCIAO ||
+        p === Privileges.SM
+      )
+      if ((hasAnyEcclesiasticalPrivilege || startDatePublisher) && !finalPrivileges.includes(Privileges.PUBLICADOR)) {
+        finalPrivileges.push(Privileges.PUBLICADOR)
+      }
+    }
+
     const hasPioneerPrivilege =
-      privileges?.includes(Privileges.PIONEIROREGULAR) ||
-      privileges?.includes(Privileges.PIONEIROAUXILIAR) ||
-      privileges?.includes(Privileges.AUXILIARINDETERMINADO)
+      finalPrivileges?.includes(Privileges.PIONEIROREGULAR) ||
+      finalPrivileges?.includes(Privileges.PIONEIROAUXILIAR) ||
+      finalPrivileges?.includes(Privileges.AUXILIARINDETERMINADO) ||
+      finalPrivileges?.includes(Privileges.AUXILIARTEMPOINDETERMINADO)
+
     // Atualizar as propriedades do publisher
     publisher.fullName = fullName !== undefined ? fullName : publisher.fullName
     publisher.nickname = nickname !== undefined ? nickname : publisher.nickname
     publisher.gender = gender !== undefined ? gender : publisher.gender
     publisher.hope = hope !== undefined ? hope : publisher.hope
-    publisher.privileges = privileges !== undefined ? privileges : publisher.privileges
+    publisher.privileges = finalPrivileges !== undefined ? finalPrivileges : publisher.privileges
     publisher.pioneerMonths = pioneerMonths !== undefined ? pioneerMonths : publisher.pioneerMonths
-    publisher.birthDate = birthDate !== undefined ? birthDate : publisher.birthDate
-    publisher.dateImmersed = dateImmersed !== undefined ? dateImmersed : publisher.dateImmersed
+    publisher.birthDate = birthDate !== undefined ? (birthDate ? birthDate : null) as any : publisher.birthDate
+    publisher.dateImmersed = dateImmersed !== undefined ? (dateImmersed ? dateImmersed : null) as any : publisher.dateImmersed
     publisher.situation = situation !== undefined ? situation : publisher.situation
-    if (privileges && !hasPioneerPrivilege) {
+    if (finalPrivileges && !hasPioneerPrivilege) {
       publisher.startPioneer = null
     } else {
       publisher.startPioneer =
         startPioneer !== undefined
-          ? startPioneer
+          ? (startPioneer ? startPioneer : null)
           : publisher.startPioneer
     }
     publisher.phone = phone !== undefined ? phone : publisher.phone
     publisher.address = address !== undefined ? address : publisher.address
-    publisher.privileges = privileges && privileges?.length > 0 ? privileges : publisher.privileges
 
     await publisherRepository.save(publisher)
 
-    if (privileges && privileges.length > 0) {
-      const privilegesEN = translatePrivilegesPTToEN(privileges)
+    // Sincroniza privilégios contínuos / eclesiásticos
+    if (finalPrivileges !== undefined) {
+      const continuousPrivilegesPT = finalPrivileges.filter(p => p !== Privileges.PIONEIROAUXILIAR)
+      const continuousPrivilegesEN = translatePrivilegesPTToEN(continuousPrivilegesPT)
+      const codesGuess = continuousPrivilegesEN.map(n => n.toUpperCase().replace(/\s+/g, '_'))
 
-      // Busca entidades reais dos privilégios em inglês
-      const privilegeEntities = await privilegeRepository.findBy({
-        name: In(privilegesEN)
+      const privilegeEntities = continuousPrivilegesEN.length > 0
+        ? await privilegeRepository.find({
+            where: [
+              { name: In(continuousPrivilegesEN) },
+              { code: In(codesGuess) }
+            ]
+          })
+        : []
+      const continuousIds = privilegeEntities.map(p => p.id)
+
+      const currentPrivileges = await publisherPrivilegeRepository.find({
+        where: { publisher: { id: publisher.id } },
+        relations: ["privilege"]
       })
 
-      // Extrai os IDs
-      const privilegeIds = privilegeEntities.map(p => p.id)
+      // Encerra privilégios que deixaram de existir com endDate para preservar histórico
+      for (const cp of currentPrivileges) {
+        if (cp.privilege?.code === PrivilegeCode.AUXILIARY_PIONEER || cp.privilege?.name === "Auxiliary Pioneer") continue
+        // Nunca encerra Publisher se a pessoa ainda possui algum privilégio contínuo ativo
+        if ((cp.privilege?.code === PrivilegeCode.PUBLISHER || cp.privilege?.name === "Publisher") && continuousIds.length > 0) continue
+        if (!continuousIds.includes(cp.privilege?.id)) {
+          if (!cp.endDate) {
+            cp.endDate = new Date()
+            await publisherPrivilegeRepository.save(cp)
+          }
+        }
+      }
 
-      // Remove privilégios antigos que não estão mais na lista
-      await publisherPrivilegeRepository.delete({
-        publisher: { id: publisher.id },
-        privilege: { id: Not(In(privilegeIds)) }
-      })
+      for (const privEntity of privilegeEntities) {
+        let activeInstance = currentPrivileges.find(cp => cp.privilege?.id === privEntity.id && !cp.endDate)
+        const isPioneerRole = ["Regular Pioneer", "Continuous Auxiliary Pioneer", "Special Pioneer"].includes(privEntity.name) ||
+          ["REGULAR_PIONEER", "CONTINUOUS_AUXILIARY_PIONEER", "SPECIAL_PIONEER"].includes(privEntity.code)
+        const isPublisherRole = ["Publisher"].includes(privEntity.name) || privEntity.code === PrivilegeCode.PUBLISHER
 
-      for (const privilegeName of privilegesEN) {
-        const privilegeEntity = await privilegeRepository.findOneBy({ name: privilegeName })
-        if (!privilegeEntity) continue
+        // Se o privilégio foi encerrado previamente (por exemplo, por este bug), reabre-o limpando endDate
+        if (!activeInstance) {
+          const previouslyClosedInstance = currentPrivileges.find(cp => cp.privilege?.id === privEntity.id && cp.endDate)
+          if (previouslyClosedInstance) {
+            previouslyClosedInstance.endDate = null
+            if (isPioneerRole && startPioneer !== undefined) {
+              previouslyClosedInstance.startDate = startPioneer ? new Date(startPioneer) : previouslyClosedInstance.startDate
+            } else if (isPublisherRole && startDatePublisher !== undefined) {
+              previouslyClosedInstance.startDate = startDatePublisher ? new Date(startDatePublisher) : previouslyClosedInstance.startDate
+            }
+            await publisherPrivilegeRepository.save(previouslyClosedInstance)
+            activeInstance = previouslyClosedInstance
+          }
+        }
 
-        const exists = await publisherPrivilegeRepository.findOne({
-          where: { publisher: { id: publisher.id }, privilege: { id: privilegeEntity.id } }
-        })
-        if (!exists) {
+        if (!activeInstance) {
+          let sDate: Date | null = null
+          if (isPioneerRole) {
+            sDate = publisher.startPioneer ? new Date(publisher.startPioneer) : new Date()
+          } else if (isPublisherRole) {
+            sDate = startDatePublisher ? new Date(startDatePublisher) : null
+          } else {
+            sDate = new Date()
+          }
           await publisherPrivilegeRepository.save({
             publisher,
-            privilege: privilegeEntity,
-            startDate: startPioneer ?? null,
+            privilege: privEntity,
+            startDate: sDate,
             endDate: null
+          })
+        } else {
+          if (isPioneerRole && startPioneer !== undefined) {
+            activeInstance.startDate = startPioneer ? new Date(startPioneer) : null
+            await publisherPrivilegeRepository.save(activeInstance)
+          } else if (isPublisherRole && startDatePublisher !== undefined) {
+            activeInstance.startDate = startDatePublisher ? new Date(startDatePublisher) : null
+            await publisherPrivilegeRepository.save(activeInstance)
+          }
+        }
+      }
+    }
+
+    // Sincroniza meses discretos de Pioneiro Auxiliar se pioneerMonths foi enviado
+    if (pioneerMonths !== undefined) {
+      let auxPrivilege = await privilegeRepository.findOne({
+        where: [{ code: PrivilegeCode.AUXILIARY_PIONEER }, { name: "Auxiliary Pioneer" }]
+      })
+      if (!auxPrivilege) {
+        auxPrivilege = await privilegeRepository.save({
+          code: PrivilegeCode.AUXILIARY_PIONEER,
+          name: "Auxiliary Pioneer"
+        })
+      }
+
+      const existingAuxPrivs = await publisherPrivilegeRepository.find({
+        where: { publisher: { id: publisher.id }, privilege: { id: auxPrivilege.id } }
+      })
+
+      const targetRanges = pioneerMonths
+        .map(pm => parsePioneerMonthString(pm))
+        .filter((r): r is NonNullable<typeof r> => r !== null)
+
+      for (const ep of existingAuxPrivs) {
+        const epStartStr = dayjs(ep.startDate).format("YYYY-MM-DD")
+        const epEndStr = dayjs(ep.endDate).format("YYYY-MM-DD")
+        const match = targetRanges.find(tr => tr.startDate === epStartStr && tr.endDate === epEndStr)
+        if (!match) {
+          await publisherPrivilegeRepository.remove(ep)
+        }
+      }
+
+      for (const tr of targetRanges) {
+        const alreadyExists = existingAuxPrivs.some(ep => {
+          const epStartStr = dayjs(ep.startDate).format("YYYY-MM-DD")
+          const epEndStr = dayjs(ep.endDate).format("YYYY-MM-DD")
+          return epStartStr === tr.startDate && epEndStr === tr.endDate
+        })
+
+        if (!alreadyExists) {
+          await publisherPrivilegeRepository.save({
+            publisher,
+            privilege: auxPrivilege,
+            startDate: new Date(tr.startDate + "T00:00:00Z"),
+            endDate: new Date(tr.endDate + "T23:59:59Z")
           })
         }
       }
     }
-    return res.status(201).json(publisher)
+
+    if (user_id !== undefined) {
+      if (user_id === null) {
+        const currentUser = await userRepository.findOne({ where: { publisher: { id: publisher.id } } });
+        if (currentUser) {
+          currentUser.publisher = null;
+          await userRepository.save(currentUser);
+        }
+      } else {
+        const userToLink = await userRepository.findOne({ where: { id: user_id } });
+        if (userToLink) {
+          const currentUser = await userRepository.findOne({ where: { publisher: { id: publisher.id } } });
+          if (currentUser && currentUser.id !== userToLink.id) {
+            currentUser.publisher = null;
+            await userRepository.save(currentUser);
+          }
+          userToLink.publisher = publisher;
+          await userRepository.save(userToLink);
+        }
+      }
+    }
+
+    return res.status(200).json(publisher)
   }
 
   async delete(req: ParamsCustomRequest<ParamsPublisherDeleteAndUpdateTypes>, res: Response) {
@@ -302,7 +503,7 @@ class PublisherControler {
         congregation: {
           id: congregation_id
         }
-      }, relations: ['group', 'congregation', "emergencyContact", "hospitalityGroup"]
+      }, relations: ['group', 'congregation', "emergencyContact", "hospitalityGroup", "privilegesRelation", "privilegesRelation.privilege"]
     }).catch(err => console.log(err))
 
     return res.status(200).json(publishers)
@@ -321,10 +522,16 @@ class PublisherControler {
           id: congregation.id
         }
       },
-      select: ['fullName', 'nickname', "congregation", "id"],
+      relations: ["congregation", "privilegesRelation", "privilegesRelation.privilege"],
     })
 
-    const publishersNames = publishers.map(publisher => ({
+    const validPublishers = publishers.filter(p =>
+      hasPrivilege(p, PrivilegeCode.PUBLISHER) &&
+      p.situation !== Situation.Removido &&
+      p.situation !== Situation.Desassociado
+    )
+
+    const publishersNames = validPublishers.map(publisher => ({
       id: publisher.id,
       fullName: publisher.fullName,
       nickname: publisher.nickname,
@@ -342,12 +549,170 @@ class PublisherControler {
       where: {
         id: publisher_id
       },
-      relations: ["user", "emergencyContact"],
+      relations: ["user", "emergencyContact", "congregation", "group", "privilegesRelation", "privilegesRelation.privilege"],
     })
 
     if (!publisher) throw new NotFoundError(messageErrors.notFound.publisher)
 
     return res.status(200).json(publisher)
+  }
+
+  async getAuxiliaryPioneersByMonth(req: Request, res: Response) {
+    const { congregation_id } = req.params
+    const { month, year } = req.query as { month?: string; year?: string }
+
+    if (!month || !year) {
+      throw new BadRequestError("Parâmetros 'month' e 'year' são obrigatórios")
+    }
+
+    const range = getMonthDateRange(month, year)
+    if (!range) {
+      throw new BadRequestError("Mês ou ano inválido")
+    }
+
+    const congregation = await congregationRepository.findOneBy({ id: congregation_id })
+    if (!congregation) {
+      throw new NotFoundError(messageErrors.notFound.congregation)
+    }
+
+    const formattedLegacyMonth = `${PT_MONTH_NAMES[range.monthIndex]}-${year}`
+
+    const allPublishers = await publisherRepository.find({
+      where: { congregation: { id: congregation_id } },
+      relations: ["privilegesRelation", "privilegesRelation.privilege"]
+    })
+
+    const result = allPublishers
+      .filter(pub => {
+        const isContinuous =
+          pub.privilegesRelation?.some(pp =>
+            (pp.privilege?.name === "Continuous Auxiliary Pioneer" || pp.privilege?.code === PrivilegeCode.CONTINUOUS_AUXILIARY_PIONEER) &&
+            (!pp.endDate || dayjs(pp.endDate).format("YYYY-MM-DD") >= range.startDate) &&
+            (!pp.startDate || dayjs(pp.startDate).format("YYYY-MM-DD") <= range.endDate)
+          )
+
+        const isMonthAux =
+          pub.privilegesRelation?.some(
+            pp =>
+              (pp.privilege?.name === "Auxiliary Pioneer" || pp.privilege?.code === PrivilegeCode.AUXILIARY_PIONEER) &&
+              dayjs(pp.startDate).format("YYYY-MM-DD") <= range.endDate &&
+              dayjs(pp.endDate).format("YYYY-MM-DD") >= range.startDate
+          )
+
+        return Boolean(isContinuous || isMonthAux)
+      })
+      .map(pub => {
+        const isContinuous =
+          pub.privilegesRelation?.some(pp =>
+            (pp.privilege?.name === "Continuous Auxiliary Pioneer" || pp.privilege?.code === PrivilegeCode.CONTINUOUS_AUXILIARY_PIONEER) &&
+            (!pp.endDate || dayjs(pp.endDate).format("YYYY-MM-DD") >= range.startDate) &&
+            (!pp.startDate || dayjs(pp.startDate).format("YYYY-MM-DD") <= range.endDate)
+          )
+
+        return {
+          publisherId: pub.id,
+          fullName: pub.fullName,
+          nickname: pub.nickname,
+          privilegeName: isContinuous ? "Continuous Auxiliary Pioneer" : "Auxiliary Pioneer",
+          isContinuous: Boolean(isContinuous),
+        }
+      })
+
+    return res.status(200).json(result)
+  }
+
+  async setAuxiliaryPioneersByMonth(req: Request, res: Response) {
+    const { congregation_id } = req.params
+    const { month, year, publisherIds } = req.body as BodySetAuxiliaryPioneersTypes
+
+
+    const range = getMonthDateRange(month, year)
+    if (!range) {
+      throw new BadRequestError("Mês ou ano inválido")
+    }
+
+    const congregation = await congregationRepository.findOneBy({ id: congregation_id })
+    if (!congregation) {
+      throw new NotFoundError(messageErrors.notFound.congregation)
+    }
+
+    let auxPrivilege = await privilegeRepository.findOneBy({ name: "Auxiliary Pioneer" })
+    if (!auxPrivilege) {
+      auxPrivilege = await privilegeRepository.save({ name: "Auxiliary Pioneer" })
+    }
+
+    const formattedLegacyMonth = `${PT_MONTH_NAMES[range.monthIndex]}-${year}`
+
+    const allPublishers = await publisherRepository.find({
+      where: { congregation: { id: congregation_id } },
+      relations: ["privilegesRelation", "privilegesRelation.privilege"]
+    })
+
+    for (const pub of allPublishers) {
+      const shouldBeAux = publisherIds.includes(pub.id)
+      const existingAuxPrivilege = pub.privilegesRelation?.find(
+        pp => pp.privilege?.name === "Auxiliary Pioneer" &&
+              dayjs(pp.startDate).format("YYYY-MM-DD") === range.startDate &&
+              dayjs(pp.endDate).format("YYYY-MM-DD") === range.endDate
+      )
+
+      let pubMonths = pub.pioneerMonths ? [...pub.pioneerMonths] : []
+      let pubPrivileges = pub.privileges ? [...pub.privileges] : []
+      let updated = false
+
+      if (shouldBeAux) {
+        if (!existingAuxPrivilege) {
+          const newPriv = await publisherPrivilegeRepository.save({
+            publisher: pub,
+            publisherId: pub.id,
+            privilege: auxPrivilege,
+            privilegeId: auxPrivilege.id,
+            startDate: range.startDate as any,
+            endDate: range.endDate as any
+          })
+          if (!pub.privilegesRelation) {
+            pub.privilegesRelation = []
+          }
+          pub.privilegesRelation.push(newPriv)
+        }
+        if (!pubMonths.some(pm => pm.trim().toLowerCase() === formattedLegacyMonth.toLowerCase())) {
+          pubMonths.push(formattedLegacyMonth)
+          pub.pioneerMonths = pubMonths
+          updated = true
+        }
+        if (!pubPrivileges.includes("Pioneiro Auxiliar")) {
+          pubPrivileges.push("Pioneiro Auxiliar")
+          pub.privileges = pubPrivileges
+          updated = true
+        }
+      } else {
+        if (existingAuxPrivilege) {
+          await publisherPrivilegeRepository.remove(existingAuxPrivilege)
+          pub.privilegesRelation = pub.privilegesRelation.filter(
+            pp => pp.id !== existingAuxPrivilege.id
+          )
+        }
+        if (pubMonths.some(pm => pm.trim().toLowerCase() === formattedLegacyMonth.toLowerCase())) {
+          pubMonths = pubMonths.filter(m => m.trim().toLowerCase() !== formattedLegacyMonth.toLowerCase())
+          pub.pioneerMonths = pubMonths
+          updated = true
+        }
+        if (pubMonths.length === 0 && pubPrivileges.includes("Pioneiro Auxiliar")) {
+          pubPrivileges = pubPrivileges.filter(p => p !== "Pioneiro Auxiliar")
+          pub.privileges = pubPrivileges
+          updated = true
+        }
+      }
+
+      if (updated) {
+        await publisherRepository.update(pub.id, {
+          pioneerMonths: pubMonths,
+          privileges: pubPrivileges
+        })
+      }
+    }
+
+    return res.status(200).json({ success: true, count: publisherIds.length })
   }
 
   async getAssignmentPublisher(req: ParamsCustomRequest<ParamsGetPublisherTypes>, res: Response) {

@@ -16,6 +16,8 @@ import { publisherPrivilegeRepository } from "../../repositories/publisherPrivil
 import { publisherRepository } from "../../repositories/publisherRepository";
 import { specialEventRepository } from "../../repositories/specialEventRepository";
 import { MechanicalMeetingType, MechanicalRole as RoleEnum } from "../../types/mechanical";
+import { PrivilegeCode } from "../../types/privileges";
+import { hasPrivilege } from "../../helpers/publisherPrivilegeHelper";
 
 dayjs.extend(isBetween);
 
@@ -613,53 +615,22 @@ export class MechanicalScheduleService {
     }
 
     isPublisherQualifiedForRole(pub: Publisher, role: RoleEnum): boolean {
-        const names: string[] = [];
-
-        if (pub.privilegesRelation?.length) {
-            for (const pp of pub.privilegesRelation) {
-                if (pp.privilege?.name) {
-                    const isEnded = pp.endDate ? dayjs(pp.endDate).isBefore(dayjs(), "day") : false;
-                    if (!isEnded) {
-                        names.push(pp.privilege.name);
-                    }
-                }
-            }
-        }
-
-        if (pub.privileges && Array.isArray(pub.privileges)) {
-            names.push(...pub.privileges);
-        }
-
-        const norm = (s: string) =>
-            s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-
-        const has = (...targets: string[]) => {
-            return names.some(p => {
-                const normP = norm(p);
-                return targets.some(t => {
-                    const normT = norm(t);
-                    return normP === normT || normP.includes(normT);
-                });
-            });
-        };
-
-        const isElder = has("Ancião", "Anciao", "Elder");
-        const isMS = has("Servo Ministerial", "Ministerial Servant");
-        const isElderOrMS = isElder || isMS;
-
         switch (role) {
             case RoleEnum.ATTENDANT:
-                return has("Indicador", "Attendant") || isElderOrMS;
+                return hasPrivilege(pub, PrivilegeCode.ATTENDANT);
             case RoleEnum.SOUND:
-                return has("Som", "Sound", "Som e Mídias", "Sound and Media");
+                return hasPrivilege(pub, PrivilegeCode.SOUND) || hasPrivilege(pub, PrivilegeCode.SOUND_AND_MEDIA);
             case RoleEnum.MEDIA:
-                return has("Mídias", "Midias", "Media", "Som e Mídias", "Sound and Media");
+                return hasPrivilege(pub, PrivilegeCode.MEDIA) || hasPrivilege(pub, PrivilegeCode.SOUND_AND_MEDIA);
             case RoleEnum.SOUND_AND_MEDIA:
-                return has("Som e Mídias", "Sound and Media") || (has("Som", "Sound") && has("Mídias", "Media"));
+                return (
+                    hasPrivilege(pub, PrivilegeCode.SOUND_AND_MEDIA) ||
+                    (hasPrivilege(pub, PrivilegeCode.SOUND) && hasPrivilege(pub, PrivilegeCode.MEDIA))
+                );
             case RoleEnum.ROVING_MIC:
-                return has("Microfone Volante", "Microphone Attendant", "Volante");
+                return hasPrivilege(pub, PrivilegeCode.MICROPHONE_ATTENDANT);
             case RoleEnum.STAGE_MIC:
-                return has("Pedestal", "Stage Attendant", "Microfone Volante", "Microphone Attendant");
+                return hasPrivilege(pub, PrivilegeCode.STAGE_ATTENDANT);
             default:
                 return true;
         }
@@ -680,12 +651,12 @@ export class MechanicalScheduleService {
             id: pub.id,
             fullName: pub.fullName,
             nickname: pub.nickname,
-            canAttendant: this.isPublisherQualifiedForRole(pub, RoleEnum.ATTENDANT),
-            canSound: this.isPublisherQualifiedForRole(pub, RoleEnum.SOUND),
-            canMedia: this.isPublisherQualifiedForRole(pub, RoleEnum.MEDIA),
-            canSoundAndMedia: this.isPublisherQualifiedForRole(pub, RoleEnum.SOUND_AND_MEDIA),
-            canRovingMic: this.isPublisherQualifiedForRole(pub, RoleEnum.ROVING_MIC),
-            canStageMic: this.isPublisherQualifiedForRole(pub, RoleEnum.STAGE_MIC)
+            canAttendant: hasPrivilege(pub, PrivilegeCode.ATTENDANT),
+            canSound: hasPrivilege(pub, PrivilegeCode.SOUND),
+            canMedia: hasPrivilege(pub, PrivilegeCode.MEDIA),
+            canSoundAndMedia: hasPrivilege(pub, PrivilegeCode.SOUND_AND_MEDIA),
+            canRovingMic: hasPrivilege(pub, PrivilegeCode.MICROPHONE_ATTENDANT),
+            canStageMic: hasPrivilege(pub, PrivilegeCode.STAGE_ATTENDANT)
         }));
     }
 
@@ -703,18 +674,23 @@ export class MechanicalScheduleService {
             throw new NotFoundError("Publicador não encontrado.");
         }
 
-        const rolePrivilegeMap: Record<RoleEnum, { pt: string; en: string }> = {
-            [RoleEnum.ATTENDANT]: { pt: "Indicador", en: "Attendant" },
-            [RoleEnum.SOUND]: { pt: "Som", en: "Sound" },
-            [RoleEnum.MEDIA]: { pt: "Mídias", en: "Media" },
-            [RoleEnum.SOUND_AND_MEDIA]: { pt: "Som e Mídias", en: "Sound and Media" },
-            [RoleEnum.ROVING_MIC]: { pt: "Microfone Volante", en: "Microphone Attendant" },
-            [RoleEnum.STAGE_MIC]: { pt: "Pedestal", en: "Stage Attendant" }
+        const rolePrivilegeMap: Record<RoleEnum, { pt: string; en: string; code: PrivilegeCode }> = {
+            [RoleEnum.ATTENDANT]: { pt: "Indicador", en: "Attendant", code: PrivilegeCode.ATTENDANT },
+            [RoleEnum.SOUND]: { pt: "Som", en: "Sound", code: PrivilegeCode.SOUND },
+            [RoleEnum.MEDIA]: { pt: "Mídias", en: "Media", code: PrivilegeCode.MEDIA },
+            [RoleEnum.SOUND_AND_MEDIA]: { pt: "Som e Mídias", en: "Sound and Media", code: PrivilegeCode.SOUND_AND_MEDIA },
+            [RoleEnum.ROVING_MIC]: { pt: "Microfone Volante", en: "Microphone Attendant", code: PrivilegeCode.MICROPHONE_ATTENDANT },
+            [RoleEnum.STAGE_MIC]: { pt: "Pedestal", en: "Stage Attendant", code: PrivilegeCode.STAGE_ATTENDANT }
         };
 
         const target = rolePrivilegeMap[role];
         if (!target) {
             throw new BadRequestError("Função inválida.");
+        }
+
+        const namesToMatch = [target.pt, target.en, target.code];
+        if (role === RoleEnum.STAGE_MIC) {
+            namesToMatch.push("Stage");
         }
 
         let privilegesList = publisher.privileges ? [...publisher.privileges] : [];
@@ -724,35 +700,64 @@ export class MechanicalScheduleService {
                 privilegesList.push(target.pt);
             }
         } else {
-            privilegesList = privilegesList.filter(p => p !== target.pt);
+            privilegesList = privilegesList.filter(p => !namesToMatch.includes(p));
         }
 
         publisher.privileges = privilegesList;
         await publisherRepository.save(publisher);
 
         // Sincroniza tabela publisher_privileges
-        const privilegeEntity = await privilegeRepository.findOneBy({ name: target.en });
-        if (privilegeEntity) {
-            if (enabled) {
-                const existing = await publisherPrivilegeRepository.findOne({
+        const privilegeWhere: any[] = [
+            { code: target.code },
+            { name: target.en },
+            { name: target.pt }
+        ];
+        if (role === RoleEnum.STAGE_MIC) {
+            privilegeWhere.push({ name: "Stage" });
+        }
+
+        const matchingPrivileges = await privilegeRepository.find({
+            where: privilegeWhere
+        });
+
+        let primaryPrivilege = matchingPrivileges.find(p => p.code === target.code) || matchingPrivileges[0];
+        if (!primaryPrivilege) {
+            primaryPrivilege = await privilegeRepository.save({
+                code: target.code,
+                name: target.en
+            });
+            matchingPrivileges.push(primaryPrivilege);
+        }
+
+        if (enabled) {
+            const existing = await publisherPrivilegeRepository.findOne({
+                where: {
+                    publisher: { id: publisher.id },
+                    privilege: { id: primaryPrivilege.id }
+                }
+            });
+            if (!existing) {
+                await publisherPrivilegeRepository.save({
+                    publisher,
+                    privilege: primaryPrivilege,
+                    startDate: null,
+                    endDate: null
+                });
+            } else if (existing.endDate) {
+                existing.endDate = null;
+                await publisherPrivilegeRepository.save(existing);
+            }
+        } else {
+            for (const priv of matchingPrivileges) {
+                const existingRelations = await publisherPrivilegeRepository.find({
                     where: {
                         publisher: { id: publisher.id },
-                        privilege: { id: privilegeEntity.id }
+                        privilege: { id: priv.id }
                     }
                 });
-                if (!existing) {
-                    await publisherPrivilegeRepository.save({
-                        publisher,
-                        privilege: privilegeEntity,
-                        startDate: null,
-                        endDate: null
-                    });
+                if (existingRelations.length > 0) {
+                    await publisherPrivilegeRepository.remove(existingRelations);
                 }
-            } else {
-                await publisherPrivilegeRepository.delete({
-                    publisher: { id: publisher.id },
-                    privilege: { id: privilegeEntity.id }
-                });
             }
         }
 

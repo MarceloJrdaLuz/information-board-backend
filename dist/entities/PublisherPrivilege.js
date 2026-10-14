@@ -20,13 +20,23 @@ __decorate([
     __metadata("design:type", String)
 ], PublisherPrivilege.prototype, "id", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], PublisherPrivilege.prototype, "publisherId", void 0);
+__decorate([
     (0, typeorm_1.ManyToOne)(() => Publisher_1.Publisher, publisher => publisher.privilegesRelation, {
         onDelete: "CASCADE"
     }),
+    (0, typeorm_1.JoinColumn)({ name: "publisherId" }),
     __metadata("design:type", Publisher_1.Publisher)
 ], PublisherPrivilege.prototype, "publisher", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], PublisherPrivilege.prototype, "privilegeId", void 0);
+__decorate([
     (0, typeorm_1.ManyToOne)(() => Privilege_1.Privilege, { onDelete: "CASCADE" }),
+    (0, typeorm_1.JoinColumn)({ name: "privilegeId" }),
     __metadata("design:type", Privilege_1.Privilege)
 ], PublisherPrivilege.prototype, "privilege", void 0);
 __decorate([

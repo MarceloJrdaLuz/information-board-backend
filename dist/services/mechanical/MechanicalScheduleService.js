@@ -20,6 +20,8 @@ const publisherPrivilegeRepository_1 = require("../../repositories/publisherPriv
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const specialEventRepository_1 = require("../../repositories/specialEventRepository");
 const mechanical_1 = require("../../types/mechanical");
+const privileges_1 = require("../../types/privileges");
+const publisherPrivilegeHelper_1 = require("../../helpers/publisherPrivilegeHelper");
 dayjs_1.default.extend(isBetween_1.default);
 class MechanicalScheduleService {
     async getConfig(congregationId) {
@@ -522,47 +524,20 @@ class MechanicalScheduleService {
         return suggestions.sort((a, b) => b.score - a.score);
     }
     isPublisherQualifiedForRole(pub, role) {
-        var _a, _b;
-        const names = [];
-        if ((_a = pub.privilegesRelation) === null || _a === void 0 ? void 0 : _a.length) {
-            for (const pp of pub.privilegesRelation) {
-                if ((_b = pp.privilege) === null || _b === void 0 ? void 0 : _b.name) {
-                    const isEnded = pp.endDate ? (0, dayjs_1.default)(pp.endDate).isBefore((0, dayjs_1.default)(), "day") : false;
-                    if (!isEnded) {
-                        names.push(pp.privilege.name);
-                    }
-                }
-            }
-        }
-        if (pub.privileges && Array.isArray(pub.privileges)) {
-            names.push(...pub.privileges);
-        }
-        const norm = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-        const has = (...targets) => {
-            return names.some(p => {
-                const normP = norm(p);
-                return targets.some(t => {
-                    const normT = norm(t);
-                    return normP === normT || normP.includes(normT);
-                });
-            });
-        };
-        const isElder = has("Ancião", "Anciao", "Elder");
-        const isMS = has("Servo Ministerial", "Ministerial Servant");
-        const isElderOrMS = isElder || isMS;
         switch (role) {
             case mechanical_1.MechanicalRole.ATTENDANT:
-                return has("Indicador", "Attendant") || isElderOrMS;
+                return (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.ATTENDANT);
             case mechanical_1.MechanicalRole.SOUND:
-                return has("Som", "Sound", "Som e Mídias", "Sound and Media");
+                return (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.SOUND) || (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.SOUND_AND_MEDIA);
             case mechanical_1.MechanicalRole.MEDIA:
-                return has("Mídias", "Midias", "Media", "Som e Mídias", "Sound and Media");
+                return (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.MEDIA) || (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.SOUND_AND_MEDIA);
             case mechanical_1.MechanicalRole.SOUND_AND_MEDIA:
-                return has("Som e Mídias", "Sound and Media") || (has("Som", "Sound") && has("Mídias", "Media"));
+                return ((0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.SOUND_AND_MEDIA) ||
+                    ((0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.SOUND) && (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.MEDIA)));
             case mechanical_1.MechanicalRole.ROVING_MIC:
-                return has("Microfone Volante", "Microphone Attendant", "Volante");
+                return (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.MICROPHONE_ATTENDANT);
             case mechanical_1.MechanicalRole.STAGE_MIC:
-                return has("Pedestal", "Stage Attendant", "Microfone Volante", "Microphone Attendant");
+                return (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.STAGE_ATTENDANT);
             default:
                 return true;
         }
@@ -581,12 +556,12 @@ class MechanicalScheduleService {
             id: pub.id,
             fullName: pub.fullName,
             nickname: pub.nickname,
-            canAttendant: this.isPublisherQualifiedForRole(pub, mechanical_1.MechanicalRole.ATTENDANT),
-            canSound: this.isPublisherQualifiedForRole(pub, mechanical_1.MechanicalRole.SOUND),
-            canMedia: this.isPublisherQualifiedForRole(pub, mechanical_1.MechanicalRole.MEDIA),
-            canSoundAndMedia: this.isPublisherQualifiedForRole(pub, mechanical_1.MechanicalRole.SOUND_AND_MEDIA),
-            canRovingMic: this.isPublisherQualifiedForRole(pub, mechanical_1.MechanicalRole.ROVING_MIC),
-            canStageMic: this.isPublisherQualifiedForRole(pub, mechanical_1.MechanicalRole.STAGE_MIC)
+            canAttendant: (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.ATTENDANT),
+            canSound: (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.SOUND),
+            canMedia: (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.MEDIA),
+            canSoundAndMedia: (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.SOUND_AND_MEDIA),
+            canRovingMic: (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.MICROPHONE_ATTENDANT),
+            canStageMic: (0, publisherPrivilegeHelper_1.hasPrivilege)(pub, privileges_1.PrivilegeCode.STAGE_ATTENDANT)
         }));
     }
     async toggleQualification(publisherId, role, enabled) {
@@ -598,16 +573,20 @@ class MechanicalScheduleService {
             throw new api_errors_1.NotFoundError("Publicador não encontrado.");
         }
         const rolePrivilegeMap = {
-            [mechanical_1.MechanicalRole.ATTENDANT]: { pt: "Indicador", en: "Attendant" },
-            [mechanical_1.MechanicalRole.SOUND]: { pt: "Som", en: "Sound" },
-            [mechanical_1.MechanicalRole.MEDIA]: { pt: "Mídias", en: "Media" },
-            [mechanical_1.MechanicalRole.SOUND_AND_MEDIA]: { pt: "Som e Mídias", en: "Sound and Media" },
-            [mechanical_1.MechanicalRole.ROVING_MIC]: { pt: "Microfone Volante", en: "Microphone Attendant" },
-            [mechanical_1.MechanicalRole.STAGE_MIC]: { pt: "Pedestal", en: "Stage Attendant" }
+            [mechanical_1.MechanicalRole.ATTENDANT]: { pt: "Indicador", en: "Attendant", code: privileges_1.PrivilegeCode.ATTENDANT },
+            [mechanical_1.MechanicalRole.SOUND]: { pt: "Som", en: "Sound", code: privileges_1.PrivilegeCode.SOUND },
+            [mechanical_1.MechanicalRole.MEDIA]: { pt: "Mídias", en: "Media", code: privileges_1.PrivilegeCode.MEDIA },
+            [mechanical_1.MechanicalRole.SOUND_AND_MEDIA]: { pt: "Som e Mídias", en: "Sound and Media", code: privileges_1.PrivilegeCode.SOUND_AND_MEDIA },
+            [mechanical_1.MechanicalRole.ROVING_MIC]: { pt: "Microfone Volante", en: "Microphone Attendant", code: privileges_1.PrivilegeCode.MICROPHONE_ATTENDANT },
+            [mechanical_1.MechanicalRole.STAGE_MIC]: { pt: "Pedestal", en: "Stage Attendant", code: privileges_1.PrivilegeCode.STAGE_ATTENDANT }
         };
         const target = rolePrivilegeMap[role];
         if (!target) {
             throw new api_errors_1.BadRequestError("Função inválida.");
+        }
+        const namesToMatch = [target.pt, target.en, target.code];
+        if (role === mechanical_1.MechanicalRole.STAGE_MIC) {
+            namesToMatch.push("Stage");
         }
         let privilegesList = publisher.privileges ? [...publisher.privileges] : [];
         if (enabled) {
@@ -616,34 +595,61 @@ class MechanicalScheduleService {
             }
         }
         else {
-            privilegesList = privilegesList.filter(p => p !== target.pt);
+            privilegesList = privilegesList.filter(p => !namesToMatch.includes(p));
         }
         publisher.privileges = privilegesList;
         await publisherRepository_1.publisherRepository.save(publisher);
         // Sincroniza tabela publisher_privileges
-        const privilegeEntity = await privilegeRepository_1.privilegeRepository.findOneBy({ name: target.en });
-        if (privilegeEntity) {
-            if (enabled) {
-                const existing = await publisherPrivilegeRepository_1.publisherPrivilegeRepository.findOne({
+        const privilegeWhere = [
+            { code: target.code },
+            { name: target.en },
+            { name: target.pt }
+        ];
+        if (role === mechanical_1.MechanicalRole.STAGE_MIC) {
+            privilegeWhere.push({ name: "Stage" });
+        }
+        const matchingPrivileges = await privilegeRepository_1.privilegeRepository.find({
+            where: privilegeWhere
+        });
+        let primaryPrivilege = matchingPrivileges.find(p => p.code === target.code) || matchingPrivileges[0];
+        if (!primaryPrivilege) {
+            primaryPrivilege = await privilegeRepository_1.privilegeRepository.save({
+                code: target.code,
+                name: target.en
+            });
+            matchingPrivileges.push(primaryPrivilege);
+        }
+        if (enabled) {
+            const existing = await publisherPrivilegeRepository_1.publisherPrivilegeRepository.findOne({
+                where: {
+                    publisher: { id: publisher.id },
+                    privilege: { id: primaryPrivilege.id }
+                }
+            });
+            if (!existing) {
+                await publisherPrivilegeRepository_1.publisherPrivilegeRepository.save({
+                    publisher,
+                    privilege: primaryPrivilege,
+                    startDate: null,
+                    endDate: null
+                });
+            }
+            else if (existing.endDate) {
+                existing.endDate = null;
+                await publisherPrivilegeRepository_1.publisherPrivilegeRepository.save(existing);
+            }
+        }
+        else {
+            for (const priv of matchingPrivileges) {
+                const existingRelations = await publisherPrivilegeRepository_1.publisherPrivilegeRepository.find({
                     where: {
                         publisher: { id: publisher.id },
-                        privilege: { id: privilegeEntity.id }
+                        privilege: { id: priv.id }
                     }
                 });
-                if (!existing) {
-                    await publisherPrivilegeRepository_1.publisherPrivilegeRepository.save({
-                        publisher,
-                        privilege: privilegeEntity,
-                        startDate: null,
-                        endDate: null
-                    });
+                if (existingRelations.length > 0) {
+                    await publisherPrivilegeRepository_1.publisherPrivilegeRepository.remove(existingRelations);
                 }
-            }
-            else {
-                await publisherPrivilegeRepository_1.publisherPrivilegeRepository.delete({
-                    publisher: { id: publisher.id },
-                    privilege: { id: privilegeEntity.id }
-                });
             }
         }
         return { success: true };

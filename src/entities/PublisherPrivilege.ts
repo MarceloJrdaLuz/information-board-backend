@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm"
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm"
 import { Publisher } from "./Publisher"
 import { Privilege } from "./Privilege"
 
@@ -7,12 +7,20 @@ export class PublisherPrivilege {
   @PrimaryGeneratedColumn("uuid")
   id: string
 
+  @Column({ nullable: true })
+  publisherId: string
+
   @ManyToOne(() => Publisher, publisher => publisher.privilegesRelation, {
     onDelete: "CASCADE"
   })
+  @JoinColumn({ name: "publisherId" })
   publisher: Publisher
 
+  @Column({ nullable: true })
+  privilegeId: string
+
   @ManyToOne(() => Privilege, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "privilegeId" })
   privilege: Privilege
 
   @Column({ type: "date", nullable: true })

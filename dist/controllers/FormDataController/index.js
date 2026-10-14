@@ -16,6 +16,8 @@ const talkRepository_1 = require("../../repositories/talkRepository");
 const userRepository_1 = require("../../repositories/userRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 const SpecialEventController_1 = require("../SpecialEventController");
+const privileges_1 = require("../../types/privileges");
+const publisherPrivilegeHelper_1 = require("../../helpers/publisherPrivilegeHelper");
 class FormDataController {
     async getFormData(req, res) {
         const requestUser = await (0, permissions_1.decoder)(req);
@@ -33,7 +35,7 @@ class FormDataController {
                         relations: ["privilegesRelation", "privilegesRelation.privilege", "congregation"],
                         order: { fullName: "ASC" },
                     });
-                    const speakers = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Speaker"));
+                    const speakers = publishers.filter(pp => (0, publisherPrivilegeHelper_1.hasPrivilege)(pp, privileges_1.PrivilegeCode.SPEAKER));
                     const talks = await talkRepository_1.talkRepository.find({
                         order: { number: "ASC" },
                     });
@@ -53,7 +55,7 @@ class FormDataController {
                         relations: ["privilegesRelation", "privilegesRelation.privilege", "congregation"],
                         order: { fullName: "ASC" },
                     });
-                    const fieldConductors = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Field Conductor"));
+                    const fieldConductors = publishers.filter(pp => (0, publisherPrivilegeHelper_1.hasPrivilege)(pp, privileges_1.PrivilegeCode.FIELD_CONDUCTOR));
                     return res.json({ publishers: fieldConductors });
                 }
                 case 'publicWitness': {
@@ -62,7 +64,7 @@ class FormDataController {
                         relations: ["privilegesRelation", "privilegesRelation.privilege", "congregation"],
                         order: { fullName: "ASC" },
                     });
-                    const publicWitnesses = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Public Witness"));
+                    const publicWitnesses = publishers.filter(pp => (0, publisherPrivilegeHelper_1.hasPrivilege)(pp, privileges_1.PrivilegeCode.PUBLIC_WITNESS));
                     return res.json(publicWitnesses);
                 }
                 case 'territoryHistory': {
@@ -71,7 +73,7 @@ class FormDataController {
                         relations: ["privilegesRelation", "privilegesRelation.privilege"],
                         order: { fullName: "ASC" },
                     });
-                    const fieldConductors = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Field Conductor"));
+                    const fieldConductors = publishers.filter(pp => (0, publisherPrivilegeHelper_1.hasPrivilege)(pp, privileges_1.PrivilegeCode.FIELD_CONDUCTOR));
                     return res.json(fieldConductors);
                 }
                 case 'externalTalks': {
@@ -124,8 +126,8 @@ class FormDataController {
                         relations: ["originCongregation", "talks"],
                         order: { fullName: "ASC" },
                     });
-                    const chairmans = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Chairman"));
-                    const readers = publishers.filter(pp => pp.privilegesRelation.some(p => p.privilege.name === "Reader"));
+                    const chairmans = publishers.filter(pp => (0, publisherPrivilegeHelper_1.hasPrivilege)(pp, privileges_1.PrivilegeCode.CHAIRMAN));
+                    const readers = publishers.filter(pp => (0, publisherPrivilegeHelper_1.hasPrivilege)(pp, privileges_1.PrivilegeCode.READER));
                     const talks = await talkRepository_1.talkRepository.find({
                         order: { number: "ASC" },
                     });
@@ -254,21 +256,28 @@ class FormDataController {
                     return res.json({ publishers, hospitalityGroups });
                 }
                 case "cleaningGroup": {
-                    const publishers = await publisherRepository_1.publisherRepository.find({
+                    const allPublishers = await publisherRepository_1.publisherRepository.find({
                         where: {
                             congregation: {
                                 id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id
                             }
-                        }
+                        },
+                        relations: ["privilegesRelation", "privilegesRelation.privilege"]
                     });
+                    const publishers = allPublishers.filter(p => (0, publisherPrivilegeHelper_1.hasPrivilege)(p, privileges_1.PrivilegeCode.PUBLISHER));
                     const cleaningGroups = await cleaningGroupRepository_1.cleaningGroupRepository.find({
                         where: {
                             congregation: {
                                 id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id
                             }
                         },
-                        relations: ["publishers"]
+                        relations: ["publishers", "publishers.privilegesRelation", "publishers.privilegesRelation.privilege"]
                     });
+                    for (const g of cleaningGroups) {
+                        if (g.publishers) {
+                            g.publishers = g.publishers.filter(p => (0, publisherPrivilegeHelper_1.hasPrivilege)(p, privileges_1.PrivilegeCode.PUBLISHER));
+                        }
+                    }
                     return res.json({ publishers, cleaningGroups });
                 }
                 case "family": {

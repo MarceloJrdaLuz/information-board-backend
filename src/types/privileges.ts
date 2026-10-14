@@ -1,4 +1,3 @@
-
 export enum Privileges {
     PUBLICADOR = "Publicador",
     ANCIAO = "Ancião",
@@ -6,6 +5,8 @@ export enum Privileges {
     PIONEIROAUXILIAR = 'Pioneiro Auxiliar',
     PIONEIROREGULAR = 'Pioneiro Regular',
     PIONEIROESPECIAL = 'Pioneiro Especial',
+    MISSIONARIOEMCAMPO = 'Missionário em Campo',
+    AUXILIARTEMPOINDETERMINADO = 'Auxiliar por Tempo Indeterminado',
     AUXILIARINDETERMINADO = 'Auxiliar Indeterminado',
     ORADOR = "Orador",
     PRESIDENTE = 'Presidente',
@@ -18,4 +19,26 @@ export enum Privileges {
     MIDIAS = 'Mídias',
     SOMEMIDIAS = 'Som e Mídias',
     PEDESTAL = 'Pedestal'
+}
+
+export enum PrivilegeCode {
+    PUBLISHER = "PUBLISHER",
+    ELDER = "ELDER",
+    MINISTERIAL_SERVANT = "MINISTERIAL_SERVANT",
+    REGULAR_PIONEER = "REGULAR_PIONEER",
+    SPECIAL_PIONEER = "SPECIAL_PIONEER",
+    MISSIONARY_WORLDWIDE = "MISSIONARY_WORLDWIDE",
+    CONTINUOUS_AUXILIARY_PIONEER = "CONTINUOUS_AUXILIARY_PIONEER",
+    AUXILIARY_PIONEER = "AUXILIARY_PIONEER",
+    SPEAKER = "SPEAKER",
+    READER = "READER",
+    CHAIRMAN = "CHAIRMAN",
+    ATTENDANT = "ATTENDANT",
+    MICROPHONE_ATTENDANT = "MICROPHONE_ATTENDANT",
+    FIELD_CONDUCTOR = "FIELD_CONDUCTOR",
+    PUBLIC_WITNESS = "PUBLIC_WITNESS",
+    SOUND = "SOUND",
+    MEDIA = "MEDIA",
+    SOUND_AND_MEDIA = "SOUND_AND_MEDIA",
+    STAGE_ATTENDANT = "STAGE_ATTENDANT"
 }
