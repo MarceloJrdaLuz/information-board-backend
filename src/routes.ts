@@ -29,6 +29,7 @@ import MeetingAssistanceController from "./controllers/MeetingAssistanceControll
 import { MidweekScheduleController } from "./controllers/MidweekScheduleController"
 import NoticeController from "./controllers/NoticeController"
 import NotificationController from "./controllers/NotificationController"
+import PasskeyController from "./controllers/PasskeyController"
 import PermissionController from "./controllers/PermissionController"
 import ProfileController from "./controllers/ProfileController"
 import PublicWitnessArrangementController from "./controllers/PublicWitnessArrangementController"
@@ -65,6 +66,10 @@ routes.post('/recover-user-information', UserController.recoverUserInformation)
 routes.get('/recover-user-information', UserController.recoverUserInformation)
 routes.post('/forgot_password', UserController.forgot_password)
 routes.post('/reset_password', UserController.reset_password)
+
+// Chaves de Acesso / Passkeys (autenticação pública)
+routes.get('/passkey/authentication/options', PasskeyController.getAuthenticationOptions)
+routes.post('/passkey/authentication/verify', PasskeyController.verifyAuthentication)
 
 // Congregações (dados públicos)
 routes.get('/congregation/:number', CongregationController.getCongregation)
@@ -122,6 +127,12 @@ routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.up
 routes.get('/users', is(['ADMIN']), UserController.getUsers)
 routes.get('/users/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController.getUsersByCongregation)
 routes.patch('/users/:user_id/link-publisher', is(['ADMIN_CONGREGATION']), UserController.linkPublisherToUser)
+
+/* === Chaves de Acesso / Passkeys (área autenticada) === */
+routes.get('/passkey/registration/options', PasskeyController.getRegistrationOptions)
+routes.post('/passkey/registration/verify', PasskeyController.verifyRegistration)
+routes.get('/passkey/list', PasskeyController.listUserPasskeys)
+routes.delete('/passkey/:id', PasskeyController.deletePasskey)
 
 /* === Solicitações de Acesso ao Domínio === */
 routes.post('/access-requests', AccessRequestController.create)
