@@ -154,7 +154,7 @@ class SpeakerController {
         });
         const speakers = await speakerRepository_1.speakerRepository.find({
             where: { creatorCongregation: { id: userReq === null || userReq === void 0 ? void 0 : userReq.congregation.id } },
-            relations: ["originCongregation", "talks", "publisher"],
+            relations: ["originCongregation", "talks", "publisher", "publisher.congregation"],
             order: { fullName: "ASC" },
         });
         return res.json(speakers);
@@ -178,7 +178,7 @@ class SpeakerController {
         const { speaker_id } = req.params;
         const speaker = await speakerRepository_1.speakerRepository.findOne({
             where: { id: speaker_id },
-            relations: ["originCongregation"]
+            relations: ["originCongregation", "talks", "publisher", "publisher.congregation"]
         });
         if (!speaker)
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.speaker);
