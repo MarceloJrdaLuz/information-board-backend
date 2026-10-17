@@ -17,6 +17,7 @@ const Publisher_1 = require("./Publisher");
 const Role_1 = require("./Role");
 const PushSubscription_1 = require("./PushSubscription");
 const Notification_1 = require("./Notification");
+const PasskeyCredential_1 = require("./PasskeyCredential");
 let User = class User {
 };
 __decorate([
@@ -91,6 +92,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => Notification_1.Notification, notification => notification.user),
     __metadata("design:type", Array)
 ], User.prototype, "notifications", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => PasskeyCredential_1.PasskeyCredential, passkey => passkey.user),
+    __metadata("design:type", Array)
+], User.prototype, "passkeyCredentials", void 0);
 User = __decorate([
     (0, typeorm_1.Entity)('users')
 ], User);

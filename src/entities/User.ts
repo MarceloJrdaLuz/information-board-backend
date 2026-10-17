@@ -5,6 +5,7 @@ import { Publisher } from "./Publisher";
 import { Role } from "./Role";
 import { PushSubscription } from "./PushSubscription";
 import { Notification } from "./Notification";
+import { PasskeyCredential } from "./PasskeyCredential";
 
 @Entity('users')
 export class User {
@@ -70,4 +71,10 @@ export class User {
         notification => notification.user
     )
     notifications: Notification[]
+
+    @OneToMany(
+        () => PasskeyCredential,
+        passkey => passkey.user
+    )
+    passkeyCredentials: PasskeyCredential[]
 }
