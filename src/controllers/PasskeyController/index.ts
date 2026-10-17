@@ -29,16 +29,32 @@ function getRpId(req: Request): string {
 
 function getExpectedOrigins(req: Request): string[] {
     const origins = new Set<string>();
+
+    // Origem enviada pelo navegador do cliente
+    const reqOrigin = req.get("origin");
+    if (reqOrigin) origins.add(reqOrigin.replace(/\/$/, ""));
+
+    const referer = req.get("referer");
+    if (referer) {
+        try {
+            const refUrl = new URL(referer);
+            origins.add(refUrl.origin);
+        } catch { }
+    }
+
+    // URLs configuradas nas variáveis de ambiente do backend (se existirem)
+    if (process.env.APP_URL) {
+        origins.add(process.env.APP_URL.replace(/\/$/, ""));
+    }
     if (process.env.FRONTEND_URL) {
         origins.add(process.env.FRONTEND_URL.replace(/\/$/, ""));
     }
-    origins.add("http://localhost:3000");
-    origins.add("http://localhost:3001");
-    origins.add("https://quadrodeanuncios.com.br");
-    origins.add("https://www.quadrodeanuncios.com.br");
 
-    const reqOrigin = req.get("origin");
-    if (reqOrigin) origins.add(reqOrigin.replace(/\/$/, ""));
+    // Portas de desenvolvimento local
+    if (process.env.ENVIRONMENT === "local" || process.env.NODE_ENV !== "production") {
+        origins.add("http://localhost:3000");
+        origins.add("http://localhost:3001");
+    }
 
     return Array.from(origins);
 }
