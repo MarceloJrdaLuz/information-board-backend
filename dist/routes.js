@@ -33,6 +33,7 @@ const MeetingAssistanceController_1 = __importDefault(require("./controllers/Mee
 const MidweekScheduleController_1 = require("./controllers/MidweekScheduleController");
 const NoticeController_1 = __importDefault(require("./controllers/NoticeController"));
 const NotificationController_1 = __importDefault(require("./controllers/NotificationController"));
+const PasskeyController_1 = __importDefault(require("./controllers/PasskeyController"));
 const PermissionController_1 = __importDefault(require("./controllers/PermissionController"));
 const ProfileController_1 = __importDefault(require("./controllers/ProfileController"));
 const PublicWitnessArrangementController_1 = __importDefault(require("./controllers/PublicWitnessArrangementController"));
@@ -66,6 +67,9 @@ routes.post('/recover-user-information', UserController_1.default.recoverUserInf
 routes.get('/recover-user-information', UserController_1.default.recoverUserInformation);
 routes.post('/forgot_password', UserController_1.default.forgot_password);
 routes.post('/reset_password', UserController_1.default.reset_password);
+// Chaves de Acesso / Passkeys (autenticação pública)
+routes.get('/passkey/authentication/options', PasskeyController_1.default.getAuthenticationOptions);
+routes.post('/passkey/authentication/verify', PasskeyController_1.default.verifyAuthentication);
 // Congregações (dados públicos)
 routes.get('/congregation/:number', CongregationController_1.default.getCongregation);
 // Programação de hospitalidade (dados públicos)
@@ -108,6 +112,11 @@ routes.put('/user/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION'])
 routes.get('/users', (0, permissions_1.is)(['ADMIN']), UserController_1.default.getUsers);
 routes.get('/users/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController_1.default.getUsersByCongregation);
 routes.patch('/users/:user_id/link-publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION']), UserController_1.default.linkPublisherToUser);
+/* === Chaves de Acesso / Passkeys (área autenticada) === */
+routes.get('/passkey/registration/options', PasskeyController_1.default.getRegistrationOptions);
+routes.post('/passkey/registration/verify', PasskeyController_1.default.verifyRegistration);
+routes.get('/passkey/list', PasskeyController_1.default.listUserPasskeys);
+routes.delete('/passkey/:id', PasskeyController_1.default.deletePasskey);
 /* === Solicitações de Acesso ao Domínio === */
 routes.post('/access-requests', AccessRequestController_1.default.create);
 routes.get('/access-requests/my', AccessRequestController_1.default.getMyRequests);
