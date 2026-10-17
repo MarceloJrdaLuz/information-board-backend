@@ -58,20 +58,22 @@ class PushNotificationController {
     }
 
     /**
-     * Remove a inscrição push informada para o usuário logado
+     * Remove a inscrição push informada (ou todas do usuário se endpoint não for especificado)
      */
     async unsubscribe(req: Request, res: Response) {
         const user = await decoder(req)
         const { endpoint } = req.body
 
-        if (!endpoint) {
-            throw new BadRequestError("Endpoint is required")
+        if (endpoint) {
+            await pushSubscriptionRepository.delete({
+                endpoint,
+                user_id: user.id,
+            })
+        } else {
+            await pushSubscriptionRepository.delete({
+                user_id: user.id,
+            })
         }
-
-        await pushSubscriptionRepository.delete({
-            endpoint,
-            user_id: user.id,
-        })
 
         return res.json({ message: "Push subscription removed successfully" })
     }
