@@ -15,6 +15,7 @@ const api_errors_1 = require("../../helpers/api-errors");
 const permissions_1 = require("../../middlewares/permissions");
 const cleaningExceptionRepository_1 = require("../../repositories/cleaningExceptionRepository");
 const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepository");
+const cleaningGroupUnavailabilityRepository_1 = require("../../repositories/cleaningGroupUnavailabilityRepository");
 const cleaningScheduleConfigRepository_1 = require("../../repositories/cleaningScheduleConfigRepository");
 const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
@@ -26,6 +27,7 @@ dayjs_1.default.extend(isSameOrBefore_1.default);
 dayjs_1.default.extend(isSameOrAfter_1.default);
 class CleaningScheduleController {
     async generate(req, res) {
+        var _a, _b, _c;
         const { congregation_id } = req.params;
         const { start, end } = req.query;
         if (!start || !end)
@@ -73,14 +75,26 @@ class CleaningScheduleController {
                 cur = cur.add(1, "day");
             }
         }
-        // 🔹 BUSCA o último agendamento ANTERIOR ao início do novo intervalo
-        const lastSchedule = await cleaningScheduleRepository_1.cleaningScheduleRepository.findOne({
+        // 🔹 Busca indisponibilidades de grupos cadastradas para a congregação
+        const unavailabilities = await cleaningGroupUnavailabilityRepository_1.cleaningGroupUnavailabilityRepository.find({
+            where: { congregation_id: congregation.id }
+        });
+        const isGroupUnavailable = (groupId, curDate) => {
+            const curStr = curDate.format("YYYY-MM-DD");
+            return unavailabilities.some(u => {
+                if (u.group_id !== groupId)
+                    return false;
+                return curStr >= u.startDate && curStr <= u.endDate;
+            });
+        };
+        // 🔹 Busca histórico recente antes de startDate para manter a continuidade do rodízio
+        const prevSchedules = await cleaningScheduleRepository_1.cleaningScheduleRepository.find({
             where: {
                 congregation_id: congregation.id,
                 date: (0, typeorm_1.LessThan)(startDate.format("YYYY-MM-DD"))
             },
             order: { date: "DESC" },
-            relations: ["group"]
+            take: 100
         });
         // 🔹 Deleta programações existentes no intervalo de forma confiável via QueryBuilder
         await cleaningScheduleRepository_1.cleaningScheduleRepository
@@ -94,17 +108,21 @@ class CleaningScheduleController {
         })
             .execute();
         const newSchedule = [];
-        // 🔹 DEFINE o ponto inicial do rodízio
-        let groupIndex = 0;
-        if (lastSchedule) {
-            const lastGroupId = lastSchedule.group.id;
-            const lastIndex = groups.findIndex(g => g.id === lastGroupId);
-            if (lastIndex !== -1) {
-                groupIndex = lastIndex + 1;
-            }
-        }
         // 🔁 MODO SEMANAL
         if (config.mode === cleaning_1.CleaningScheduleMode.WEEKLY) {
+            // Mapeia o momento da última atribuição de cada grupo
+            const lastAssignedWeekly = new Map();
+            groups.forEach(g => {
+                lastAssignedWeekly.set(g.id, g.order * 1000 - 1000000000000);
+            });
+            for (const s of prevSchedules) {
+                if (lastAssignedWeekly.has(s.group_id)) {
+                    const ts = (0, dayjs_1.default)(s.date).valueOf();
+                    if (ts > ((_a = lastAssignedWeekly.get(s.group_id)) !== null && _a !== void 0 ? _a : 0)) {
+                        lastAssignedWeekly.set(s.group_id, ts);
+                    }
+                }
+            }
             let current = startDate.clone().isoWeekday(1);
             if (current.isBefore(startDate)) {
                 current = current.add(1, "week");
@@ -112,34 +130,108 @@ class CleaningScheduleController {
             while (current.isSameOrBefore(endDate)) {
                 const dateStr = current.format("YYYY-MM-DD");
                 if (!exceptionDates.has(dateStr)) {
-                    const group = groups[groupIndex % groups.length];
+                    // Ordena pelos que estão há mais tempo sem limpar
+                    const candidates = [...groups].sort((a, b) => {
+                        var _a, _b;
+                        const aTime = (_a = lastAssignedWeekly.get(a.id)) !== null && _a !== void 0 ? _a : 0;
+                        const bTime = (_b = lastAssignedWeekly.get(b.id)) !== null && _b !== void 0 ? _b : 0;
+                        if (aTime !== bTime)
+                            return aTime - bTime;
+                        return a.order - b.order;
+                    });
+                    let chosen = candidates.find(g => !isGroupUnavailable(g.id, current));
+                    if (!chosen)
+                        chosen = candidates[0];
                     newSchedule.push({
                         date: dateStr,
-                        group_id: group.id,
+                        group_id: chosen.id,
                         congregation_id: congregation.id
                     });
-                    groupIndex++;
+                    lastAssignedWeekly.set(chosen.id, current.valueOf());
                 }
                 current = current.add(1, "week");
             }
         }
-        // 🔁 MODO POR DIAS DE REUNIÃO
+        // 🔁 MODO POR DIAS DE REUNIÃO (Filas independentes Meio de Semana & Fim de Semana)
         else {
             const midweekDay = (0, cleaningFunctions_1.convertMeetingDayPortugueseToIso)(congregation.dayMeetingLifeAndMinistary);
             const endweekDay = (0, cleaningFunctions_1.convertMeetingDayPortugueseToIso)(congregation.dayMeetingPublic);
+            // Separa os grupos elegíveis para cada reunião
+            let midweekGroups = groups.filter(g => !g.dayPreference || g.dayPreference === "ALL" || g.dayPreference === "MIDWEEK");
+            if (midweekGroups.length === 0)
+                midweekGroups = groups;
+            let weekendGroups = groups.filter(g => !g.dayPreference || g.dayPreference === "ALL" || g.dayPreference === "WEEKEND");
+            if (weekendGroups.length === 0)
+                weekendGroups = groups;
+            // Histórico independente de última atribuição
+            const lastAssignedMidweek = new Map();
+            midweekGroups.forEach(g => {
+                lastAssignedMidweek.set(g.id, g.order * 1000 - 1000000000000);
+            });
+            const lastAssignedWeekend = new Map();
+            weekendGroups.forEach(g => {
+                lastAssignedWeekend.set(g.id, g.order * 1000 - 1000000000000);
+            });
+            for (const s of prevSchedules) {
+                const sDate = (0, dayjs_1.default)(s.date);
+                const wDay = sDate.isoWeekday();
+                const ts = sDate.valueOf();
+                if (wDay === midweekDay && lastAssignedMidweek.has(s.group_id)) {
+                    if (ts > ((_b = lastAssignedMidweek.get(s.group_id)) !== null && _b !== void 0 ? _b : 0)) {
+                        lastAssignedMidweek.set(s.group_id, ts);
+                    }
+                }
+                else if (wDay === endweekDay && lastAssignedWeekend.has(s.group_id)) {
+                    if (ts > ((_c = lastAssignedWeekend.get(s.group_id)) !== null && _c !== void 0 ? _c : 0)) {
+                        lastAssignedWeekend.set(s.group_id, ts);
+                    }
+                }
+            }
             let current = startDate.clone();
             while (current.isSameOrBefore(endDate)) {
                 const weekday = current.isoWeekday();
-                if (weekday === midweekDay || weekday === endweekDay) {
+                if (weekday === midweekDay) {
                     const dateStr = current.format("YYYY-MM-DD");
                     if (!exceptionDates.has(dateStr)) {
-                        const group = groups[groupIndex % groups.length];
+                        const candidates = [...midweekGroups].sort((a, b) => {
+                            var _a, _b;
+                            const aTime = (_a = lastAssignedMidweek.get(a.id)) !== null && _a !== void 0 ? _a : 0;
+                            const bTime = (_b = lastAssignedMidweek.get(b.id)) !== null && _b !== void 0 ? _b : 0;
+                            if (aTime !== bTime)
+                                return aTime - bTime;
+                            return a.order - b.order;
+                        });
+                        let chosen = candidates.find(g => !isGroupUnavailable(g.id, current));
+                        if (!chosen)
+                            chosen = candidates[0];
                         newSchedule.push({
                             date: dateStr,
-                            group_id: group.id,
+                            group_id: chosen.id,
                             congregation_id: congregation.id
                         });
-                        groupIndex++;
+                        lastAssignedMidweek.set(chosen.id, current.valueOf());
+                    }
+                }
+                else if (weekday === endweekDay) {
+                    const dateStr = current.format("YYYY-MM-DD");
+                    if (!exceptionDates.has(dateStr)) {
+                        const candidates = [...weekendGroups].sort((a, b) => {
+                            var _a, _b;
+                            const aTime = (_a = lastAssignedWeekend.get(a.id)) !== null && _a !== void 0 ? _a : 0;
+                            const bTime = (_b = lastAssignedWeekend.get(b.id)) !== null && _b !== void 0 ? _b : 0;
+                            if (aTime !== bTime)
+                                return aTime - bTime;
+                            return a.order - b.order;
+                        });
+                        let chosen = candidates.find(g => !isGroupUnavailable(g.id, current));
+                        if (!chosen)
+                            chosen = candidates[0];
+                        newSchedule.push({
+                            date: dateStr,
+                            group_id: chosen.id,
+                            congregation_id: congregation.id
+                        });
+                        lastAssignedWeekend.set(chosen.id, current.valueOf());
                     }
                 }
                 current = current.add(1, "day");
@@ -236,6 +328,45 @@ class CleaningScheduleController {
         }
         await cleaningScheduleRepository_1.cleaningScheduleRepository.delete(id);
         return res.status(204).send();
+    }
+    async updateGroup(req, res) {
+        const { id } = req.params;
+        const { group_id } = req.body;
+        if (!group_id) {
+            throw new api_errors_1.BadRequestError("group_id é obrigatório.");
+        }
+        const schedule = await cleaningScheduleRepository_1.cleaningScheduleRepository.findOne({
+            where: { id },
+            relations: ["congregation", "group"]
+        });
+        if (!schedule) {
+            throw new api_errors_1.NotFoundError("Programação de limpeza não encontrada.");
+        }
+        const group = await cleaningGroupRepository_1.cleaningGroupRepository.findOne({
+            where: { id: group_id, congregation: { id: schedule.congregation_id } },
+            relations: [
+                "publishers",
+                "publishers.family",
+                "publishers.family.responsible"
+            ]
+        });
+        if (!group) {
+            throw new api_errors_1.NotFoundError("Grupo de limpeza não encontrado nesta congregação.");
+        }
+        schedule.group_id = group_id;
+        schedule.group = group;
+        const saved = await cleaningScheduleRepository_1.cleaningScheduleRepository.save(schedule);
+        const orderedPublishers = (0, organizePublishersByFamily_1.organizePublishersByFamily)(group.publishers);
+        const date = (0, dayjs_1.default)(saved.date);
+        return res.status(200).json({
+            ...saved,
+            weekdayNumber: date.isoWeekday(),
+            weekdayName: date.format("dddd"),
+            group: {
+                ...group,
+                publishers: orderedPublishers
+            }
+        });
     }
 }
 exports.default = new CleaningScheduleController();

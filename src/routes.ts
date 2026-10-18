@@ -7,6 +7,7 @@ import AccessRequestController from "./controllers/AccessRequestController"
 import CategoryController from "./controllers/CategoryController"
 import CleaningExceptionController from "./controllers/CleaningExceptionController"
 import CleaningGroupController from "./controllers/CleaningGroupController"
+import CleaningGroupUnavailabilityController from "./controllers/CleaningGroupUnavailabilityController"
 import CleaningScheduleConfigController from "./controllers/CleaningScheduleConfigController"
 import CleaningScheduleController from "./controllers/CleaningScheduleController"
 import CongregationController from "./controllers/CongregationController"
@@ -241,7 +242,13 @@ routes.delete("/cleaning-exception/:groupId", is(['ADMIN_CONGREGATION', 'CLEANIN
 /* === Gerar programação de limpeza === */
 routes.post("/cleaning/generate-schedule/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController.generate);
 routes.get("/cleaning/schedule/congregation/:congregation_id", CleaningScheduleController.getFutureSchedules);
+routes.patch("/cleaning/schedule/:id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController.updateGroup);
 routes.delete("/cleaning/schedule/:id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningScheduleController.delete);
+
+/* === Indisponibilidades de Grupos de Limpeza === */
+routes.post("/cleaning/group-unavailabilities/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupUnavailabilityController.create);
+routes.get("/cleaning/group-unavailabilities/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupUnavailabilityController.getByCongregation);
+routes.delete("/cleaning/group-unavailabilities/:id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupUnavailabilityController.delete);
 
 /* === Famílias === */
 

@@ -12,7 +12,7 @@ const privileges_1 = require("../../types/privileges");
 class CleaningGroupController {
     async create(req, res) {
         const { congregation_id } = req.params;
-        const { name, publisherIds, order } = req.body;
+        const { name, publisherIds, order, dayPreference } = req.body;
         if (!order || order <= 0)
             throw new api_errors_1.BadRequestError("Order must be a positive integer");
         const congregation = await congregationRepository_1.congregationRepository.findOneBy({ id: congregation_id });
@@ -52,6 +52,7 @@ class CleaningGroupController {
         const newGroup = cleaningGroupRepository_1.cleaningGroupRepository.create({
             name,
             order,
+            dayPreference: dayPreference || "ALL",
             congregation,
             publishers
         });
@@ -61,7 +62,7 @@ class CleaningGroupController {
     async update(req, res) {
         var _a;
         const { group_id: id } = req.params;
-        const { name, publisherIds } = req.body;
+        const { name, publisherIds, dayPreference } = req.body;
         const group = await cleaningGroupRepository_1.cleaningGroupRepository.findOne({
             where: { id },
             relations: ["publishers", "congregation"]
@@ -93,6 +94,8 @@ class CleaningGroupController {
         }
         if (name)
             group.name = name;
+        if (dayPreference)
+            group.dayPreference = dayPreference;
         await cleaningGroupRepository_1.cleaningGroupRepository.save(group);
         return res.status(200).json(group);
     }

@@ -26,7 +26,7 @@ class CleaningGroupController {
     res: Response
   ) {
     const { congregation_id } = req.params;
-    const { name, publisherIds, order } = req.body;
+    const { name, publisherIds, order, dayPreference } = req.body;
 
     if (!order || order <= 0)
       throw new BadRequestError("Order must be a positive integer");
@@ -81,6 +81,7 @@ class CleaningGroupController {
     const newGroup = cleaningGroupRepository.create({
       name,
       order,
+      dayPreference: dayPreference || "ALL",
       congregation,
       publishers
     });
@@ -95,7 +96,7 @@ class CleaningGroupController {
     res: Response
   ) {
     const { group_id: id } = req.params;
-    const { name, publisherIds } = req.body;
+    const { name, publisherIds, dayPreference } = req.body;
 
     const group = await cleaningGroupRepository.findOne({
       where: { id },
@@ -137,6 +138,7 @@ class CleaningGroupController {
     }
 
     if (name) group.name = name;
+    if (dayPreference) group.dayPreference = dayPreference;
 
     await cleaningGroupRepository.save(group);
     return res.status(200).json(group);

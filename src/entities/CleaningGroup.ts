@@ -19,6 +19,13 @@ export class CleaningGroup {
   @Column()
   name: string;
 
+  @Column({
+    type: "varchar",
+    length: 20,
+    default: "ALL"
+  })
+  dayPreference: string;
+
   @ManyToMany(() => Publisher)
   @JoinTable()
   publishers: Publisher[];

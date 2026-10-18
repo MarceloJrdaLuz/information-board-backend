@@ -32,6 +32,14 @@ __decorate([
     __metadata("design:type", String)
 ], CleaningGroup.prototype, "name", void 0);
 __decorate([
+    (0, typeorm_1.Column)({
+        type: "varchar",
+        length: 20,
+        default: "ALL"
+    }),
+    __metadata("design:type", String)
+], CleaningGroup.prototype, "dayPreference", void 0);
+__decorate([
     (0, typeorm_1.ManyToMany)(() => Publisher_1.Publisher),
     (0, typeorm_1.JoinTable)(),
     __metadata("design:type", Array)
