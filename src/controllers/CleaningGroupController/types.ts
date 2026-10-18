@@ -6,6 +6,7 @@ export type BodyCleaningGroupCreate = {
     name: string
     publisherIds: string[]
     order: number
+    dayPreference?: string
 }
 
 export type BodyCleaningGroupUpdate = Partial<BodyCleaningGroupCreate>
