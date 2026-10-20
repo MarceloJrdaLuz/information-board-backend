@@ -169,8 +169,10 @@ class MidweekScheduleController {
             }
         });
         const sorted = Array.from(uniqueMap.values()).sort((a, b) => a.weekDate.localeCompare(b.weekDate));
-        const getDisplayName = (pub) => {
+        const getDisplayName = (pub, customName) => {
             var _a;
+            if (customName && customName.trim())
+                return customName.trim();
             if (!pub)
                 return null;
             return ((_a = pub.nickname) === null || _a === void 0 ? void 0 : _a.trim()) || pub.fullName || null;
@@ -209,13 +211,20 @@ class MidweekScheduleController {
                 specialLocation: (matchingEvent === null || matchingEvent === void 0 ? void 0 : matchingEvent.location) || null,
                 notes: s.notes || null,
                 isCurrentWeek: (0, dayjs_1.default)().isSame(dateObj, "week") || (0, dayjs_1.default)().isSame((0, dayjs_1.default)(s.weekDate), "week"),
-                chairman: getDisplayName(s.chairman),
-                openingPrayer: getDisplayName(s.openingPrayer),
-                closingPrayer: getDisplayName(s.closingPrayer),
-                auxCounselor1: getDisplayName(s.auxCounselor1),
-                auxCounselor2: getDisplayName(s.auxCounselor2),
-                cbsConductor: getDisplayName(s.cbsConductor),
-                cbsReader: getDisplayName(s.cbsReader),
+                chairman: getDisplayName(s.chairman, s.custom_chairman_name),
+                openingPrayer: getDisplayName(s.openingPrayer, s.custom_opening_prayer_name),
+                closingPrayer: getDisplayName(s.closingPrayer, s.custom_closing_prayer_name),
+                auxCounselor1: getDisplayName(s.auxCounselor1, s.custom_aux_counselor_1_name),
+                auxCounselor2: getDisplayName(s.auxCounselor2, s.custom_aux_counselor_2_name),
+                cbsConductor: getDisplayName(s.cbsConductor, s.custom_cbs_conductor_name),
+                cbsReader: getDisplayName(s.cbsReader, s.custom_cbs_reader_name),
+                customChairmanName: s.custom_chairman_name,
+                customOpeningPrayerName: s.custom_opening_prayer_name,
+                customClosingPrayerName: s.custom_closing_prayer_name,
+                customAuxCounselor1Name: s.custom_aux_counselor_1_name,
+                customAuxCounselor2Name: s.custom_aux_counselor_2_name,
+                customCbsConductorName: s.custom_cbs_conductor_name,
+                customCbsReaderName: s.custom_cbs_reader_name,
                 cbsSourceMaterial: (cbsPart === null || cbsPart === void 0 ? void 0 : cbsPart.sourceMaterial) || null,
                 cbsTimeMinutes: (_a = cbsPart === null || cbsPart === void 0 ? void 0 : cbsPart.timeMinutes) !== null && _a !== void 0 ? _a : 30,
                 parts: (s.parts || [])
@@ -231,9 +240,10 @@ class MidweekScheduleController {
                     room: p.room,
                     orderIndex: p.orderIndex,
                     requiresAssistant: p.requiresAssistant,
-                    assignedPublisher: getDisplayName(p.assignedPublisher),
-                    assistantPublisher: getDisplayName(p.assistantPublisher),
+                    assignedPublisher: getDisplayName(p.assignedPublisher, p.custom_speaker_name),
+                    assistantPublisher: getDisplayName(p.assistantPublisher, p.custom_assistant_name),
                     customSpeakerName: p.custom_speaker_name,
+                    customAssistantName: p.custom_assistant_name,
                     lessonNumber: p.lessonNumber,
                     studyPoint: p.studyPoint,
                     studyPointDescription: p.studyPointDescription

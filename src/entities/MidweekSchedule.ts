@@ -96,6 +96,27 @@ export class MidweekSchedule {
     @Column({ type: "uuid", nullable: true })
     cbs_reader_id: string | null;
 
+    @Column({ type: "varchar", nullable: true })
+    custom_chairman_name: string | null;
+
+    @Column({ type: "varchar", nullable: true })
+    custom_opening_prayer_name: string | null;
+
+    @Column({ type: "varchar", nullable: true })
+    custom_closing_prayer_name: string | null;
+
+    @Column({ type: "varchar", nullable: true })
+    custom_aux_counselor_1_name: string | null;
+
+    @Column({ type: "varchar", nullable: true })
+    custom_aux_counselor_2_name: string | null;
+
+    @Column({ type: "varchar", nullable: true })
+    custom_cbs_conductor_name: string | null;
+
+    @Column({ type: "varchar", nullable: true })
+    custom_cbs_reader_name: string | null;
+
     @Column({ type: "boolean", default: false })
     isSpecial: boolean;
 
