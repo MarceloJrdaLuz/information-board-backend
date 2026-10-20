@@ -224,18 +224,25 @@ class MidweekScheduleService {
         if (clearsParticipants) {
             schedule.chairman = null;
             schedule.chairman_id = null;
+            schedule.custom_chairman_name = null;
             schedule.openingPrayer = null;
             schedule.opening_prayer_id = null;
+            schedule.custom_opening_prayer_name = null;
             schedule.closingPrayer = null;
             schedule.closing_prayer_id = null;
+            schedule.custom_closing_prayer_name = null;
             schedule.auxCounselor1 = null;
             schedule.aux_counselor_1_id = null;
+            schedule.custom_aux_counselor_1_name = null;
             schedule.auxCounselor2 = null;
             schedule.aux_counselor_2_id = null;
+            schedule.custom_aux_counselor_2_name = null;
             schedule.cbsConductor = null;
             schedule.cbs_conductor_id = null;
+            schedule.custom_cbs_conductor_name = null;
             schedule.cbsReader = null;
             schedule.cbs_reader_id = null;
+            schedule.custom_cbs_reader_name = null;
             // Desmarca todos os oradores/ajudantes das partes desta semana
             await midweekMeetingPartRepository_1.midweekMeetingPartRepository
                 .createQueryBuilder()
@@ -243,7 +250,8 @@ class MidweekScheduleService {
                 .set({
                 assigned_publisher_id: null,
                 assistant_publisher_id: null,
-                custom_speaker_name: null
+                custom_speaker_name: null,
+                custom_assistant_name: null
             })
                 .where("schedule_id = :scheduleId", { scheduleId: schedule.id })
                 .execute();
@@ -252,30 +260,93 @@ class MidweekScheduleService {
             if (data.chairman_id !== undefined) {
                 schedule.chairman_id = data.chairman_id;
                 schedule.chairman = data.chairman_id ? { id: data.chairman_id } : null;
+                if (data.chairman_id)
+                    schedule.custom_chairman_name = null;
+            }
+            if (data.custom_chairman_name !== undefined) {
+                schedule.custom_chairman_name = data.custom_chairman_name;
+                if (data.custom_chairman_name) {
+                    schedule.chairman_id = null;
+                    schedule.chairman = null;
+                }
             }
             if (data.opening_prayer_id !== undefined) {
                 schedule.opening_prayer_id = data.opening_prayer_id;
                 schedule.openingPrayer = data.opening_prayer_id ? { id: data.opening_prayer_id } : null;
+                if (data.opening_prayer_id)
+                    schedule.custom_opening_prayer_name = null;
+            }
+            if (data.custom_opening_prayer_name !== undefined) {
+                schedule.custom_opening_prayer_name = data.custom_opening_prayer_name;
+                if (data.custom_opening_prayer_name) {
+                    schedule.opening_prayer_id = null;
+                    schedule.openingPrayer = null;
+                }
             }
             if (data.closing_prayer_id !== undefined) {
                 schedule.closing_prayer_id = data.closing_prayer_id;
                 schedule.closingPrayer = data.closing_prayer_id ? { id: data.closing_prayer_id } : null;
+                if (data.closing_prayer_id)
+                    schedule.custom_closing_prayer_name = null;
+            }
+            if (data.custom_closing_prayer_name !== undefined) {
+                schedule.custom_closing_prayer_name = data.custom_closing_prayer_name;
+                if (data.custom_closing_prayer_name) {
+                    schedule.closing_prayer_id = null;
+                    schedule.closingPrayer = null;
+                }
             }
             if (data.aux_counselor_1_id !== undefined) {
                 schedule.aux_counselor_1_id = data.aux_counselor_1_id;
                 schedule.auxCounselor1 = data.aux_counselor_1_id ? { id: data.aux_counselor_1_id } : null;
+                if (data.aux_counselor_1_id)
+                    schedule.custom_aux_counselor_1_name = null;
+            }
+            if (data.custom_aux_counselor_1_name !== undefined) {
+                schedule.custom_aux_counselor_1_name = data.custom_aux_counselor_1_name;
+                if (data.custom_aux_counselor_1_name) {
+                    schedule.aux_counselor_1_id = null;
+                    schedule.auxCounselor1 = null;
+                }
             }
             if (data.aux_counselor_2_id !== undefined) {
                 schedule.aux_counselor_2_id = data.aux_counselor_2_id;
                 schedule.auxCounselor2 = data.aux_counselor_2_id ? { id: data.aux_counselor_2_id } : null;
+                if (data.aux_counselor_2_id)
+                    schedule.custom_aux_counselor_2_name = null;
+            }
+            if (data.custom_aux_counselor_2_name !== undefined) {
+                schedule.custom_aux_counselor_2_name = data.custom_aux_counselor_2_name;
+                if (data.custom_aux_counselor_2_name) {
+                    schedule.aux_counselor_2_id = null;
+                    schedule.auxCounselor2 = null;
+                }
             }
             if (data.cbs_conductor_id !== undefined) {
                 schedule.cbs_conductor_id = data.cbs_conductor_id;
                 schedule.cbsConductor = data.cbs_conductor_id ? { id: data.cbs_conductor_id } : null;
+                if (data.cbs_conductor_id)
+                    schedule.custom_cbs_conductor_name = null;
+            }
+            if (data.custom_cbs_conductor_name !== undefined) {
+                schedule.custom_cbs_conductor_name = data.custom_cbs_conductor_name;
+                if (data.custom_cbs_conductor_name) {
+                    schedule.cbs_conductor_id = null;
+                    schedule.cbsConductor = null;
+                }
             }
             if (data.cbs_reader_id !== undefined) {
                 schedule.cbs_reader_id = data.cbs_reader_id;
                 schedule.cbsReader = data.cbs_reader_id ? { id: data.cbs_reader_id } : null;
+                if (data.cbs_reader_id)
+                    schedule.custom_cbs_reader_name = null;
+            }
+            if (data.custom_cbs_reader_name !== undefined) {
+                schedule.custom_cbs_reader_name = data.custom_cbs_reader_name;
+                if (data.custom_cbs_reader_name) {
+                    schedule.cbs_reader_id = null;
+                    schedule.cbsReader = null;
+                }
             }
         }
         await midweekScheduleRepository_1.midweekScheduleRepository.save(schedule);
@@ -289,10 +360,32 @@ class MidweekScheduleService {
         if (!part || part.schedule.congregation_id !== congregationId) {
             throw new Error("Parte da reunião não encontrada.");
         }
-        if (data.assigned_publisher_id !== undefined)
+        if (data.assigned_publisher_id !== undefined) {
             part.assigned_publisher_id = data.assigned_publisher_id;
-        if (data.assistant_publisher_id !== undefined)
+            if (data.assigned_publisher_id) {
+                part.custom_speaker_name = null;
+            }
+        }
+        if (data.custom_speaker_name !== undefined) {
+            part.custom_speaker_name = data.custom_speaker_name;
+            if (data.custom_speaker_name) {
+                part.assigned_publisher_id = null;
+                part.assignedPublisher = null;
+            }
+        }
+        if (data.assistant_publisher_id !== undefined) {
             part.assistant_publisher_id = data.assistant_publisher_id;
+            if (data.assistant_publisher_id) {
+                part.custom_assistant_name = null;
+            }
+        }
+        if (data.custom_assistant_name !== undefined) {
+            part.custom_assistant_name = data.custom_assistant_name;
+            if (data.custom_assistant_name) {
+                part.assistant_publisher_id = null;
+                part.assistantPublisher = null;
+            }
+        }
         if (data.room !== undefined)
             part.room = data.room;
         if (data.title !== undefined)
@@ -341,6 +434,7 @@ class MidweekScheduleService {
         newPart.assigned_publisher_id = partData.assigned_publisher_id || null;
         newPart.assistant_publisher_id = partData.assistant_publisher_id || null;
         newPart.custom_speaker_name = partData.custom_speaker_name || null;
+        newPart.custom_assistant_name = partData.custom_assistant_name || null;
         newPart.orderIndex = partData.orderIndex || 99;
         newPart.isActive = true;
         return await midweekMeetingPartRepository_1.midweekMeetingPartRepository.save(newPart);

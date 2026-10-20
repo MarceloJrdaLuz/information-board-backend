@@ -92,6 +92,9 @@ export class MidweekMeetingPart {
     @Column({ type: "varchar", nullable: true })
     custom_speaker_name: string | null;
 
+    @Column({ type: "varchar", nullable: true })
+    custom_assistant_name: string | null;
+
     @Column({ type: "int", default: 0 })
     orderIndex: number;
 

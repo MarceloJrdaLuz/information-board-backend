@@ -48,13 +48,6 @@ class PublicWitnessArrangementController {
         })
         await publicWitnessTimeSlotRepository.save(ts)
 
-        if (!ts.is_rotative) {
-          // se não é rodízio, precisa ter publishers fixos
-          if (!slot.defaultPublishers || slot.defaultPublishers.length === 0) {
-            throw new BadRequestError("Non-rotative time slots must have default publishers")
-          }
-        }
-
         if (slot.defaultPublishers && slot.defaultPublishers.length > 0) {
           const defaultPubs = slot.defaultPublishers.map(dp =>
             publicWitnessTimeSlotDefaultPublisherRepository.create({
@@ -189,13 +182,6 @@ class PublicWitnessArrangementController {
         if (!ts) continue
 
         const timeSlot = ts // 🔒 trava o tipo
-
-        // validação
-        if (!timeSlot.is_rotative && (!slot.defaultPublishers || slot.defaultPublishers.length === 0)) {
-          throw new BadRequestError(
-            "Non-rotative time slots must have default publishers"
-          )
-        }
 
         if (slot.defaultPublishers?.length) {
           const defaultPubs = slot.defaultPublishers.map(dp =>

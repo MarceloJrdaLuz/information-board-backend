@@ -40,12 +40,6 @@ class PublicWitnessArrangementController {
                     is_rotative: (_b = slot.is_rotative) !== null && _b !== void 0 ? _b : false
                 });
                 await publicWitnessTimeSlotRepository_1.publicWitnessTimeSlotRepository.save(ts);
-                if (!ts.is_rotative) {
-                    // se não é rodízio, precisa ter publishers fixos
-                    if (!slot.defaultPublishers || slot.defaultPublishers.length === 0) {
-                        throw new api_errors_1.BadRequestError("Non-rotative time slots must have default publishers");
-                    }
-                }
                 if (slot.defaultPublishers && slot.defaultPublishers.length > 0) {
                     const defaultPubs = slot.defaultPublishers.map(dp => {
                         var _a;
@@ -153,10 +147,6 @@ class PublicWitnessArrangementController {
                 if (!ts)
                     continue;
                 const timeSlot = ts; // 🔒 trava o tipo
-                // validação
-                if (!timeSlot.is_rotative && (!slot.defaultPublishers || slot.defaultPublishers.length === 0)) {
-                    throw new api_errors_1.BadRequestError("Non-rotative time slots must have default publishers");
-                }
                 if ((_j = slot.defaultPublishers) === null || _j === void 0 ? void 0 : _j.length) {
                     const defaultPubs = slot.defaultPublishers.map(dp => {
                         var _a;

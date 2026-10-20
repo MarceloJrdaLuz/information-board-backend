@@ -134,6 +134,34 @@ __decorate([
     __metadata("design:type", Object)
 ], MidweekSchedule.prototype, "cbs_reader_id", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
+    __metadata("design:type", Object)
+], MidweekSchedule.prototype, "custom_chairman_name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
+    __metadata("design:type", Object)
+], MidweekSchedule.prototype, "custom_opening_prayer_name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
+    __metadata("design:type", Object)
+], MidweekSchedule.prototype, "custom_closing_prayer_name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
+    __metadata("design:type", Object)
+], MidweekSchedule.prototype, "custom_aux_counselor_1_name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
+    __metadata("design:type", Object)
+], MidweekSchedule.prototype, "custom_aux_counselor_2_name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
+    __metadata("design:type", Object)
+], MidweekSchedule.prototype, "custom_cbs_conductor_name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
+    __metadata("design:type", Object)
+], MidweekSchedule.prototype, "custom_cbs_reader_name", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: "boolean", default: false }),
     __metadata("design:type", Boolean)
 ], MidweekSchedule.prototype, "isSpecial", void 0);
