@@ -9,6 +9,8 @@ const isSameOrAfter_1 = __importDefault(require("dayjs/plugin/isSameOrAfter"));
 const isSameOrBefore_1 = __importDefault(require("dayjs/plugin/isSameOrBefore"));
 const typeorm_1 = require("typeorm");
 const fieldServiceExceptionRepository_1 = require("../../repositories/fieldServiceExceptionRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
+const SpecialEvent_1 = require("../../entities/SpecialEvent");
 const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 const publicWitnessArrangementRepository_1 = require("../../repositories/publicWitnessArrangementRepository");
 const publicWitnessAssignmentPublisherRepository_1 = require("../../repositories/publicWitnessAssignmentPublisherRepository");
@@ -142,6 +144,28 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
         }
     });
     const exceptionDates = new Set(exceptions.map(e => e.date));
+    const specialEvents = await specialEventRepository_1.specialEventRepository.find({
+        where: {
+            congregation_id
+        }
+    });
+    for (const se of specialEvents) {
+        if (se.publicWitnessingImpact === SpecialEvent_1.EventImpactScope.NONE)
+            continue;
+        const seStart = (0, dayjs_1.default)(se.startDate);
+        const seEnd = (0, dayjs_1.default)(se.endDate);
+        const rangeStart = (se.publicWitnessingImpact === SpecialEvent_1.EventImpactScope.ALL_DAYS || se.affectsWholeWeek)
+            ? seStart.startOf("isoWeek")
+            : seStart;
+        const rangeEnd = (se.publicWitnessingImpact === SpecialEvent_1.EventImpactScope.ALL_DAYS || se.affectsWholeWeek)
+            ? seEnd.endOf("isoWeek")
+            : seEnd;
+        let cur = rangeStart.clone();
+        while (cur.isSameOrBefore(rangeEnd, "day")) {
+            exceptionDates.add(cur.format("YYYY-MM-DD"));
+            cur = cur.add(1, "day");
+        }
+    }
     const validDates = candidateDates.filter(d => !exceptionDates.has(d));
     if (validDates.length === 0) {
         return {

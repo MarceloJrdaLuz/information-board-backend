@@ -3,6 +3,8 @@ import isSameOrAfter from "dayjs/plugin/isSameOrAfter"
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore"
 import { Between, In, LessThan } from "typeorm"
 import { fieldServiceExceptionRepository } from "../../repositories/fieldServiceExceptionRepository"
+import { specialEventRepository } from "../../repositories/specialEventRepository"
+import { EventImpactScope } from "../../entities/SpecialEvent"
 import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
 import { publicWitnessArrangementRepository } from "../../repositories/publicWitnessArrangementRepository"
 import { publicWitnessAssignmentPublisherRepository } from "../../repositories/publicWitnessAssignmentPublisherRepository"
@@ -174,6 +176,30 @@ export async function generatePublicWitnessSchedules({
     }
   })
   const exceptionDates = new Set(exceptions.map(e => e.date))
+
+  const specialEvents = await specialEventRepository.find({
+    where: {
+      congregation_id
+    }
+  })
+
+  for (const se of specialEvents) {
+    if (se.publicWitnessingImpact === EventImpactScope.NONE) continue
+    const seStart = dayjs(se.startDate)
+    const seEnd = dayjs(se.endDate)
+    const rangeStart = (se.publicWitnessingImpact === EventImpactScope.ALL_DAYS || se.affectsWholeWeek)
+      ? seStart.startOf("isoWeek")
+      : seStart
+    const rangeEnd = (se.publicWitnessingImpact === EventImpactScope.ALL_DAYS || se.affectsWholeWeek)
+      ? seEnd.endOf("isoWeek")
+      : seEnd
+
+    let cur = rangeStart.clone()
+    while (cur.isSameOrBefore(rangeEnd, "day")) {
+      exceptionDates.add(cur.format("YYYY-MM-DD"))
+      cur = cur.add(1, "day")
+    }
+  }
 
   const validDates = candidateDates.filter(d => !exceptionDates.has(d))
   if (validDates.length === 0) {

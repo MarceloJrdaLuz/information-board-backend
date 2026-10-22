@@ -3,6 +3,13 @@ import { Response } from "express"
 import { Between } from "typeorm"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { fieldServiceExceptionRepository } from "../../repositories/fieldServiceExceptionRepository"
+import { specialEventRepository } from "../../repositories/specialEventRepository"
+import { EventImpactScope } from "../../entities/SpecialEvent"
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter"
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore"
+
+dayjs.extend(isSameOrAfter)
+dayjs.extend(isSameOrBefore)
 import { fieldServiceScheduleRepository } from "../../repositories/fieldServiceScheduleRepository"
 import { publicWitnessArrangementRepository } from "../../repositories/publicWitnessArrangementRepository"
 import { publicWitnessAssignmentPublisherRepository } from "../../repositories/publicWitnessAssignmentPublisherRepository"
@@ -226,6 +233,47 @@ class PublicWitnessScheduleController {
             }
         })
 
+        const specialEvents = await specialEventRepository.find({
+            where: {
+                congregation_id: arrangement.congregation_id
+            }
+        })
+
+        const allExceptions: any[] = [...exceptions]
+        const existingExceptionDates = new Set(exceptions.map(e => e.date))
+
+        for (const se of specialEvents) {
+            if (se.publicWitnessingImpact === EventImpactScope.NONE) continue
+
+            const seStart = dayjs(se.startDate)
+            const seEnd = dayjs(se.endDate)
+            const rangeStart = (se.publicWitnessingImpact === EventImpactScope.ALL_DAYS || se.affectsWholeWeek)
+                ? seStart.startOf("isoWeek")
+                : seStart
+            const rangeEnd = (se.publicWitnessingImpact === EventImpactScope.ALL_DAYS || se.affectsWholeWeek)
+                ? seEnd.endOf("isoWeek")
+                : seEnd
+
+            let cur = rangeStart.clone()
+            while (cur.isSameOrBefore(rangeEnd, "day")) {
+                const curStr = cur.format("YYYY-MM-DD")
+                if (cur.isSameOrAfter(start, "day") && cur.isSameOrBefore(end, "day")) {
+                    if (!existingExceptionDates.has(curStr)) {
+                        existingExceptionDates.add(curStr)
+                        allExceptions.push({
+                            id: `special-event-${se.id}-${curStr}`,
+                            date: curStr,
+                            reason: se.title,
+                            template_id: null,
+                            isSpecialEvent: true,
+                            specialEventType: se.type
+                        })
+                    }
+                }
+                cur = cur.add(1, "day")
+            }
+        }
+
         // 🔁 Agrupar por data
         const scheduleMap: Record<string, any[]> = {}
 
@@ -256,7 +304,7 @@ class PublicWitnessScheduleController {
             start_date,
             end_date,
             schedule,
-            exceptions
+            exceptions: allExceptions
         })
     }
 
