@@ -19,6 +19,7 @@ const hospitalityAssignmentRepository_1 = require("../../repositories/hospitalit
 const publisherRepository_1 = require("../../repositories/publisherRepository");
 const speakerRepository_1 = require("../../repositories/speakerRepository");
 const specialEventRepository_1 = require("../../repositories/specialEventRepository");
+const midweekWorkbookWeekRepository_1 = require("../../repositories/midweekWorkbookWeekRepository");
 const talkRepository_1 = require("../../repositories/talkRepository");
 const weekendScheduleRepository_1 = require("../../repositories/weekendScheduleRepository");
 const SpecialEventController_1 = require("../SpecialEventController");
@@ -267,7 +268,6 @@ class WeekendScheduleController {
                         ws.visitingCongregation_id = null;
                         ws.manualSpeaker = null;
                         ws.manualTalk = null;
-                        ws.watchTowerStudyTitle = null;
                         await weekendScheduleRepository_1.weekendScheduleRepository
                             .createQueryBuilder()
                             .update(WeekendSchedule_1.WeekendSchedule)
@@ -284,7 +284,6 @@ class WeekendScheduleController {
                             visitingCongregation_id: null,
                             manualSpeaker: null,
                             manualTalk: null,
-                            watchTowerStudyTitle: null,
                             isSpecial: true,
                             specialName: info.title
                         })
@@ -463,6 +462,9 @@ class WeekendScheduleController {
             },
             relations: ["weekend", "group", "group.host", "group.members"]
         });
+        const workbookWeeks = await midweekWorkbookWeekRepository_1.midweekWorkbookWeekRepository.find({
+            order: { weekDate: "ASC" }
+        });
         const today = (0, moment_1.default)();
         const mapped = schedules.map(s => {
             var _a;
@@ -498,7 +500,13 @@ class WeekendScheduleController {
                 talk: s.talk
                     ? { title: s.talk.title, number: s.talk.number }
                     : (s.manualTalk ? { title: s.manualTalk } : null),
-                watchTowerStudyTitle: s.watchTowerStudyTitle,
+                watchTowerStudyTitle: (() => {
+                    if (s.watchTowerStudyTitle)
+                        return s.watchTowerStudyTitle;
+                    const mondayStr = (0, moment_1.default)(s.date, "YYYY-MM-DD").isoWeekday(1).format("YYYY-MM-DD");
+                    const matchingWb = workbookWeeks.find(wb => wb.weekDate === mondayStr);
+                    return (matchingWb === null || matchingWb === void 0 ? void 0 : matchingWb.watchtowerStudyTheme) || null;
+                })(),
                 externalTalks: externals.map(ext => ({
                     id: ext.id,
                     date: ext.date,

@@ -15,6 +15,7 @@ import { hospitalityAssignmentRepository } from "../../repositories/hospitalityA
 import { publisherRepository } from "../../repositories/publisherRepository"
 import { speakerRepository } from "../../repositories/speakerRepository"
 import { specialEventRepository } from "../../repositories/specialEventRepository"
+import { midweekWorkbookWeekRepository } from "../../repositories/midweekWorkbookWeekRepository"
 import { talkRepository } from "../../repositories/talkRepository"
 import { weekendScheduleRepository } from "../../repositories/weekendScheduleRepository"
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
@@ -321,7 +322,6 @@ class WeekendScheduleController {
             ws.visitingCongregation_id = null
             ws.manualSpeaker = null
             ws.manualTalk = null
-            ws.watchTowerStudyTitle = null
 
             await weekendScheduleRepository
               .createQueryBuilder()
@@ -339,7 +339,6 @@ class WeekendScheduleController {
                 visitingCongregation_id: null,
                 manualSpeaker: null,
                 manualTalk: null,
-                watchTowerStudyTitle: null,
                 isSpecial: true,
                 specialName: info.title
               })
@@ -528,6 +527,10 @@ class WeekendScheduleController {
       relations: ["weekend", "group", "group.host", "group.members"]
     })
 
+    const workbookWeeks = await midweekWorkbookWeekRepository.find({
+      order: { weekDate: "ASC" }
+    });
+
     const today = moment()
 
     const mapped = schedules.map(s => {
@@ -565,7 +568,12 @@ class WeekendScheduleController {
         talk: s.talk
           ? { title: s.talk.title, number: s.talk.number }
           : (s.manualTalk ? { title: s.manualTalk } : null),
-        watchTowerStudyTitle: s.watchTowerStudyTitle,
+        watchTowerStudyTitle: (() => {
+          if (s.watchTowerStudyTitle) return s.watchTowerStudyTitle;
+          const mondayStr = moment(s.date, "YYYY-MM-DD").isoWeekday(1).format("YYYY-MM-DD");
+          const matchingWb = workbookWeeks.find(wb => wb.weekDate === mondayStr);
+          return matchingWb?.watchtowerStudyTheme || null;
+        })(),
         externalTalks: externals.map(ext => ({
           id: ext.id,
           date: ext.date,

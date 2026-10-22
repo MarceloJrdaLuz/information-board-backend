@@ -7,6 +7,12 @@ const dayjs_1 = __importDefault(require("dayjs"));
 const typeorm_1 = require("typeorm");
 const api_errors_1 = require("../../helpers/api-errors");
 const fieldServiceExceptionRepository_1 = require("../../repositories/fieldServiceExceptionRepository");
+const specialEventRepository_1 = require("../../repositories/specialEventRepository");
+const SpecialEvent_1 = require("../../entities/SpecialEvent");
+const isSameOrAfter_1 = __importDefault(require("dayjs/plugin/isSameOrAfter"));
+const isSameOrBefore_1 = __importDefault(require("dayjs/plugin/isSameOrBefore"));
+dayjs_1.default.extend(isSameOrAfter_1.default);
+dayjs_1.default.extend(isSameOrBefore_1.default);
 const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 const publicWitnessArrangementRepository_1 = require("../../repositories/publicWitnessArrangementRepository");
 const publicWitnessAssignmentPublisherRepository_1 = require("../../repositories/publicWitnessAssignmentPublisherRepository");
@@ -179,6 +185,43 @@ class PublicWitnessScheduleController {
                 date: (0, typeorm_1.Between)(start.format("YYYY-MM-DD"), end.format("YYYY-MM-DD"))
             }
         });
+        const specialEvents = await specialEventRepository_1.specialEventRepository.find({
+            where: {
+                congregation_id: arrangement.congregation_id
+            }
+        });
+        const allExceptions = [...exceptions];
+        const existingExceptionDates = new Set(exceptions.map(e => e.date));
+        for (const se of specialEvents) {
+            if (se.publicWitnessingImpact === SpecialEvent_1.EventImpactScope.NONE)
+                continue;
+            const seStart = (0, dayjs_1.default)(se.startDate);
+            const seEnd = (0, dayjs_1.default)(se.endDate);
+            const rangeStart = (se.publicWitnessingImpact === SpecialEvent_1.EventImpactScope.ALL_DAYS || se.affectsWholeWeek)
+                ? seStart.startOf("isoWeek")
+                : seStart;
+            const rangeEnd = (se.publicWitnessingImpact === SpecialEvent_1.EventImpactScope.ALL_DAYS || se.affectsWholeWeek)
+                ? seEnd.endOf("isoWeek")
+                : seEnd;
+            let cur = rangeStart.clone();
+            while (cur.isSameOrBefore(rangeEnd, "day")) {
+                const curStr = cur.format("YYYY-MM-DD");
+                if (cur.isSameOrAfter(start, "day") && cur.isSameOrBefore(end, "day")) {
+                    if (!existingExceptionDates.has(curStr)) {
+                        existingExceptionDates.add(curStr);
+                        allExceptions.push({
+                            id: `special-event-${se.id}-${curStr}`,
+                            date: curStr,
+                            reason: se.title,
+                            template_id: null,
+                            isSpecialEvent: true,
+                            specialEventType: se.type
+                        });
+                    }
+                }
+                cur = cur.add(1, "day");
+            }
+        }
         // 🔁 Agrupar por data
         const scheduleMap = {};
         for (const assignment of assignments) {
@@ -203,7 +246,7 @@ class PublicWitnessScheduleController {
             start_date,
             end_date,
             schedule,
-            exceptions
+            exceptions: allExceptions
         });
     }
     // =========================

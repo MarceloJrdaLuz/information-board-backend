@@ -566,7 +566,6 @@ export async function syncEventImpacts(event: SpecialEvent) {
                 ws.visitingCongregation_id = null;
                 ws.manualSpeaker = null;
                 ws.manualTalk = null;
-                ws.watchTowerStudyTitle = null;
 
                 await weekendScheduleRepository
                     .createQueryBuilder()
@@ -584,7 +583,6 @@ export async function syncEventImpacts(event: SpecialEvent) {
                         visitingCongregation_id: null,
                         manualSpeaker: null,
                         manualTalk: null,
-                        watchTowerStudyTitle: null,
                         isSpecial: true,
                         specialName: event.title
                     })
