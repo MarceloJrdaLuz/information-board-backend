@@ -332,7 +332,11 @@ class PublicWitnessScheduleController {
         const rotationBlocks: any[] = []
 
         for (const arr of arrangements) {
-            for (const slot of arr.timeSlots) {
+            const sortedTimeSlots = [...arr.timeSlots].sort((a, b) =>
+                (a.start_time || "").localeCompare(b.start_time || "")
+            )
+
+            for (const slot of sortedTimeSlots) {
 
                 /* ================= FIXOS ================= */
                 if (!slot.is_rotative) {
@@ -381,6 +385,27 @@ class PublicWitnessScheduleController {
                 })
             }
         }
+
+        fixedSchedules.sort((a, b) => {
+            if (a.date && b.date && a.date !== b.date) {
+                return a.date.localeCompare(b.date)
+            }
+            if (a.weekday !== null && b.weekday !== null && a.weekday !== b.weekday) {
+                return a.weekday - b.weekday
+            }
+            const timeDiff = (a.start_time || "").localeCompare(b.start_time || "")
+            if (timeDiff !== 0) return timeDiff
+            return (a.end_time || "").localeCompare(b.end_time || "")
+        })
+
+        rotationBlocks.sort((a, b) => {
+            if (a.weekday !== b.weekday) {
+                return (a.weekday ?? 0) - (b.weekday ?? 0)
+            }
+            const timeDiff = (a.start_time || "").localeCompare(b.start_time || "")
+            if (timeDiff !== 0) return timeDiff
+            return (a.end_time || "").localeCompare(b.end_time || "")
+        })
 
         return res.json({ fixedSchedules, rotationBlocks })
     }

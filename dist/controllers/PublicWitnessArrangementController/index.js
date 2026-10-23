@@ -245,6 +245,11 @@ class PublicWitnessArrangementController {
                 "timeSlots.preferences.publisher"
             ]
         });
+        arrangements.forEach(arr => {
+            if (arr.timeSlots) {
+                arr.timeSlots.sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+            }
+        });
         return res.json(arrangements);
     }
     // =========================
@@ -264,6 +269,9 @@ class PublicWitnessArrangementController {
         });
         if (!arrangement)
             throw new api_errors_1.NotFoundError("Arrangement not found");
+        if (arrangement.timeSlots) {
+            arrangement.timeSlots.sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+        }
         return res.json(arrangement);
     }
 }
