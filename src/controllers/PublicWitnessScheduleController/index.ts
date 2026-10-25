@@ -336,13 +336,56 @@ class PublicWitnessScheduleController {
                 (a.start_time || "").localeCompare(b.start_time || "")
             )
 
+            /* ================= ARRANJOS ESPECIAIS (DATA ESPECÍFICA) ================= */
+            if (!arr.is_fixed) {
+                if (!arr.date) continue
+
+                for (const slot of sortedTimeSlots) {
+                    let publishers: any[] = []
+
+                    const assignment = await publicWitnessAssignmentRepository.findOne({
+                        where: {
+                            time_slot_id: slot.id,
+                            date: arr.date
+                        },
+                        relations: ["publishers", "publishers.publisher"],
+                        order: {
+                            publishers: { order: "ASC" }
+                        }
+                    })
+
+                    if (assignment && assignment.publishers && assignment.publishers.length > 0) {
+                        publishers = assignment.publishers.map(p => ({
+                            id: p.publisher.id,
+                            name: p.publisher.nickname ? p.publisher.nickname : p.publisher.fullName ?? "-"
+                        }))
+                    } else if (slot.defaultPublishers && slot.defaultPublishers.length > 0) {
+                        publishers = slot.defaultPublishers.map(dp => ({
+                            id: dp.publisher.id,
+                            name: dp.publisher.nickname ? dp.publisher.nickname : dp.publisher.fullName ?? "-"
+                        }))
+                    }
+
+                    fixedSchedules.push({
+                        date: arr.date,
+                        weekday: null,
+                        start_time: slot.start_time,
+                        end_time: slot.end_time,
+                        title: arr.title,
+                        publishers
+                    })
+                }
+                continue
+            }
+
+            /* ================= ARRANJOS PADRÕES (REPETIÇÃO SEMANAL) ================= */
             for (const slot of sortedTimeSlots) {
 
-                /* ================= FIXOS ================= */
+                /* ================= FIXOS SEMANAIS ================= */
                 if (!slot.is_rotative) {
                     fixedSchedules.push({
-                        date: arr.is_fixed ? null : arr.date,
-                        weekday: arr.is_fixed ? arr.weekday : null,
+                        date: null,
+                        weekday: arr.weekday,
                         start_time: slot.start_time,
                         end_time: slot.end_time,
                         title: arr.title,
@@ -355,7 +398,7 @@ class PublicWitnessScheduleController {
                     continue
                 }
 
-                /* ================= RODÍZIO ================= */
+                /* ================= RODÍZIO REGULAR ================= */
                 const assignments = await publicWitnessAssignmentRepository.find({
                     where: {
                         time_slot_id: slot.id,
@@ -449,14 +492,63 @@ class PublicWitnessScheduleController {
                 a.start_time.localeCompare(b.start_time)
             )
 
+            /* ================= ARRANJOS ESPECIAIS (DATA ESPECÍFICA) ================= */
+            if (!arr.is_fixed) {
+                if (!arr.date) continue
+
+                for (const slot of sortedTimeSlots) {
+                    let publishers: any[] = []
+
+                    const where: any = {
+                        time_slot_id: slot.id,
+                        date: arr.date
+                    }
+
+                    const assignment = await publicWitnessAssignmentRepository.findOne({
+                        where,
+                        relations: ["publishers", "publishers.publisher"],
+                        order: {
+                            publishers: { order: "ASC" }
+                        }
+                    })
+
+                    if (assignment && assignment.publishers && assignment.publishers.length > 0) {
+                        publishers = assignment.publishers.map(p => ({
+                            id: p.publisher.id,
+                            name: p.publisher.nickname ?? p.publisher.fullName ?? "-"
+                        }))
+                    } else if (slot.defaultPublishers && slot.defaultPublishers.length > 0) {
+                        publishers = slot.defaultPublishers.map(dp => ({
+                            id: dp.publisher.id,
+                            name: dp.publisher.nickname ?? dp.publisher.fullName ?? "-"
+                        }))
+                    }
+
+                    if (dayjs(arr.date).isBefore(startDate, "day") || dayjs(arr.date).isAfter(endDate, "day")) {
+                        continue
+                    }
+
+                    fixedSchedules.push({
+                        title: arr.title,
+                        date: arr.date,
+                        weekday: null,
+                        start_time: slot.start_time,
+                        end_time: slot.end_time,
+                        publishers
+                    })
+                }
+                continue
+            }
+
+            /* ================= ARRANJOS PADRÕES (REPETIÇÃO SEMANAL) ================= */
             for (const slot of sortedTimeSlots) {
 
-                /* ================= FIXOS ================= */
+                /* ================= FIXOS SEMANAIS ================= */
                 if (!slot.is_rotative) {
                     fixedSchedules.push({
                         title: arr.title,
-                        date: arr.is_fixed ? null : arr.date,
-                        weekday: arr.is_fixed ? arr.weekday : null,
+                        date: null,
+                        weekday: arr.weekday,
                         start_time: slot.start_time,
                         end_time: slot.end_time,
                         publishers: slot.defaultPublishers.map(dp => ({
@@ -467,7 +559,7 @@ class PublicWitnessScheduleController {
                     continue
                 }
 
-                /* ================= RODÍZIO ================= */
+                /* ================= RODÍZIO REGULAR ================= */
 
                 const where: any = { time_slot_id: slot.id }
 
