@@ -44,4 +44,8 @@ export interface BodyUpdateSlotPreferences {
     }[]
 }
 
+export interface BodyUpdateArrangementPublishers {
+    publisher_ids: string[]
+}
+
 

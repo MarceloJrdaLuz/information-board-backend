@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_errors_1 = require("../../helpers/api-errors");
 const congregationRepository_1 = require("../../repositories/congregationRepository");
+const publicWitnessArrangementPublisherRepository_1 = require("../../repositories/publicWitnessArrangementPublisherRepository");
 const publicWitnessArrangementRepository_1 = require("../../repositories/publicWitnessArrangementRepository");
 const publicWitnessTimeSlotDefaultPublisherRepository_1 = require("../../repositories/publicWitnessTimeSlotDefaultPublisherRepository");
 const publicWitnessTimeSlotPreferenceRepository_1 = require("../../repositories/publicWitnessTimeSlotPreferenceRepository");
@@ -242,7 +243,9 @@ class PublicWitnessArrangementController {
                 "timeSlots.defaultPublishers",
                 "timeSlots.defaultPublishers.publisher",
                 "timeSlots.preferences",
-                "timeSlots.preferences.publisher"
+                "timeSlots.preferences.publisher",
+                "arrangementPublishers",
+                "arrangementPublishers.publisher"
             ]
         });
         arrangements.forEach(arr => {
@@ -264,7 +267,9 @@ class PublicWitnessArrangementController {
                 "timeSlots.defaultPublishers",
                 "timeSlots.defaultPublishers.publisher",
                 "timeSlots.preferences",
-                "timeSlots.preferences.publisher"
+                "timeSlots.preferences.publisher",
+                "arrangementPublishers",
+                "arrangementPublishers.publisher"
             ]
         });
         if (!arrangement)
@@ -273,6 +278,40 @@ class PublicWitnessArrangementController {
             arrangement.timeSlots.sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
         }
         return res.json(arrangement);
+    }
+    // =========================
+    // Atualizar publicadores participantes do rodízio do arranjo
+    // =========================
+    async updateArrangementPublishers(req, res) {
+        const { arrangement_id } = req.params;
+        const { publisher_ids } = req.body;
+        const arrangement = await publicWitnessArrangementRepository_1.publicWitnessArrangementRepository.findOne({
+            where: { id: arrangement_id },
+            relations: ["arrangementPublishers"]
+        });
+        if (!arrangement)
+            throw new api_errors_1.NotFoundError("Arrangement not found");
+        await publicWitnessArrangementPublisherRepository_1.publicWitnessArrangementPublisherRepository.delete({ arrangement_id: arrangement.id });
+        if (publisher_ids && Array.isArray(publisher_ids) && publisher_ids.length > 0) {
+            const newEntries = publisher_ids.map(pubId => publicWitnessArrangementPublisherRepository_1.publicWitnessArrangementPublisherRepository.create({
+                arrangement_id: arrangement.id,
+                publisher_id: pubId
+            }));
+            await publicWitnessArrangementPublisherRepository_1.publicWitnessArrangementPublisherRepository.save(newEntries);
+        }
+        const updatedArrangement = await publicWitnessArrangementRepository_1.publicWitnessArrangementRepository.findOne({
+            where: { id: arrangement.id },
+            relations: [
+                "timeSlots",
+                "timeSlots.defaultPublishers",
+                "timeSlots.defaultPublishers.publisher",
+                "timeSlots.preferences",
+                "timeSlots.preferences.publisher",
+                "arrangementPublishers",
+                "arrangementPublishers.publisher"
+            ]
+        });
+        return res.json(updatedArrangement);
     }
 }
 exports.default = new PublicWitnessArrangementController();

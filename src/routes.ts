@@ -394,6 +394,7 @@ routes.post("/public-witness/arrangements/congregation/:congregation_id", is(["A
 routes.get("/public-witness/arrangements/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.getByCongregation)
 routes.get("/public-witness/arrangements/:arrangement_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.getOne)
 routes.patch("/public-witness/arrangements/:arrangement_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.update)
+routes.patch("/public-witness/arrangements/:arrangement_id/publishers", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.updateArrangementPublishers)
 routes.patch("/public-witness/arrangements/:arrangement_id/slot-preferences", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.updateSlotPreferences)
 routes.delete("/public-witness/arrangements/:arrangement_id", is(["ADMIN_CONGREGATION", "PUBLIC_WITNESS_MANAGER"]), PublicWitnessArrangementController.delete)
 

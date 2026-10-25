@@ -77,7 +77,7 @@ function getDaysSinceLastAssignment(pubId, currentDate, lastAssignedDateMap) {
     return Math.max(0, diffDays);
 }
 async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDate, mode = "reconcile", publishersPerSlot = 2 }) {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     /* =========================================================
      * 1. Buscar arranjo com horários, preferências e publishers
      * ========================================================= */
@@ -88,7 +88,9 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
             "timeSlots.preferences",
             "timeSlots.preferences.publisher",
             "timeSlots.defaultPublishers",
-            "timeSlots.defaultPublishers.publisher"
+            "timeSlots.defaultPublishers.publisher",
+            "arrangementPublishers",
+            "arrangementPublishers.publisher"
         ]
     });
     if (!arrangement) {
@@ -175,18 +177,22 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
         };
     }
     /* =========================================================
-     * 4. Buscar publicadores ativos com privilégio de Testemunho Público
+     * 4. Buscar publicadores vinculados a este arranjo com privilégio de Testemunho Público
      * ========================================================= */
+    const assignedPublisherIds = ((_a = arrangement.arrangementPublishers) !== null && _a !== void 0 ? _a : []).map(ap => ap.publisher_id);
+    if (assignedPublisherIds.length === 0) {
+        throw new api_errors_1.BadRequestError("Nenhum publicador foi selecionado para participar do rodízio deste arranjo. Clique em 'Participantes do Rodízio' para escolher os publicadores.");
+    }
     const publishers = await publisherRepository_1.publisherRepository.find({
         where: {
-            congregation: { id: congregation_id },
+            id: (0, typeorm_1.In)(assignedPublisherIds),
             situation: Publisher_1.Situation.Ativo
         },
         relations: ["privilegesRelation", "privilegesRelation.privilege"]
     });
     const eligiblePublishers = publishers.filter(p => { var _a; return (_a = p.privilegesRelation) === null || _a === void 0 ? void 0 : _a.some(pr => { var _a; return ((_a = pr.privilege) === null || _a === void 0 ? void 0 : _a.name) === "Public Witness"; }); });
     if (eligiblePublishers.length === 0) {
-        throw new api_errors_1.BadRequestError("Nenhum publicador ativo com o privilégio de 'Testemunho Público' foi encontrado nesta congregação.");
+        throw new api_errors_1.BadRequestError("Nenhum dos publicadores selecionados para este arranjo está ativo e com o privilégio de 'Testemunho Público'.");
     }
     /* =========================================================
      * 5. Buscar indisponibilidades dos publicadores no período
@@ -228,7 +234,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
      * ========================================================= */
     const publisherSlotPreferences = new Map(); // publisher_id -> Set<slot_id>
     for (const slot of arrangement.timeSlots) {
-        if ((_a = slot.preferences) === null || _a === void 0 ? void 0 : _a.length) {
+        if ((_b = slot.preferences) === null || _b === void 0 ? void 0 : _b.length) {
             for (const pref of slot.preferences) {
                 if (!publisherSlotPreferences.has(pref.publisher_id)) {
                     publisherSlotPreferences.set(pref.publisher_id, new Set());
@@ -264,7 +270,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
     const pastAssignmentsGroupMap = new Map();
     const pairCountMap = new Map(); // pairKey -> count
     for (const pa of pastAssignments) {
-        if (((_b = pa.assignment) === null || _b === void 0 ? void 0 : _b.date) && !lastAssignedDateMap.has(pa.publisher_id)) {
+        if (((_c = pa.assignment) === null || _c === void 0 ? void 0 : _c.date) && !lastAssignedDateMap.has(pa.publisher_id)) {
             lastAssignedDateMap.set(pa.publisher_id, pa.assignment.date);
         }
         if (pa.assignment_id && pa.publisher_id) {
@@ -304,7 +310,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                 relations: ["publishers"]
             });
             for (const item of existing) {
-                if ((_c = item.publishers) === null || _c === void 0 ? void 0 : _c.length) {
+                if ((_d = item.publishers) === null || _d === void 0 ? void 0 : _d.length) {
                     await publicWitnessAssignmentPublisherRepository_1.publicWitnessAssignmentPublisherRepository.remove(item.publishers);
                 }
                 await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository.remove(item);
@@ -354,7 +360,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
         }
         // Bloqueia publishers fixos dos horários fixos
         for (const slot of arrangement.timeSlots) {
-            if (!slot.is_rotative && ((_d = slot.defaultPublishers) === null || _d === void 0 ? void 0 : _d.length)) {
+            if (!slot.is_rotative && ((_e = slot.defaultPublishers) === null || _e === void 0 ? void 0 : _e.length)) {
                 slot.defaultPublishers.forEach(dp => assignedOnDate.add(dp.publisher_id));
             }
         }
@@ -378,7 +384,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
             });
             let currentPublishers = [];
             if (existingAssignment && mode === "append") {
-                currentPublishers = (_f = (_e = existingAssignment.publishers) === null || _e === void 0 ? void 0 : _e.map(p => p.publisher_id)) !== null && _f !== void 0 ? _f : [];
+                currentPublishers = (_g = (_f = existingAssignment.publishers) === null || _f === void 0 ? void 0 : _f.map(p => p.publisher_id)) !== null && _g !== void 0 ? _g : [];
                 currentPublishers.forEach(id => {
                     assignedOnDate.add(id);
                 });
@@ -388,7 +394,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                 continue;
             const selected = [];
             const currentSelectedPublishers = [];
-            if (existingAssignment && mode === "append" && ((_g = existingAssignment.publishers) === null || _g === void 0 ? void 0 : _g.length)) {
+            if (existingAssignment && mode === "append" && ((_h = existingAssignment.publishers) === null || _h === void 0 ? void 0 : _h.length)) {
                 for (const ep of existingAssignment.publishers) {
                     const foundPub = eligiblePublishers.find(p => p.id === ep.publisher_id);
                     if (foundPub) {

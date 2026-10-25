@@ -2,12 +2,13 @@ import { Response } from "express"
 import { PublicWitnessTimeSlot } from "../../entities/PublicWitnessTimeSlot"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { congregationRepository } from "../../repositories/congregationRepository"
+import { publicWitnessArrangementPublisherRepository } from "../../repositories/publicWitnessArrangementPublisherRepository"
 import { publicWitnessArrangementRepository } from "../../repositories/publicWitnessArrangementRepository"
 import { publicWitnessTimeSlotDefaultPublisherRepository } from "../../repositories/publicWitnessTimeSlotDefaultPublisherRepository"
 import { publicWitnessTimeSlotPreferenceRepository } from "../../repositories/publicWitnessTimeSlotPreferenceRepository"
 import { publicWitnessTimeSlotRepository } from "../../repositories/publicWitnessTimeSlotRepository"
 import { CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest"
-import { BodyArrangementCreate, BodyArrangementUpdate, BodyUpdateSlotPreferences, ParamsArrangement, ParamsCongregation } from "./types"
+import { BodyArrangementCreate, BodyArrangementUpdate, BodyUpdateArrangementPublishers, BodyUpdateSlotPreferences, ParamsArrangement, ParamsCongregation } from "./types"
 
 class PublicWitnessArrangementController {
 
@@ -297,7 +298,9 @@ class PublicWitnessArrangementController {
         "timeSlots.defaultPublishers",
         "timeSlots.defaultPublishers.publisher",
         "timeSlots.preferences",
-        "timeSlots.preferences.publisher"
+        "timeSlots.preferences.publisher",
+        "arrangementPublishers",
+        "arrangementPublishers.publisher"
       ]
     })
 
@@ -323,7 +326,9 @@ class PublicWitnessArrangementController {
         "timeSlots.defaultPublishers",
         "timeSlots.defaultPublishers.publisher",
         "timeSlots.preferences",
-        "timeSlots.preferences.publisher"
+        "timeSlots.preferences.publisher",
+        "arrangementPublishers",
+        "arrangementPublishers.publisher"
       ]
     })
 
@@ -334,6 +339,47 @@ class PublicWitnessArrangementController {
     }
 
     return res.json(arrangement)
+  }
+
+  // =========================
+  // Atualizar publicadores participantes do rodízio do arranjo
+  // =========================
+  async updateArrangementPublishers(req: CustomRequestPT<ParamsArrangement, BodyUpdateArrangementPublishers>, res: Response) {
+    const { arrangement_id } = req.params
+    const { publisher_ids } = req.body
+
+    const arrangement = await publicWitnessArrangementRepository.findOne({
+      where: { id: arrangement_id },
+      relations: ["arrangementPublishers"]
+    })
+    if (!arrangement) throw new NotFoundError("Arrangement not found")
+
+    await publicWitnessArrangementPublisherRepository.delete({ arrangement_id: arrangement.id })
+
+    if (publisher_ids && Array.isArray(publisher_ids) && publisher_ids.length > 0) {
+      const newEntries = publisher_ids.map(pubId =>
+        publicWitnessArrangementPublisherRepository.create({
+          arrangement_id: arrangement.id,
+          publisher_id: pubId
+        })
+      )
+      await publicWitnessArrangementPublisherRepository.save(newEntries)
+    }
+
+    const updatedArrangement = await publicWitnessArrangementRepository.findOne({
+      where: { id: arrangement.id },
+      relations: [
+        "timeSlots",
+        "timeSlots.defaultPublishers",
+        "timeSlots.defaultPublishers.publisher",
+        "timeSlots.preferences",
+        "timeSlots.preferences.publisher",
+        "arrangementPublishers",
+        "arrangementPublishers.publisher"
+      ]
+    })
+
+    return res.json(updatedArrangement)
   }
 }
 

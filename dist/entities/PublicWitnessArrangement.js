@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PublicWitnessArrangement = void 0;
 const typeorm_1 = require("typeorm");
 const Congregation_1 = require("./Congregation");
+const PublicWitnessArrangementPublisher_1 = require("./PublicWitnessArrangementPublisher");
 const PublicWitnessTimeSlot_1 = require("./PublicWitnessTimeSlot");
 let PublicWitnessArrangement = class PublicWitnessArrangement {
 };
@@ -48,6 +49,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => PublicWitnessTimeSlot_1.PublicWitnessTimeSlot, slot => slot.arrangement, { cascade: true }),
     __metadata("design:type", Array)
 ], PublicWitnessArrangement.prototype, "timeSlots", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => PublicWitnessArrangementPublisher_1.PublicWitnessArrangementPublisher, ap => ap.arrangement, { cascade: true }),
+    __metadata("design:type", Array)
+], PublicWitnessArrangement.prototype, "arrangementPublishers", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

@@ -113,7 +113,9 @@ export async function generatePublicWitnessSchedules({
       "timeSlots.preferences",
       "timeSlots.preferences.publisher",
       "timeSlots.defaultPublishers",
-      "timeSlots.defaultPublishers.publisher"
+      "timeSlots.defaultPublishers.publisher",
+      "arrangementPublishers",
+      "arrangementPublishers.publisher"
     ]
   })
 
@@ -211,11 +213,19 @@ export async function generatePublicWitnessSchedules({
   }
 
   /* =========================================================
-   * 4. Buscar publicadores ativos com privilégio de Testemunho Público
+   * 4. Buscar publicadores vinculados a este arranjo com privilégio de Testemunho Público
    * ========================================================= */
+  const assignedPublisherIds = (arrangement.arrangementPublishers ?? []).map(ap => ap.publisher_id)
+
+  if (assignedPublisherIds.length === 0) {
+    throw new BadRequestError(
+      "Nenhum publicador foi selecionado para participar do rodízio deste arranjo. Clique em 'Participantes do Rodízio' para escolher os publicadores."
+    )
+  }
+
   const publishers = await publisherRepository.find({
     where: {
-      congregation: { id: congregation_id },
+      id: In(assignedPublisherIds),
       situation: Situation.Ativo
     },
     relations: ["privilegesRelation", "privilegesRelation.privilege"]
@@ -227,7 +237,7 @@ export async function generatePublicWitnessSchedules({
 
   if (eligiblePublishers.length === 0) {
     throw new BadRequestError(
-      "Nenhum publicador ativo com o privilégio de 'Testemunho Público' foi encontrado nesta congregação."
+      "Nenhum dos publicadores selecionados para este arranjo está ativo e com o privilégio de 'Testemunho Público'."
     )
   }
 

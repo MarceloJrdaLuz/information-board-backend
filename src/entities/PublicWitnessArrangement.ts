@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm"
 import { Congregation } from "./Congregation"
+import { PublicWitnessArrangementPublisher } from "./PublicWitnessArrangementPublisher"
 import { PublicWitnessTimeSlot } from "./PublicWitnessTimeSlot"
 
 @Entity("public_witness_arrangements")
@@ -28,6 +29,9 @@ export class PublicWitnessArrangement {
 
   @OneToMany(() => PublicWitnessTimeSlot, slot => slot.arrangement, { cascade: true })
   timeSlots: PublicWitnessTimeSlot[]
+
+  @OneToMany(() => PublicWitnessArrangementPublisher, ap => ap.arrangement, { cascade: true })
+  arrangementPublishers: PublicWitnessArrangementPublisher[]
 
   @CreateDateColumn()
   created_at: Date
