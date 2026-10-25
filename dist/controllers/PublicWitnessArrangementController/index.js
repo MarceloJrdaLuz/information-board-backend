@@ -251,6 +251,11 @@ class PublicWitnessArrangementController {
         arrangements.forEach(arr => {
             if (arr.timeSlots) {
                 arr.timeSlots.sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+                if (!arr.is_fixed) {
+                    arr.timeSlots.forEach(slot => {
+                        slot.is_rotative = true;
+                    });
+                }
             }
         });
         return res.json(arrangements);
@@ -276,6 +281,11 @@ class PublicWitnessArrangementController {
             throw new api_errors_1.NotFoundError("Arrangement not found");
         if (arrangement.timeSlots) {
             arrangement.timeSlots.sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+            if (!arrangement.is_fixed) {
+                arrangement.timeSlots.forEach(slot => {
+                    slot.is_rotative = true;
+                });
+            }
         }
         return res.json(arrangement);
     }

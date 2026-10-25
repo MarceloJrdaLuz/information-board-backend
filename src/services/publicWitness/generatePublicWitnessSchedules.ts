@@ -426,6 +426,7 @@ export async function generatePublicWitnessSchedules({
 
   for (const date of validDates) {
     const assignedOnDate = new Set<string>()
+    const dateAssignmentsCount = new Map<string, number>()
 
     // Bloqueia dirigentes de campo do dia
     const leadersToday = fieldLeadersByDate.get(date)
@@ -466,6 +467,7 @@ export async function generatePublicWitnessSchedules({
         currentPublishers = existingAssignment.publishers?.map(p => p.publisher_id) ?? []
         currentPublishers.forEach(id => {
           assignedOnDate.add(id)
+          dateAssignmentsCount.set(id, (dateAssignmentsCount.get(id) || 0) + 1)
         })
       }
 
@@ -486,7 +488,7 @@ export async function generatePublicWitnessSchedules({
 
       // Seleciona um a um para cada vaga do slot, respeitando preferências, compatibilidade de gênero e diversificação
       for (let slotPos = 0; slotPos < neededCount; slotPos++) {
-        const candidates = eligiblePublishers.filter(pub => {
+        let candidates = eligiblePublishers.filter(pub => {
           // 1. Não pode estar indisponível na data
           if (isPublisherUnavailable(pub.id, date)) return false
 
@@ -511,6 +513,26 @@ export async function generatePublicWitnessSchedules({
           return true
         })
 
+        // Fallback para arranjos de data específica (!arrangement.is_fixed):
+        // Se não há candidatos não-escalados disponíveis no dia e ainda há vagas no horário,
+        // permite reaproveitar publicadores participantes da data que não estejam neste mesmo horário,
+        // nem em conflito com dirigente nem em incompatibilidade de gênero.
+        if (candidates.length === 0 && !arrangement.is_fixed) {
+          candidates = eligiblePublishers.filter(pub => {
+            if (isPublisherUnavailable(pub.id, date)) return false
+            if (currentSelectedPublishers.some(p => p.id === pub.id)) return false
+            if (fieldLeadersByDate.get(date)?.has(pub.id)) return false
+            if (!canPublisherTakeSlot(pub.id, slot.id)) return false
+            if (currentSelectedPublishers.length > 0) {
+              const isCompatibleWithAll = currentSelectedPublishers.every(existing =>
+                areGendersCompatible(pub, existing)
+              )
+              if (!isCompatibleWithAll) return false
+            }
+            return true
+          })
+        }
+
         if (candidates.length === 0) break
 
         const currentSelectedIds = currentSelectedPublishers.map(p => p.id)
@@ -521,6 +543,13 @@ export async function generatePublicWitnessSchedules({
         }
 
         candidates.sort((a, b) => {
+          // Para data específica: quem participou MENOS vezes nesta data tem prioridade
+          if (!arrangement.is_fixed) {
+            const countOnDateA = dateAssignmentsCount.get(a.id) || 0
+            const countOnDateB = dateAssignmentsCount.get(b.id) || 0
+            if (countOnDateA !== countOnDateB) return countOnDateA - countOnDateB
+          }
+
           // 1. MENOS DESIGNAÇÕES NO PERÍODO ATUAL (Equilíbrio e rodízio justo)
           // Todos os publicadores devem ser mesclados antes de qualquer um repetir
           const countA = periodCountMap.get(a.id) || 0
@@ -574,6 +603,7 @@ export async function generatePublicWitnessSchedules({
         selected.push(chosen)
         currentSelectedPublishers.push(chosen)
         assignedOnDate.add(chosen.id)
+        dateAssignmentsCount.set(chosen.id, (dateAssignmentsCount.get(chosen.id) || 0) + 1)
       }
 
       if (selected.length === 0) continue

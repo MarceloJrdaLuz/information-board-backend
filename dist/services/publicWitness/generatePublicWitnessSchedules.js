@@ -360,6 +360,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
     let totalAssignmentsCreated = 0;
     for (const date of validDates) {
         const assignedOnDate = new Set();
+        const dateAssignmentsCount = new Map();
         // Bloqueia dirigentes de campo do dia
         const leadersToday = fieldLeadersByDate.get(date);
         if (leadersToday) {
@@ -396,6 +397,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                 currentPublishers = (_g = (_f = existingAssignment.publishers) === null || _f === void 0 ? void 0 : _f.map(p => p.publisher_id)) !== null && _g !== void 0 ? _g : [];
                 currentPublishers.forEach(id => {
                     assignedOnDate.add(id);
+                    dateAssignmentsCount.set(id, (dateAssignmentsCount.get(id) || 0) + 1);
                 });
             }
             const neededCount = Math.max(0, publishersPerSlot - currentPublishers.length);
@@ -413,7 +415,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
             }
             // Seleciona um a um para cada vaga do slot, respeitando preferências, compatibilidade de gênero e diversificação
             for (let slotPos = 0; slotPos < neededCount; slotPos++) {
-                const candidates = eligiblePublishers.filter(pub => {
+                let candidates = eligiblePublishers.filter(pub => {
                     // 1. Não pode estar indisponível na data
                     if (isPublisherUnavailable(pub.id, date))
                         return false;
@@ -435,6 +437,29 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                     }
                     return true;
                 });
+                // Fallback para arranjos de data específica (!arrangement.is_fixed):
+                // Se não há candidatos não-escalados disponíveis no dia e ainda há vagas no horário,
+                // permite reaproveitar publicadores participantes da data que não estejam neste mesmo horário,
+                // nem em conflito com dirigente nem em incompatibilidade de gênero.
+                if (candidates.length === 0 && !arrangement.is_fixed) {
+                    candidates = eligiblePublishers.filter(pub => {
+                        var _a;
+                        if (isPublisherUnavailable(pub.id, date))
+                            return false;
+                        if (currentSelectedPublishers.some(p => p.id === pub.id))
+                            return false;
+                        if ((_a = fieldLeadersByDate.get(date)) === null || _a === void 0 ? void 0 : _a.has(pub.id))
+                            return false;
+                        if (!canPublisherTakeSlot(pub.id, slot.id))
+                            return false;
+                        if (currentSelectedPublishers.length > 0) {
+                            const isCompatibleWithAll = currentSelectedPublishers.every(existing => areGendersCompatible(pub, existing));
+                            if (!isCompatibleWithAll)
+                                return false;
+                        }
+                        return true;
+                    });
+                }
                 if (candidates.length === 0)
                     break;
                 const currentSelectedIds = currentSelectedPublishers.map(p => p.id);
@@ -444,6 +469,13 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                 };
                 candidates.sort((a, b) => {
                     var _a, _b, _c, _d;
+                    // Para data específica: quem participou MENOS vezes nesta data tem prioridade
+                    if (!arrangement.is_fixed) {
+                        const countOnDateA = dateAssignmentsCount.get(a.id) || 0;
+                        const countOnDateB = dateAssignmentsCount.get(b.id) || 0;
+                        if (countOnDateA !== countOnDateB)
+                            return countOnDateA - countOnDateB;
+                    }
                     // 1. MENOS DESIGNAÇÕES NO PERÍODO ATUAL (Equilíbrio e rodízio justo)
                     // Todos os publicadores devem ser mesclados antes de qualquer um repetir
                     const countA = periodCountMap.get(a.id) || 0;
@@ -496,6 +528,7 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                 selected.push(chosen);
                 currentSelectedPublishers.push(chosen);
                 assignedOnDate.add(chosen.id);
+                dateAssignmentsCount.set(chosen.id, (dateAssignmentsCount.get(chosen.id) || 0) + 1);
             }
             if (selected.length === 0)
                 continue;
