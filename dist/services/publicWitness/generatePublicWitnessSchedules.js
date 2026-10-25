@@ -297,8 +297,15 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
     /* =========================================================
      * 9. Lidar com o modo: Reconcile vs Append
      * ========================================================= */
-    const rotativeSlots = arrangement.timeSlots.filter(s => s.is_rotative);
+    const rotativeSlots = arrangement.is_fixed
+        ? arrangement.timeSlots.filter(s => s.is_rotative)
+        : arrangement.timeSlots;
     const rotativeSlotIds = rotativeSlots.map(s => s.id);
+    if (rotativeSlots.length === 0) {
+        throw new api_errors_1.BadRequestError(arrangement.is_fixed
+            ? "Este arranjo não possui horários em modo rodízio para preenchimento automático. Todos os horários estão configurados como fixos."
+            : "Nenhum horário cadastrado para este arranjo especial.");
+    }
     if (mode === "reconcile" && rotativeSlotIds.length > 0) {
         // Busca e remove designações existentes dos horários rotativos no período
         for (const slotId of rotativeSlotIds) {
@@ -358,10 +365,12 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
         if (leadersToday) {
             leadersToday.forEach(id => assignedOnDate.add(id));
         }
-        // Bloqueia publishers fixos dos horários fixos
-        for (const slot of arrangement.timeSlots) {
-            if (!slot.is_rotative && ((_e = slot.defaultPublishers) === null || _e === void 0 ? void 0 : _e.length)) {
-                slot.defaultPublishers.forEach(dp => assignedOnDate.add(dp.publisher_id));
+        // Bloqueia publishers fixos dos horários fixos (quando arranjo é fixo)
+        if (arrangement.is_fixed) {
+            for (const slot of arrangement.timeSlots) {
+                if (!slot.is_rotative && ((_e = slot.defaultPublishers) === null || _e === void 0 ? void 0 : _e.length)) {
+                    slot.defaultPublishers.forEach(dp => assignedOnDate.add(dp.publisher_id));
+                }
             }
         }
         // Processa os horários rotativos
