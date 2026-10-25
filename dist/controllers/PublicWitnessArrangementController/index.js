@@ -285,6 +285,16 @@ class PublicWitnessArrangementController {
     async updateArrangementPublishers(req, res) {
         const { arrangement_id } = req.params;
         const { publisher_ids } = req.body;
+        // Garante que a tabela existe caso a migration não tenha rodado
+        await publicWitnessArrangementPublisherRepository_1.publicWitnessArrangementPublisherRepository.query(`
+      CREATE TABLE IF NOT EXISTS "public_witness_arrangement_publishers" (
+        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+        "arrangement_id" uuid NOT NULL,
+        "publisher_id" uuid NOT NULL,
+        CONSTRAINT "UQ_pw_arrangement_publisher" UNIQUE ("arrangement_id", "publisher_id"),
+        CONSTRAINT "PK_pw_arrangement_publishers" PRIMARY KEY ("id")
+      );
+    `).catch(() => null);
         const arrangement = await publicWitnessArrangementRepository_1.publicWitnessArrangementRepository.findOne({
             where: { id: arrangement_id },
             relations: ["arrangementPublishers"]
