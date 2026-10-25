@@ -429,10 +429,11 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                     if (!canPublisherTakeSlot(pub.id, slot.id))
                         return false;
                     // 5. REGRA ESTRITA DE GÊNERO / FAMÍLIA:
-                    // Homem e mulher só podem ficar juntos se forem da mesma família!
-                    if (currentSelectedPublishers.length > 0) {
-                        const isCompatibleWithAll = currentSelectedPublishers.every(existing => areGendersCompatible(pub, existing));
-                        if (!isCompatibleWithAll)
+                    // Homem e mulher só precisam ser da mesma família se estiverem sozinhos em dupla (2 pessoas).
+                    // Se já houver 2 ou mais pessoas no horário (vaga 3 ou mais), qualquer gênero pode participar pois é um grupo de 3+ pessoas!
+                    if (currentSelectedPublishers.length === 1) {
+                        const isCompatible = areGendersCompatible(pub, currentSelectedPublishers[0]);
+                        if (!isCompatible)
                             return false;
                     }
                     return true;
@@ -452,9 +453,9 @@ async function generatePublicWitnessSchedules({ arrangement_id, startDate, endDa
                             return false;
                         if (!canPublisherTakeSlot(pub.id, slot.id))
                             return false;
-                        if (currentSelectedPublishers.length > 0) {
-                            const isCompatibleWithAll = currentSelectedPublishers.every(existing => areGendersCompatible(pub, existing));
-                            if (!isCompatibleWithAll)
+                        if (currentSelectedPublishers.length === 1) {
+                            const isCompatible = areGendersCompatible(pub, currentSelectedPublishers[0]);
+                            if (!isCompatible)
                                 return false;
                         }
                         return true;
