@@ -118,14 +118,39 @@ class PublicWitnessArrangementController {
 
     /* ================= Atualiza horários ================= */
     if (timeSlots) {
-      const incomingIds = timeSlots
-        .filter(s => s.id)
-        .map(s => s.id as string)
+      const existingSlots = [...arrangement.timeSlots]
+      const matchedSlotMap = new Map<any, PublicWitnessTimeSlot>()
+      const usedExistingSlotIds = new Set<string>()
 
-      /* ---- Removidos ---- */
-      const slotsToDelete = arrangement.timeSlots.filter(
-        slot => !incomingIds.includes(slot.id)
-      )
+      // 1a. Tenta combinar primeiro por ID explícito
+      for (const slot of timeSlots) {
+        if (slot.id) {
+          const match = existingSlots.find(s => s.id === slot.id)
+          if (match) {
+            matchedSlotMap.set(slot, match)
+            usedExistingSlotIds.add(match.id)
+          }
+        }
+      }
+
+      // 1b. Para slots sem ID ou que não deram match direto, combina com slot existente não usado pelo horário
+      for (const slot of timeSlots) {
+        if (!matchedSlotMap.has(slot)) {
+          const match = existingSlots.find(
+            s =>
+              !usedExistingSlotIds.has(s.id) &&
+              s.start_time.slice(0, 5) === slot.start_time.slice(0, 5) &&
+              s.end_time.slice(0, 5) === slot.end_time.slice(0, 5)
+          )
+          if (match) {
+            matchedSlotMap.set(slot, match)
+            usedExistingSlotIds.add(match.id)
+          }
+        }
+      }
+
+      /* ---- Removidos: apenas slots que realmente foram excluídos ---- */
+      const slotsToDelete = existingSlots.filter(s => !usedExistingSlotIds.has(s.id))
 
       if (slotsToDelete.length) {
         for (const slot of slotsToDelete) {
@@ -145,13 +170,10 @@ class PublicWitnessArrangementController {
 
       /* ---- Criar / Atualizar ---- */
       for (const slot of timeSlots) {
-        let ts: PublicWitnessTimeSlot | null = null
+        let ts: PublicWitnessTimeSlot | null = matchedSlotMap.get(slot) ?? null
 
-        if (slot.id) {
+        if (ts) {
           // ✏️ update
-          ts = arrangement.timeSlots.find(s => s.id === slot.id) ?? null
-          if (!ts) continue
-
           Object.assign(ts, {
             start_time: slot.start_time,
             end_time: slot.end_time,
@@ -161,12 +183,38 @@ class PublicWitnessArrangementController {
 
           await publicWitnessTimeSlotRepository.save(ts)
 
-          if (ts.defaultPublishers?.length) {
-            await publicWitnessTimeSlotDefaultPublisherRepository.remove(
-              ts.defaultPublishers
-            )
+          // Só substitui defaultPublishers se forem explicitamente informados
+          if (slot.defaultPublishers !== undefined) {
+            if (ts.defaultPublishers?.length) {
+              await publicWitnessTimeSlotDefaultPublisherRepository.remove(
+                ts.defaultPublishers
+              )
+            }
+            if (slot.defaultPublishers.length > 0) {
+              const defaultPubs = slot.defaultPublishers.map(dp =>
+                publicWitnessTimeSlotDefaultPublisherRepository.create({
+                  time_slot_id: ts!.id,
+                  publisher_id: dp.publisher_id,
+                  order: dp.order ?? 0
+                })
+              )
+              await publicWitnessTimeSlotDefaultPublisherRepository.save(defaultPubs)
+            }
           }
-          await publicWitnessTimeSlotPreferenceRepository.delete({ time_slot_id: ts.id })
+
+          // Só substitui preferências se forem explicitamente informadas
+          if (slot.preferences !== undefined) {
+            await publicWitnessTimeSlotPreferenceRepository.delete({ time_slot_id: ts.id })
+            if (slot.preferences.length > 0) {
+              const prefs = slot.preferences.map(pref =>
+                publicWitnessTimeSlotPreferenceRepository.create({
+                  time_slot_id: ts!.id,
+                  publisher_id: pref.publisher_id
+                })
+              )
+              await publicWitnessTimeSlotPreferenceRepository.save(prefs)
+            }
+          }
         } else {
           // 🆕 create
           ts = publicWitnessTimeSlotRepository.create({
@@ -177,32 +225,27 @@ class PublicWitnessArrangementController {
             is_rotative: slot.is_rotative ?? false
           })
           await publicWitnessTimeSlotRepository.save(ts)
-        }
 
-        // 🔒 Garantia para TS e lógica
-        if (!ts) continue
+          if (slot.defaultPublishers?.length) {
+            const defaultPubs = slot.defaultPublishers.map(dp =>
+              publicWitnessTimeSlotDefaultPublisherRepository.create({
+                time_slot_id: ts!.id,
+                publisher_id: dp.publisher_id,
+                order: dp.order ?? 0
+              })
+            )
+            await publicWitnessTimeSlotDefaultPublisherRepository.save(defaultPubs)
+          }
 
-        const timeSlot = ts // 🔒 trava o tipo
-
-        if (slot.defaultPublishers?.length) {
-          const defaultPubs = slot.defaultPublishers.map(dp =>
-            publicWitnessTimeSlotDefaultPublisherRepository.create({
-              time_slot_id: timeSlot.id,
-              publisher_id: dp.publisher_id,
-              order: dp.order ?? 0
-            })
-          )
-          await publicWitnessTimeSlotDefaultPublisherRepository.save(defaultPubs)
-        }
-
-        if (slot.preferences?.length) {
-          const prefs = slot.preferences.map(pref =>
-            publicWitnessTimeSlotPreferenceRepository.create({
-              time_slot_id: timeSlot.id,
-              publisher_id: pref.publisher_id
-            })
-          )
-          await publicWitnessTimeSlotPreferenceRepository.save(prefs)
+          if (slot.preferences?.length) {
+            const prefs = slot.preferences.map(pref =>
+              publicWitnessTimeSlotPreferenceRepository.create({
+                time_slot_id: ts!.id,
+                publisher_id: pref.publisher_id
+              })
+            )
+            await publicWitnessTimeSlotPreferenceRepository.save(prefs)
+          }
         }
       }
     }
