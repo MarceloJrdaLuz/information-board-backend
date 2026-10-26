@@ -267,12 +267,58 @@ class PublicWitnessScheduleController {
         const rotationBlocks = [];
         for (const arr of arrangements) {
             const sortedTimeSlots = [...arr.timeSlots].sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+            /* ================= ARRANJOS ESPECIAIS (DATA ESPECÍFICA) ================= */
+            if (!arr.is_fixed) {
+                if (!arr.date)
+                    continue;
+                for (const slot of sortedTimeSlots) {
+                    let publishers = [];
+                    const assignment = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository.findOne({
+                        where: {
+                            time_slot_id: slot.id,
+                            date: arr.date
+                        },
+                        relations: ["publishers", "publishers.publisher"],
+                        order: {
+                            publishers: { order: "ASC" }
+                        }
+                    });
+                    if (assignment && assignment.publishers && assignment.publishers.length > 0) {
+                        publishers = assignment.publishers.map(p => {
+                            var _a;
+                            return ({
+                                id: p.publisher.id,
+                                name: p.publisher.nickname ? p.publisher.nickname : (_a = p.publisher.fullName) !== null && _a !== void 0 ? _a : "-"
+                            });
+                        });
+                    }
+                    else if (slot.defaultPublishers && slot.defaultPublishers.length > 0) {
+                        publishers = slot.defaultPublishers.map(dp => {
+                            var _a;
+                            return ({
+                                id: dp.publisher.id,
+                                name: dp.publisher.nickname ? dp.publisher.nickname : (_a = dp.publisher.fullName) !== null && _a !== void 0 ? _a : "-"
+                            });
+                        });
+                    }
+                    fixedSchedules.push({
+                        date: arr.date,
+                        weekday: null,
+                        start_time: slot.start_time,
+                        end_time: slot.end_time,
+                        title: arr.title,
+                        publishers
+                    });
+                }
+                continue;
+            }
+            /* ================= ARRANJOS PADRÕES (REPETIÇÃO SEMANAL) ================= */
             for (const slot of sortedTimeSlots) {
-                /* ================= FIXOS ================= */
+                /* ================= FIXOS SEMANAIS ================= */
                 if (!slot.is_rotative) {
                     fixedSchedules.push({
-                        date: arr.is_fixed ? null : arr.date,
-                        weekday: arr.is_fixed ? arr.weekday : null,
+                        date: null,
+                        weekday: arr.weekday,
                         start_time: slot.start_time,
                         end_time: slot.end_time,
                         title: arr.title,
@@ -286,7 +332,7 @@ class PublicWitnessScheduleController {
                     });
                     continue;
                 }
-                /* ================= RODÍZIO ================= */
+                /* ================= RODÍZIO REGULAR ================= */
                 const assignments = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository.find({
                     where: {
                         time_slot_id: slot.id,
@@ -368,13 +414,63 @@ class PublicWitnessScheduleController {
         const rotationBlocksMap = new Map();
         for (const arr of arrangements) {
             const sortedTimeSlots = [...arr.timeSlots].sort((a, b) => a.start_time.localeCompare(b.start_time));
+            /* ================= ARRANJOS ESPECIAIS (DATA ESPECÍFICA) ================= */
+            if (!arr.is_fixed) {
+                if (!arr.date)
+                    continue;
+                for (const slot of sortedTimeSlots) {
+                    let publishers = [];
+                    const where = {
+                        time_slot_id: slot.id,
+                        date: arr.date
+                    };
+                    const assignment = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository.findOne({
+                        where,
+                        relations: ["publishers", "publishers.publisher"],
+                        order: {
+                            publishers: { order: "ASC" }
+                        }
+                    });
+                    if (assignment && assignment.publishers && assignment.publishers.length > 0) {
+                        publishers = assignment.publishers.map(p => {
+                            var _a, _b;
+                            return ({
+                                id: p.publisher.id,
+                                name: (_b = (_a = p.publisher.nickname) !== null && _a !== void 0 ? _a : p.publisher.fullName) !== null && _b !== void 0 ? _b : "-"
+                            });
+                        });
+                    }
+                    else if (slot.defaultPublishers && slot.defaultPublishers.length > 0) {
+                        publishers = slot.defaultPublishers.map(dp => {
+                            var _a, _b;
+                            return ({
+                                id: dp.publisher.id,
+                                name: (_b = (_a = dp.publisher.nickname) !== null && _a !== void 0 ? _a : dp.publisher.fullName) !== null && _b !== void 0 ? _b : "-"
+                            });
+                        });
+                    }
+                    if ((0, dayjs_1.default)(arr.date).isBefore(startDate, "day") || (0, dayjs_1.default)(arr.date).isAfter(endDate, "day")) {
+                        continue;
+                    }
+                    fixedSchedules.push({
+                        title: arr.title,
+                        date: arr.date,
+                        weekday: null,
+                        start_time: slot.start_time,
+                        end_time: slot.end_time,
+                        publishers
+                    });
+                }
+                continue;
+            }
+            /* ================= ARRANJOS PADRÕES (REPETIÇÃO SEMANAL) ================= */
             for (const slot of sortedTimeSlots) {
-                /* ================= FIXOS ================= */
+                /* ================= FIXOS SEMANAIS ================= */
                 if (!slot.is_rotative) {
                     fixedSchedules.push({
                         title: arr.title,
-                        date: arr.is_fixed ? null : arr.date,
-                        weekday: arr.is_fixed ? arr.weekday : null,
+                        date: null,
+                        weekday: arr.weekday,
                         start_time: slot.start_time,
                         end_time: slot.end_time,
                         publishers: slot.defaultPublishers.map(dp => {
@@ -387,7 +483,7 @@ class PublicWitnessScheduleController {
                     });
                     continue;
                 }
-                /* ================= RODÍZIO ================= */
+                /* ================= RODÍZIO REGULAR ================= */
                 const where = { time_slot_id: slot.id };
                 // 🔹 Aplica filtro por data somente se ambas as datas forem passadas
                 if (startDate && endDate) {

@@ -97,11 +97,33 @@ class PublicWitnessArrangementController {
         await publicWitnessArrangementRepository_1.publicWitnessArrangementRepository.save(arrangement);
         /* ================= Atualiza horários ================= */
         if (timeSlots) {
-            const incomingIds = timeSlots
-                .filter(s => s.id)
-                .map(s => s.id);
-            /* ---- Removidos ---- */
-            const slotsToDelete = arrangement.timeSlots.filter(slot => !incomingIds.includes(slot.id));
+            const existingSlots = [...arrangement.timeSlots];
+            const matchedSlotMap = new Map();
+            const usedExistingSlotIds = new Set();
+            // 1a. Tenta combinar primeiro por ID explícito
+            for (const slot of timeSlots) {
+                if (slot.id) {
+                    const match = existingSlots.find(s => s.id === slot.id);
+                    if (match) {
+                        matchedSlotMap.set(slot, match);
+                        usedExistingSlotIds.add(match.id);
+                    }
+                }
+            }
+            // 1b. Para slots sem ID ou que não deram match direto, combina com slot existente não usado pelo horário
+            for (const slot of timeSlots) {
+                if (!matchedSlotMap.has(slot)) {
+                    const match = existingSlots.find(s => !usedExistingSlotIds.has(s.id) &&
+                        s.start_time.slice(0, 5) === slot.start_time.slice(0, 5) &&
+                        s.end_time.slice(0, 5) === slot.end_time.slice(0, 5));
+                    if (match) {
+                        matchedSlotMap.set(slot, match);
+                        usedExistingSlotIds.add(match.id);
+                    }
+                }
+            }
+            /* ---- Removidos: apenas slots que realmente foram excluídos ---- */
+            const slotsToDelete = existingSlots.filter(s => !usedExistingSlotIds.has(s.id));
             if (slotsToDelete.length) {
                 for (const slot of slotsToDelete) {
                     if ((_a = slot.defaultPublishers) === null || _a === void 0 ? void 0 : _a.length) {
@@ -115,12 +137,9 @@ class PublicWitnessArrangementController {
             }
             /* ---- Criar / Atualizar ---- */
             for (const slot of timeSlots) {
-                let ts = null;
-                if (slot.id) {
+                let ts = (_c = matchedSlotMap.get(slot)) !== null && _c !== void 0 ? _c : null;
+                if (ts) {
                     // ✏️ update
-                    ts = (_c = arrangement.timeSlots.find(s => s.id === slot.id)) !== null && _c !== void 0 ? _c : null;
-                    if (!ts)
-                        continue;
                     Object.assign(ts, {
                         start_time: slot.start_time,
                         end_time: slot.end_time,
@@ -128,10 +147,34 @@ class PublicWitnessArrangementController {
                         is_rotative: (_e = slot.is_rotative) !== null && _e !== void 0 ? _e : false
                     });
                     await publicWitnessTimeSlotRepository_1.publicWitnessTimeSlotRepository.save(ts);
-                    if ((_f = ts.defaultPublishers) === null || _f === void 0 ? void 0 : _f.length) {
-                        await publicWitnessTimeSlotDefaultPublisherRepository_1.publicWitnessTimeSlotDefaultPublisherRepository.remove(ts.defaultPublishers);
+                    // Só substitui defaultPublishers se forem explicitamente informados
+                    if (slot.defaultPublishers !== undefined) {
+                        if ((_f = ts.defaultPublishers) === null || _f === void 0 ? void 0 : _f.length) {
+                            await publicWitnessTimeSlotDefaultPublisherRepository_1.publicWitnessTimeSlotDefaultPublisherRepository.remove(ts.defaultPublishers);
+                        }
+                        if (slot.defaultPublishers.length > 0) {
+                            const defaultPubs = slot.defaultPublishers.map(dp => {
+                                var _a;
+                                return publicWitnessTimeSlotDefaultPublisherRepository_1.publicWitnessTimeSlotDefaultPublisherRepository.create({
+                                    time_slot_id: ts.id,
+                                    publisher_id: dp.publisher_id,
+                                    order: (_a = dp.order) !== null && _a !== void 0 ? _a : 0
+                                });
+                            });
+                            await publicWitnessTimeSlotDefaultPublisherRepository_1.publicWitnessTimeSlotDefaultPublisherRepository.save(defaultPubs);
+                        }
                     }
-                    await publicWitnessTimeSlotPreferenceRepository_1.publicWitnessTimeSlotPreferenceRepository.delete({ time_slot_id: ts.id });
+                    // Só substitui preferências se forem explicitamente informadas
+                    if (slot.preferences !== undefined) {
+                        await publicWitnessTimeSlotPreferenceRepository_1.publicWitnessTimeSlotPreferenceRepository.delete({ time_slot_id: ts.id });
+                        if (slot.preferences.length > 0) {
+                            const prefs = slot.preferences.map(pref => publicWitnessTimeSlotPreferenceRepository_1.publicWitnessTimeSlotPreferenceRepository.create({
+                                time_slot_id: ts.id,
+                                publisher_id: pref.publisher_id
+                            }));
+                            await publicWitnessTimeSlotPreferenceRepository_1.publicWitnessTimeSlotPreferenceRepository.save(prefs);
+                        }
+                    }
                 }
                 else {
                     // 🆕 create
@@ -143,28 +186,24 @@ class PublicWitnessArrangementController {
                         is_rotative: (_h = slot.is_rotative) !== null && _h !== void 0 ? _h : false
                     });
                     await publicWitnessTimeSlotRepository_1.publicWitnessTimeSlotRepository.save(ts);
-                }
-                // 🔒 Garantia para TS e lógica
-                if (!ts)
-                    continue;
-                const timeSlot = ts; // 🔒 trava o tipo
-                if ((_j = slot.defaultPublishers) === null || _j === void 0 ? void 0 : _j.length) {
-                    const defaultPubs = slot.defaultPublishers.map(dp => {
-                        var _a;
-                        return publicWitnessTimeSlotDefaultPublisherRepository_1.publicWitnessTimeSlotDefaultPublisherRepository.create({
-                            time_slot_id: timeSlot.id,
-                            publisher_id: dp.publisher_id,
-                            order: (_a = dp.order) !== null && _a !== void 0 ? _a : 0
+                    if ((_j = slot.defaultPublishers) === null || _j === void 0 ? void 0 : _j.length) {
+                        const defaultPubs = slot.defaultPublishers.map(dp => {
+                            var _a;
+                            return publicWitnessTimeSlotDefaultPublisherRepository_1.publicWitnessTimeSlotDefaultPublisherRepository.create({
+                                time_slot_id: ts.id,
+                                publisher_id: dp.publisher_id,
+                                order: (_a = dp.order) !== null && _a !== void 0 ? _a : 0
+                            });
                         });
-                    });
-                    await publicWitnessTimeSlotDefaultPublisherRepository_1.publicWitnessTimeSlotDefaultPublisherRepository.save(defaultPubs);
-                }
-                if ((_k = slot.preferences) === null || _k === void 0 ? void 0 : _k.length) {
-                    const prefs = slot.preferences.map(pref => publicWitnessTimeSlotPreferenceRepository_1.publicWitnessTimeSlotPreferenceRepository.create({
-                        time_slot_id: timeSlot.id,
-                        publisher_id: pref.publisher_id
-                    }));
-                    await publicWitnessTimeSlotPreferenceRepository_1.publicWitnessTimeSlotPreferenceRepository.save(prefs);
+                        await publicWitnessTimeSlotDefaultPublisherRepository_1.publicWitnessTimeSlotDefaultPublisherRepository.save(defaultPubs);
+                    }
+                    if ((_k = slot.preferences) === null || _k === void 0 ? void 0 : _k.length) {
+                        const prefs = slot.preferences.map(pref => publicWitnessTimeSlotPreferenceRepository_1.publicWitnessTimeSlotPreferenceRepository.create({
+                            time_slot_id: ts.id,
+                            publisher_id: pref.publisher_id
+                        }));
+                        await publicWitnessTimeSlotPreferenceRepository_1.publicWitnessTimeSlotPreferenceRepository.save(prefs);
+                    }
                 }
             }
         }
