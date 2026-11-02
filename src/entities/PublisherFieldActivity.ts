@@ -36,6 +36,11 @@ export class PublisherFieldActivity {
     @Column({ type: "uuid", nullable: true })
     bible_student_id: string | null;
 
+    @Column({ type: "simple-array", nullable: true })
+    bible_student_ids: string[] | null;
+
+    bibleStudents?: PublisherBibleStudent[];
+
     @CreateDateColumn()
     created_at: Date;
 

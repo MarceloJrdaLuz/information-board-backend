@@ -138,6 +138,11 @@ class DailyMinistryController {
                 is_closed: false
             });
         }
+        // Buscar todos os estudantes cadastrados pelo publicador
+        const publisherStudents = await publisherBibleStudentRepository_1.publisherBibleStudentRepository.find({
+            where: { publisher_id: publisher.id }
+        });
+        const studentsMap = new Map(publisherStudents.map(s => [s.id, s]));
         // Resumo
         let totalMinistryMinutes = 0;
         let totalCreditMinutes = 0;
@@ -145,15 +150,31 @@ class DailyMinistryController {
         activities.forEach(act => {
             totalMinistryMinutes += Number(act.minutes || 0);
             totalCreditMinutes += Number(act.credit_minutes || 0);
-            if (act.bible_student_id) {
-                studentsSet.add(act.bible_student_id);
+            const ids = [];
+            if (act.bible_student_ids && Array.isArray(act.bible_student_ids)) {
+                ids.push(...act.bible_student_ids);
             }
+            else if (act.bible_student_id) {
+                ids.push(act.bible_student_id);
+            }
+            const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+            act.bible_student_ids = uniqueIds;
+            act.bibleStudents = uniqueIds.map(id => studentsMap.get(id)).filter(Boolean);
+            if (!act.bibleStudent && act.bibleStudents.length > 0) {
+                act.bibleStudent = act.bibleStudents[0];
+            }
+            uniqueIds.forEach(id => studentsSet.add(id));
         });
+        const studentsWithStudies = Array.from(studentsSet)
+            .map(id => studentsMap.get(id))
+            .filter(Boolean)
+            .map(s => ({ id: s.id, name: s.name }));
         return res.json({
             year: targetYear,
             month: targetMonth,
             activities,
             balance: monthBalance,
+            studentsWithStudies,
             summary: {
                 transferredMinutesIn: monthBalance.transferred_minutes_in || 0,
                 totalMinistryMinutes,
@@ -166,22 +187,21 @@ class DailyMinistryController {
     // Criar uma nova atividade diária
     async createActivity(req, res) {
         const publisher = await DailyMinistryController.getLoggedPublisher(req);
-        const { date, minutes, credit_minutes, credit_description, notes, bible_student_id } = req.body;
+        const { date, minutes, credit_minutes, credit_description, notes, bible_student_id, bible_student_ids } = req.body;
         if (!date)
             throw new api_errors_1.BadRequestError("A data da atividade é obrigatória");
         const parsedDate = (0, dayjs_1.default)(date).format("YYYY-MM-DD");
         const actMinutes = Math.max(0, parseInt(minutes, 10) || 0);
         const credMinutes = Math.max(0, parseInt(credit_minutes, 10) || 0);
-        if (actMinutes === 0 && credMinutes === 0 && !bible_student_id) {
-            throw new api_errors_1.BadRequestError("Informe o tempo de campo, crédito ou um estudo realizado");
+        let studentIds = [];
+        if (Array.isArray(bible_student_ids)) {
+            studentIds = bible_student_ids.filter((id) => typeof id === "string" && id.trim().length > 0);
         }
-        // Valida se o estudante pertence ao publicador caso informado
-        if (bible_student_id) {
-            const student = await publisherBibleStudentRepository_1.publisherBibleStudentRepository.findOne({
-                where: { id: bible_student_id, publisher_id: publisher.id }
-            });
-            if (!student)
-                throw new api_errors_1.BadRequestError("Estudante não encontrado");
+        else if (bible_student_id) {
+            studentIds = [bible_student_id];
+        }
+        if (actMinutes === 0 && credMinutes === 0 && studentIds.length === 0) {
+            throw new api_errors_1.BadRequestError("Informe o tempo de campo, crédito ou pelo menos um estudo realizado");
         }
         const activity = publisherFieldActivityRepository_1.publisherFieldActivityRepository.create({
             publisher_id: publisher.id,
@@ -190,7 +210,8 @@ class DailyMinistryController {
             credit_minutes: credMinutes,
             credit_description: (credit_description === null || credit_description === void 0 ? void 0 : credit_description.trim()) || null,
             notes: (notes === null || notes === void 0 ? void 0 : notes.trim()) || null,
-            bible_student_id: bible_student_id || null
+            bible_student_id: studentIds.length > 0 ? studentIds[0] : null,
+            bible_student_ids: studentIds
         });
         await publisherFieldActivityRepository_1.publisherFieldActivityRepository.save(activity);
         return res.status(201).json(activity);
@@ -199,7 +220,7 @@ class DailyMinistryController {
     async updateActivity(req, res) {
         const publisher = await DailyMinistryController.getLoggedPublisher(req);
         const { activity_id } = req.params;
-        const { date, minutes, credit_minutes, credit_description, notes, bible_student_id } = req.body;
+        const { date, minutes, credit_minutes, credit_description, notes, bible_student_id, bible_student_ids } = req.body;
         const activity = await publisherFieldActivityRepository_1.publisherFieldActivityRepository.findOne({
             where: { id: activity_id, publisher_id: publisher.id }
         });
@@ -215,17 +236,21 @@ class DailyMinistryController {
             activity.credit_description = (credit_description === null || credit_description === void 0 ? void 0 : credit_description.trim()) || null;
         if (notes !== undefined)
             activity.notes = (notes === null || notes === void 0 ? void 0 : notes.trim()) || null;
-        if (bible_student_id !== undefined) {
+        if (bible_student_ids !== undefined) {
+            const studentIds = Array.isArray(bible_student_ids)
+                ? bible_student_ids.filter((id) => typeof id === "string" && id.trim().length > 0)
+                : [];
+            activity.bible_student_ids = studentIds;
+            activity.bible_student_id = studentIds.length > 0 ? studentIds[0] : null;
+        }
+        else if (bible_student_id !== undefined) {
             if (bible_student_id) {
-                const student = await publisherBibleStudentRepository_1.publisherBibleStudentRepository.findOne({
-                    where: { id: bible_student_id, publisher_id: publisher.id }
-                });
-                if (!student)
-                    throw new api_errors_1.BadRequestError("Estudante não encontrado");
-                activity.bible_student_id = student.id;
+                activity.bible_student_id = bible_student_id;
+                activity.bible_student_ids = [bible_student_id];
             }
             else {
                 activity.bible_student_id = null;
+                activity.bible_student_ids = [];
             }
         }
         await publisherFieldActivityRepository_1.publisherFieldActivityRepository.save(activity);

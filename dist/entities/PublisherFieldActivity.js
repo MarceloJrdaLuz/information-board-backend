@@ -58,6 +58,10 @@ __decorate([
     __metadata("design:type", Object)
 ], PublisherFieldActivity.prototype, "bible_student_id", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: "simple-array", nullable: true }),
+    __metadata("design:type", Object)
+], PublisherFieldActivity.prototype, "bible_student_ids", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], PublisherFieldActivity.prototype, "created_at", void 0);
