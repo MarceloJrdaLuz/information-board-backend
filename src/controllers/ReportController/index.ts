@@ -14,9 +14,10 @@ import { userRepository } from "../../repositories/userRepository"
 import { messageErrors } from "../../helpers/messageErrors"
 import { decoder } from "../../middlewares/permissions"
 import { getActivePrivilegeNamesPT, hasPrivilege } from "../../helpers/publisherPrivilegeHelper"
-import { getMonthDateRange, PT_MONTH_NAMES } from "../../helpers/privilegesTranslations"
+import { getMonthDateRange, PT_MONTH_NAMES, MONTH_MAP_PT } from "../../helpers/privilegesTranslations"
 import { privilegeRepository } from "../../repositories/privilegeRepository"
 import { publisherPrivilegeRepository } from "../../repositories/publisherPrivilegeRepository"
+import { totalsReportsRepository } from "../../repositories/totalsReportRepository"
 import dayjs from "dayjs"
 
 class ReportController {
@@ -31,7 +32,7 @@ class ReportController {
       where: {
         id: publisher_id
       },
-      relations: ["privilegesRelation", "privilegesRelation.privilege"]
+      relations: ["privilegesRelation", "privilegesRelation.privilege", "congregation"]
     })
 
     if (!publisherExists) throw new NotFoundError('Publisher was not found')
@@ -45,6 +46,32 @@ class ReportController {
     }
 
     const monthRange = getMonthDateRange(month, year)
+    if (monthRange) {
+      const startOfTargetMonth = dayjs(monthRange.startDate)
+      const deadline = startOfTargetMonth.add(1, "month").date(20).endOf("day")
+      if (dayjs().isAfter(deadline)) {
+        throw new BadRequestError(
+          `O prazo para enviar ou alterar o relatório de ${month} encerrou no dia 20 (os relatórios da congregação já foram enviados). Fale com o secretário caso precise de ajustes.`
+        )
+      }
+    }
+
+    if (publisherExists.congregation?.id) {
+      const totals = await totalsReportsRepository.findOne({
+        where: {
+          congregation: { id: publisherExists.congregation.id },
+          month: month as Months,
+          year: String(year)
+        }
+      })
+
+      if (totals) {
+        throw new BadRequestError(
+          `O relatório de ${month} já foi fechado pelo secretário da congregação. Para qualquer alteração, fale diretamente com o secretário.`
+        )
+      }
+    }
+
     const targetDate = monthRange ? new Date(monthRange.startDate) : new Date()
     const activePrivileges = getActivePrivilegeNamesPT(publisherExists, targetDate)
 
@@ -230,7 +257,7 @@ class ReportController {
       where: {
         id: publisher.id
       },
-      relations: ["privilegesRelation", "privilegesRelation.privilege"]
+      relations: ["privilegesRelation", "privilegesRelation.privilege", "congregation"]
     })
 
     if (!publisherExists) throw new NotFoundError('Publisher was not found')
@@ -361,6 +388,70 @@ class ReportController {
       const createdReport = await reportRepository.save(newReport)
       return res.status(201).json(createdReport)
     }
+  }
+
+  async getReportStatus(req: Request, res: Response) {
+    const { congregation_number } = req.params
+    const month = req.query.month as string
+    const year = req.query.year as string
+
+    if (!congregation_number || !month || !year) {
+      return res.status(400).json({ message: 'Parâmetros inválidos' })
+    }
+
+    const congregation = await congregationRepository.findOneBy({ number: congregation_number })
+
+    if (!congregation) {
+      throw new NotFoundError('Congregação não encontrada')
+    }
+
+    const monthRange = getMonthDateRange(month, year)
+    let isExpired = false
+    let deadlineDate = ""
+
+    if (monthRange) {
+      const startOfTargetMonth = dayjs(monthRange.startDate)
+      const deadline = startOfTargetMonth.add(1, "month").date(20).endOf("day")
+      deadlineDate = deadline.format("DD/MM/YYYY")
+      isExpired = dayjs().isAfter(deadline)
+    }
+
+    const cleanMonth = String(month).trim().toLowerCase()
+    const monthIndex = MONTH_MAP_PT[cleanMonth]
+    const monthNamesEnum = [
+      Months.JANEIRO, Months.FEVEREIRO, Months.MARCO, Months.ABRIL,
+      Months.MAIO, Months.JUNHO, Months.JULHO, Months.AGOSTO,
+      Months.SETEMBRO, Months.OUTUBRO, Months.NOVEMBRO, Months.DEZEMBRO
+    ]
+    const monthEnum = monthIndex !== undefined ? monthNamesEnum[monthIndex] : undefined
+
+    let isClosedBySecretary = false
+    if (monthEnum) {
+      const totals = await totalsReportsRepository.findOne({
+        where: {
+          congregation: { id: congregation.id },
+          month: monthEnum,
+          year: String(year)
+        }
+      })
+      isClosedBySecretary = !!totals
+    }
+
+    const isLocked = isClosedBySecretary || isExpired
+    let message = null
+    if (isClosedBySecretary) {
+      message = `O relatório de ${month} já foi fechado pelo secretário da congregação. Para qualquer alteração, fale diretamente com o secretário.`
+    } else if (isExpired) {
+      message = `O prazo para envio do relatório de ${month} encerrou no dia 20 (os relatórios da congregação já foram enviados). Fale com o secretário caso precise enviar ou fazer ajustes.`
+    }
+
+    return res.json({
+      isLocked,
+      isClosedBySecretary,
+      isExpired,
+      deadlineDate,
+      message
+    })
   }
 }
 export default new ReportController()

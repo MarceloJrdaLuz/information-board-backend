@@ -5,6 +5,7 @@ import { publisherFieldActivityRepository } from "../../repositories/publisherFi
 import { publisherBibleStudentRepository } from "../../repositories/publisherBibleStudentRepository";
 import { publisherMonthBalanceRepository } from "../../repositories/publisherMonthBalanceRepository";
 import { reportRepository } from "../../repositories/reportRepository";
+import { totalsReportsRepository } from "../../repositories/totalsReportRepository";
 import { NotFoundError, BadRequestError } from "../../helpers/api-errors";
 import { Months } from "../../types/enumWeekDays";
 import { Report } from "../../entities/Report";
@@ -26,8 +27,8 @@ export class DailyMinistryController {
         return user.publisher;
     }
 
-    // Helper privado para verificar se o mês está bloqueado (por prazo expirado do dia 20 ou porque já foi enviado)
-    private static async assertMonthNotLocked(publisherId: string, year: string | number, month: string | number) {
+    // Helper privado para verificar se o mês da congregação foi fechado pelo secretário ou por prazo expirado
+    private static async assertMonthNotLocked(publisher: any, year: string | number, month: string | number) {
         const targetYear = String(year);
         const targetMonth = String(month).padStart(2, "0");
 
@@ -38,22 +39,35 @@ export class DailyMinistryController {
         const now = dayjs();
         if (now.isAfter(deadline)) {
             throw new BadRequestError(
-                `O prazo para registrar ou alterar o relatório de ${startOfTargetMonth.format("MM/YYYY")} encerrou em ${deadline.format("20/MM/YYYY")} (o relatório da congregação já foi enviado). Fale com o secretário caso precise de ajustes.`
+                `O prazo para registrar ou alterar o relatório de ${startOfTargetMonth.format("MM/YYYY")} encerrou no dia 20 (os relatórios da congregação já foram enviados). Fale com o secretário caso precise de ajustes.`
             );
         }
 
-        const balance = await publisherMonthBalanceRepository.findOne({
-            where: {
-                publisher_id: publisherId,
-                year: targetYear,
-                month: targetMonth
-            }
-        });
+        // Verifica se o secretário da congregação já registrou os totais do mês para Betel
+        if (publisher?.congregation?.id) {
+            const monthNamesEnum = [
+                Months.JANEIRO, Months.FEVEREIRO, Months.MARCO, Months.ABRIL,
+                Months.MAIO, Months.JUNHO, Months.JULHO, Months.AGOSTO,
+                Months.SETEMBRO, Months.OUTUBRO, Months.NOVEMBRO, Months.DEZEMBRO
+            ];
+            const monthIndex = parseInt(targetMonth, 10) - 1;
+            const monthEnum = monthNamesEnum[monthIndex];
 
-        if (balance?.is_closed) {
-            throw new BadRequestError(
-                `O relatório de ${startOfTargetMonth.format("MM/YYYY")} já foi enviado e está bloqueado para alterações. Fale com o secretário para fazer qualquer alteração.`
-            );
+            if (monthEnum) {
+                const totals = await totalsReportsRepository.findOne({
+                    where: {
+                        congregation: { id: publisher.congregation.id },
+                        month: monthEnum,
+                        year: targetYear
+                    }
+                });
+
+                if (totals) {
+                    throw new BadRequestError(
+                        `O relatório de ${startOfTargetMonth.format("MM/YYYY")} já foi fechado pelo secretário da congregação. Para qualquer alteração, fale diretamente com o secretário.`
+                    );
+                }
+            }
         }
     }
 
@@ -234,9 +248,32 @@ export class DailyMinistryController {
         const startOfTargetMonth = dayjs(`${targetYear}-${targetMonth}-01`);
         const deadline = startOfTargetMonth.add(1, "month").date(20).endOf("day");
         const isExpired = dayjs().isAfter(deadline);
-        const isClosed = Boolean(monthBalance.is_closed);
-        const isLocked = isExpired || isClosed;
-        const lockReason = isClosed ? "closed" : isExpired ? "expired" : null;
+
+        let isClosedBySecretary = false;
+        if (publisher.congregation?.id) {
+            const monthNamesEnum = [
+                Months.JANEIRO, Months.FEVEREIRO, Months.MARCO, Months.ABRIL,
+                Months.MAIO, Months.JUNHO, Months.JULHO, Months.AGOSTO,
+                Months.SETEMBRO, Months.OUTUBRO, Months.NOVEMBRO, Months.DEZEMBRO
+            ];
+            const monthIndex = parseInt(targetMonth, 10) - 1;
+            const monthEnum = monthNamesEnum[monthIndex];
+
+            if (monthEnum) {
+                const totals = await totalsReportsRepository.findOne({
+                    where: {
+                        congregation: { id: publisher.congregation.id },
+                        month: monthEnum,
+                        year: targetYear
+                    }
+                });
+                isClosedBySecretary = Boolean(totals);
+            }
+        }
+
+        const isLocked = isClosedBySecretary || isExpired;
+        const isMyReportSubmitted = Boolean(monthBalance?.is_closed);
+        const lockReason = isClosedBySecretary ? "closed_by_secretary" : isExpired ? "expired" : null;
 
         return res.json({
             year: targetYear,
@@ -245,8 +282,9 @@ export class DailyMinistryController {
             balance: monthBalance,
             studentsWithStudies,
             isLocked,
+            isClosedBySecretary,
             isExpired,
-            isClosed,
+            isMyReportSubmitted,
             lockReason,
             deadlineDate: deadline.format("YYYY-MM-DD"),
             summary: {
@@ -270,7 +308,7 @@ export class DailyMinistryController {
         const actYear = dayjs(parsedDate).format("YYYY");
         const actMonth = dayjs(parsedDate).format("MM");
 
-        await DailyMinistryController.assertMonthNotLocked(publisher.id, actYear, actMonth);
+        await DailyMinistryController.assertMonthNotLocked(publisher, actYear, actMonth);
 
         const actMinutes = Math.max(0, parseInt(minutes, 10) || 0);
         const credMinutes = Math.max(0, parseInt(credit_minutes, 10) || 0);
@@ -315,13 +353,13 @@ export class DailyMinistryController {
 
         const oldYear = dayjs(activity.date).format("YYYY");
         const oldMonth = dayjs(activity.date).format("MM");
-        await DailyMinistryController.assertMonthNotLocked(publisher.id, oldYear, oldMonth);
+        await DailyMinistryController.assertMonthNotLocked(publisher, oldYear, oldMonth);
 
         if (date !== undefined) {
             const newYear = dayjs(date).format("YYYY");
             const newMonth = dayjs(date).format("MM");
             if (newYear !== oldYear || newMonth !== oldMonth) {
-                await DailyMinistryController.assertMonthNotLocked(publisher.id, newYear, newMonth);
+                await DailyMinistryController.assertMonthNotLocked(publisher, newYear, newMonth);
             }
             activity.date = dayjs(date).format("YYYY-MM-DD");
         }
@@ -364,7 +402,7 @@ export class DailyMinistryController {
 
         const actYear = dayjs(activity.date).format("YYYY");
         const actMonth = dayjs(activity.date).format("MM");
-        await DailyMinistryController.assertMonthNotLocked(publisher.id, actYear, actMonth);
+        await DailyMinistryController.assertMonthNotLocked(publisher, actYear, actMonth);
 
         await publisherFieldActivityRepository.remove(activity);
         return res.status(204).send();
@@ -392,7 +430,7 @@ export class DailyMinistryController {
         const targetYear = String(year);
         const targetMonth = String(month).padStart(2, "0");
 
-        await DailyMinistryController.assertMonthNotLocked(publisher.id, targetYear, targetMonth);
+        await DailyMinistryController.assertMonthNotLocked(publisher, targetYear, targetMonth);
 
         // Obter nome do enum Months para salvar na tabela Report
         const monthIndex = parseInt(targetMonth, 10) - 1;

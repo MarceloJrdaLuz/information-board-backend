@@ -267,6 +267,7 @@ routes.delete('/report/:report_id', (0, permissions_1.is)(['ADMIN_CONGREGATION',
 routes.post('/report/totals/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), TotalsReportsController_1.default.create);
 routes.get('/report/totals/:congregation_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), TotalsReportsController_1.default.get);
 routes.post('/report', ReportController_1.default.create);
+routes.get('/report/status/:congregation_number', ReportController_1.default.getReportStatus);
 routes.get('/reports/:congregationId', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'REPORTS_VIEWER']), ReportController_1.default.getReports);
 routes.get('/myReports', (0, permissions_1.requirePublisher)(), ReportController_1.default.getMyReports);
 /* === Diário de Campo / Meu Ministério (Pessoal do Publicador) === */

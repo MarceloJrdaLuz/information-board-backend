@@ -309,6 +309,7 @@ routes.delete('/report/:report_id', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']
 routes.post('/report/totals/:congregation_id', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), TotalsReportsController.create)
 routes.get('/report/totals/:congregation_id', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), TotalsReportsController.get)
 routes.post('/report', ReportController.create)
+routes.get('/report/status/:congregation_number', ReportController.getReportStatus)
 routes.get('/reports/:congregationId', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'REPORTS_VIEWER']), ReportController.getReports)
 routes.get('/myReports', requirePublisher(), ReportController.getMyReports)
 
