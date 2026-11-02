@@ -154,6 +154,9 @@ class DailyMinistryController {
             if (act.bible_student_ids && Array.isArray(act.bible_student_ids)) {
                 ids.push(...act.bible_student_ids);
             }
+            else if (typeof act.bible_student_ids === "string" && act.bible_student_ids.trim()) {
+                ids.push(...act.bible_student_ids.split(","));
+            }
             else if (act.bible_student_id) {
                 ids.push(act.bible_student_id);
             }

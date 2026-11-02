@@ -178,6 +178,8 @@ export class DailyMinistryController {
             const ids: string[] = [];
             if (act.bible_student_ids && Array.isArray(act.bible_student_ids)) {
                 ids.push(...act.bible_student_ids);
+            } else if (typeof (act as any).bible_student_ids === "string" && (act as any).bible_student_ids.trim()) {
+                ids.push(...(act as any).bible_student_ids.split(","));
             } else if (act.bible_student_id) {
                 ids.push(act.bible_student_id);
             }
