@@ -16,6 +16,7 @@ const CleaningScheduleConfigController_1 = __importDefault(require("./controller
 const CleaningScheduleController_1 = __importDefault(require("./controllers/CleaningScheduleController"));
 const CongregationController_1 = __importDefault(require("./controllers/CongregationController"));
 const CronJobController_1 = __importDefault(require("./controllers/CronJobController"));
+const DailyMinistryController_1 = require("./controllers/DailyMinistryController");
 const DataProcessingAgreement_1 = __importDefault(require("./controllers/DataProcessingAgreement"));
 const DocumentController_1 = __importDefault(require("./controllers/DocumentController"));
 const EmergencyContactController_1 = __importDefault(require("./controllers/EmergencyContactController"));
@@ -268,6 +269,17 @@ routes.get('/report/totals/:congregation_id', (0, permissions_1.is)(['ADMIN_CONG
 routes.post('/report', ReportController_1.default.create);
 routes.get('/reports/:congregationId', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'REPORTS_VIEWER']), ReportController_1.default.getReports);
 routes.get('/myReports', (0, permissions_1.requirePublisher)(), ReportController_1.default.getMyReports);
+/* === Diário de Campo / Meu Ministério (Pessoal do Publicador) === */
+const dailyMinistryController = new DailyMinistryController_1.DailyMinistryController();
+routes.get('/daily-ministry/activities', (0, permissions_1.requirePublisher)(), dailyMinistryController.getMonthActivities);
+routes.post('/daily-ministry/activities', (0, permissions_1.requirePublisher)(), dailyMinistryController.createActivity);
+routes.put('/daily-ministry/activities/:activity_id', (0, permissions_1.requirePublisher)(), dailyMinistryController.updateActivity);
+routes.delete('/daily-ministry/activities/:activity_id', (0, permissions_1.requirePublisher)(), dailyMinistryController.deleteActivity);
+routes.get('/daily-ministry/students', (0, permissions_1.requirePublisher)(), dailyMinistryController.getStudents);
+routes.post('/daily-ministry/students', (0, permissions_1.requirePublisher)(), dailyMinistryController.createStudent);
+routes.put('/daily-ministry/students/:student_id', (0, permissions_1.requirePublisher)(), dailyMinistryController.updateStudent);
+routes.delete('/daily-ministry/students/:student_id', (0, permissions_1.requirePublisher)(), dailyMinistryController.deleteStudent);
+routes.post('/daily-ministry/submit-report', (0, permissions_1.requirePublisher)(), dailyMinistryController.submitMonthReport);
 /* === Grupos === */
 routes.post('/group/:group_id/add-publishers', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController_1.default.addPublishersGroup);
 routes.delete('/group/:group_id/remove-publishers', (0, permissions_1.is)(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController_1.default.removePublishersGroup);
