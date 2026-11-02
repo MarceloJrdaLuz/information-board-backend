@@ -250,29 +250,38 @@ export class DailyMinistryController {
         const isExpired = dayjs().isAfter(deadline);
 
         let isClosedBySecretary = false;
-        if (publisher.congregation?.id) {
-            const monthNamesEnum = [
-                Months.JANEIRO, Months.FEVEREIRO, Months.MARCO, Months.ABRIL,
-                Months.MAIO, Months.JUNHO, Months.JULHO, Months.AGOSTO,
-                Months.SETEMBRO, Months.OUTUBRO, Months.NOVEMBRO, Months.DEZEMBRO
-            ];
-            const monthIndex = parseInt(targetMonth, 10) - 1;
-            const monthEnum = monthNamesEnum[monthIndex];
+        const monthNamesEnum = [
+            Months.JANEIRO, Months.FEVEREIRO, Months.MARCO, Months.ABRIL,
+            Months.MAIO, Months.JUNHO, Months.JULHO, Months.AGOSTO,
+            Months.SETEMBRO, Months.OUTUBRO, Months.NOVEMBRO, Months.DEZEMBRO
+        ];
+        const monthIndex = parseInt(targetMonth, 10) - 1;
+        const monthEnum = monthNamesEnum[monthIndex];
 
-            if (monthEnum) {
-                const totals = await totalsReportsRepository.findOne({
-                    where: {
-                        congregation: { id: publisher.congregation.id },
-                        month: monthEnum,
-                        year: targetYear
-                    }
-                });
-                isClosedBySecretary = Boolean(totals);
-            }
+        if (publisher.congregation?.id && monthEnum) {
+            const totals = await totalsReportsRepository.findOne({
+                where: {
+                    congregation: { id: publisher.congregation.id },
+                    month: monthEnum,
+                    year: targetYear
+                }
+            });
+            isClosedBySecretary = Boolean(totals);
+        }
+
+        let officialReport = null;
+        if (monthEnum) {
+            officialReport = await reportRepository.findOne({
+                where: {
+                    publisher: { id: publisher.id },
+                    month: monthEnum,
+                    year: targetYear
+                }
+            });
         }
 
         const isLocked = isClosedBySecretary || isExpired;
-        const isMyReportSubmitted = Boolean(monthBalance?.is_closed);
+        const isMyReportSubmitted = Boolean(monthBalance?.is_closed || officialReport);
         const lockReason = isClosedBySecretary ? "closed_by_secretary" : isExpired ? "expired" : null;
 
         return res.json({
@@ -285,6 +294,12 @@ export class DailyMinistryController {
             isClosedBySecretary,
             isExpired,
             isMyReportSubmitted,
+            submittedReport: officialReport ? {
+                id: officialReport.id,
+                hours: officialReport.hours,
+                studies: officialReport.studies,
+                observations: officialReport.observations
+            } : null,
             lockReason,
             deadlineDate: deadline.format("YYYY-MM-DD"),
             summary: {

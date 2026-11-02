@@ -213,27 +213,35 @@ class DailyMinistryController {
         const deadline = startOfTargetMonth.add(1, "month").date(20).endOf("day");
         const isExpired = (0, dayjs_1.default)().isAfter(deadline);
         let isClosedBySecretary = false;
-        if ((_a = publisher.congregation) === null || _a === void 0 ? void 0 : _a.id) {
-            const monthNamesEnum = [
-                enumWeekDays_1.Months.JANEIRO, enumWeekDays_1.Months.FEVEREIRO, enumWeekDays_1.Months.MARCO, enumWeekDays_1.Months.ABRIL,
-                enumWeekDays_1.Months.MAIO, enumWeekDays_1.Months.JUNHO, enumWeekDays_1.Months.JULHO, enumWeekDays_1.Months.AGOSTO,
-                enumWeekDays_1.Months.SETEMBRO, enumWeekDays_1.Months.OUTUBRO, enumWeekDays_1.Months.NOVEMBRO, enumWeekDays_1.Months.DEZEMBRO
-            ];
-            const monthIndex = parseInt(targetMonth, 10) - 1;
-            const monthEnum = monthNamesEnum[monthIndex];
-            if (monthEnum) {
-                const totals = await totalsReportRepository_1.totalsReportsRepository.findOne({
-                    where: {
-                        congregation: { id: publisher.congregation.id },
-                        month: monthEnum,
-                        year: targetYear
-                    }
-                });
-                isClosedBySecretary = Boolean(totals);
-            }
+        const monthNamesEnum = [
+            enumWeekDays_1.Months.JANEIRO, enumWeekDays_1.Months.FEVEREIRO, enumWeekDays_1.Months.MARCO, enumWeekDays_1.Months.ABRIL,
+            enumWeekDays_1.Months.MAIO, enumWeekDays_1.Months.JUNHO, enumWeekDays_1.Months.JULHO, enumWeekDays_1.Months.AGOSTO,
+            enumWeekDays_1.Months.SETEMBRO, enumWeekDays_1.Months.OUTUBRO, enumWeekDays_1.Months.NOVEMBRO, enumWeekDays_1.Months.DEZEMBRO
+        ];
+        const monthIndex = parseInt(targetMonth, 10) - 1;
+        const monthEnum = monthNamesEnum[monthIndex];
+        if (((_a = publisher.congregation) === null || _a === void 0 ? void 0 : _a.id) && monthEnum) {
+            const totals = await totalsReportRepository_1.totalsReportsRepository.findOne({
+                where: {
+                    congregation: { id: publisher.congregation.id },
+                    month: monthEnum,
+                    year: targetYear
+                }
+            });
+            isClosedBySecretary = Boolean(totals);
+        }
+        let officialReport = null;
+        if (monthEnum) {
+            officialReport = await reportRepository_1.reportRepository.findOne({
+                where: {
+                    publisher: { id: publisher.id },
+                    month: monthEnum,
+                    year: targetYear
+                }
+            });
         }
         const isLocked = isClosedBySecretary || isExpired;
-        const isMyReportSubmitted = Boolean(monthBalance === null || monthBalance === void 0 ? void 0 : monthBalance.is_closed);
+        const isMyReportSubmitted = Boolean((monthBalance === null || monthBalance === void 0 ? void 0 : monthBalance.is_closed) || officialReport);
         const lockReason = isClosedBySecretary ? "closed_by_secretary" : isExpired ? "expired" : null;
         return res.json({
             year: targetYear,
@@ -245,6 +253,12 @@ class DailyMinistryController {
             isClosedBySecretary,
             isExpired,
             isMyReportSubmitted,
+            submittedReport: officialReport ? {
+                id: officialReport.id,
+                hours: officialReport.hours,
+                studies: officialReport.studies,
+                observations: officialReport.observations
+            } : null,
             lockReason,
             deadlineDate: deadline.format("YYYY-MM-DD"),
             summary: {
