@@ -17,9 +17,11 @@ const publisherPrivilegeHelper_1 = require("../../helpers/publisherPrivilegeHelp
 const privilegesTranslations_1 = require("../../helpers/privilegesTranslations");
 const privilegeRepository_1 = require("../../repositories/privilegeRepository");
 const publisherPrivilegeRepository_1 = require("../../repositories/publisherPrivilegeRepository");
+const totalsReportRepository_1 = require("../../repositories/totalsReportRepository");
 const dayjs_1 = __importDefault(require("dayjs"));
 class ReportController {
     async create(req, res) {
+        var _a;
         const { month, year, publisher_id, hours, studies, observations } = req.body;
         if (!Object.values(enumWeekDays_1.Months).some(enumMonth => enumMonth === month)) {
             return res.status(400).json({ message: 'Invalid month value' });
@@ -28,7 +30,7 @@ class ReportController {
             where: {
                 id: publisher_id
             },
-            relations: ["privilegesRelation", "privilegesRelation.privilege"]
+            relations: ["privilegesRelation", "privilegesRelation.privilege", "congregation"]
         });
         if (!publisherExists)
             throw new api_errors_1.NotFoundError('Publisher was not found');
@@ -39,6 +41,25 @@ class ReportController {
             throw new api_errors_1.BadRequestError('Publisher is not authorized to submit reports');
         }
         const monthRange = (0, privilegesTranslations_1.getMonthDateRange)(month, year);
+        if (monthRange) {
+            const startOfTargetMonth = (0, dayjs_1.default)(monthRange.startDate);
+            const deadline = startOfTargetMonth.add(1, "month").date(20).endOf("day");
+            if ((0, dayjs_1.default)().isAfter(deadline)) {
+                throw new api_errors_1.BadRequestError(`O prazo para enviar ou alterar o relatório de ${month} encerrou no dia 20 (os relatórios da congregação já foram enviados). Fale com o secretário caso precise de ajustes.`);
+            }
+        }
+        if ((_a = publisherExists.congregation) === null || _a === void 0 ? void 0 : _a.id) {
+            const totals = await totalsReportRepository_1.totalsReportsRepository.findOne({
+                where: {
+                    congregation: { id: publisherExists.congregation.id },
+                    month: month,
+                    year: String(year)
+                }
+            });
+            if (totals) {
+                throw new api_errors_1.BadRequestError(`O relatório de ${month} já foi fechado pelo secretário da congregação. Para qualquer alteração, fale diretamente com o secretário.`);
+            }
+        }
         const targetDate = monthRange ? new Date(monthRange.startDate) : new Date();
         const activePrivileges = (0, publisherPrivilegeHelper_1.getActivePrivilegeNamesPT)(publisherExists, targetDate);
         let existingReport = await reportRepository_1.reportRepository.findOne({
@@ -199,7 +220,7 @@ class ReportController {
             where: {
                 id: publisher.id
             },
-            relations: ["privilegesRelation", "privilegesRelation.privilege"]
+            relations: ["privilegesRelation", "privilegesRelation.privilege", "congregation"]
         });
         if (!publisherExists)
             throw new api_errors_1.NotFoundError('Publisher was not found');
@@ -313,6 +334,61 @@ class ReportController {
             const createdReport = await reportRepository_1.reportRepository.save(newReport);
             return res.status(201).json(createdReport);
         }
+    }
+    async getReportStatus(req, res) {
+        const { congregation_number } = req.params;
+        const month = req.query.month;
+        const year = req.query.year;
+        if (!congregation_number || !month || !year) {
+            return res.status(400).json({ message: 'Parâmetros inválidos' });
+        }
+        const congregation = await congregationRepository_1.congregationRepository.findOneBy({ number: congregation_number });
+        if (!congregation) {
+            throw new api_errors_1.NotFoundError('Congregação não encontrada');
+        }
+        const monthRange = (0, privilegesTranslations_1.getMonthDateRange)(month, year);
+        let isExpired = false;
+        let deadlineDate = "";
+        if (monthRange) {
+            const startOfTargetMonth = (0, dayjs_1.default)(monthRange.startDate);
+            const deadline = startOfTargetMonth.add(1, "month").date(20).endOf("day");
+            deadlineDate = deadline.format("DD/MM/YYYY");
+            isExpired = (0, dayjs_1.default)().isAfter(deadline);
+        }
+        const cleanMonth = String(month).trim().toLowerCase();
+        const monthIndex = privilegesTranslations_1.MONTH_MAP_PT[cleanMonth];
+        const monthNamesEnum = [
+            enumWeekDays_1.Months.JANEIRO, enumWeekDays_1.Months.FEVEREIRO, enumWeekDays_1.Months.MARCO, enumWeekDays_1.Months.ABRIL,
+            enumWeekDays_1.Months.MAIO, enumWeekDays_1.Months.JUNHO, enumWeekDays_1.Months.JULHO, enumWeekDays_1.Months.AGOSTO,
+            enumWeekDays_1.Months.SETEMBRO, enumWeekDays_1.Months.OUTUBRO, enumWeekDays_1.Months.NOVEMBRO, enumWeekDays_1.Months.DEZEMBRO
+        ];
+        const monthEnum = monthIndex !== undefined ? monthNamesEnum[monthIndex] : undefined;
+        let isClosedBySecretary = false;
+        if (monthEnum) {
+            const totals = await totalsReportRepository_1.totalsReportsRepository.findOne({
+                where: {
+                    congregation: { id: congregation.id },
+                    month: monthEnum,
+                    year: String(year)
+                }
+            });
+            isClosedBySecretary = !!totals;
+        }
+        const isLocked = isClosedBySecretary || isExpired;
+        let message = null;
+        if (isClosedBySecretary) {
+            message = `O relatório de ${month} já foi fechado pelo secretário da congregação. Para qualquer alteração, fale diretamente com o secretário.`;
+        }
+        else if (isExpired) {
+            message = `O prazo para envio do relatório de ${month} encerrou no dia 20 (os relatórios da congregação já foram enviados). Fale com o secretário caso precise enviar ou fazer ajustes.`;
+        }
+        return res.json({
+            isLocked,
+            isClosedBySecretary,
+            isExpired,
+            deadlineDate,
+            message
+        });
     }
 }
 exports.default = new ReportController();

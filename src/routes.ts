@@ -12,6 +12,7 @@ import CleaningScheduleConfigController from "./controllers/CleaningScheduleConf
 import CleaningScheduleController from "./controllers/CleaningScheduleController"
 import CongregationController from "./controllers/CongregationController"
 import CronJobController from "./controllers/CronJobController"
+import { DailyMinistryController } from "./controllers/DailyMinistryController"
 import DataProcessingAgreementController from "./controllers/DataProcessingAgreement"
 import DocumentController from "./controllers/DocumentController"
 import EmergencyContactController from "./controllers/EmergencyContactController"
@@ -308,8 +309,23 @@ routes.delete('/report/:report_id', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']
 routes.post('/report/totals/:congregation_id', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), TotalsReportsController.create)
 routes.get('/report/totals/:congregation_id', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER']), TotalsReportsController.get)
 routes.post('/report', ReportController.create)
+routes.get('/report/status/:congregation_number', ReportController.getReportStatus)
 routes.get('/reports/:congregationId', is(['ADMIN_CONGREGATION', 'REPORTS_MANAGER', 'REPORTS_VIEWER']), ReportController.getReports)
 routes.get('/myReports', requirePublisher(), ReportController.getMyReports)
+
+/* === Diário de Campo / Meu Ministério (Pessoal do Publicador) === */
+const dailyMinistryController = new DailyMinistryController()
+routes.get('/daily-ministry/activities', requirePublisher(), dailyMinistryController.getMonthActivities)
+routes.post('/daily-ministry/activities', requirePublisher(), dailyMinistryController.createActivity)
+routes.put('/daily-ministry/activities/:activity_id', requirePublisher(), dailyMinistryController.updateActivity)
+routes.delete('/daily-ministry/activities/:activity_id', requirePublisher(), dailyMinistryController.deleteActivity)
+
+routes.get('/daily-ministry/students', requirePublisher(), dailyMinistryController.getStudents)
+routes.post('/daily-ministry/students', requirePublisher(), dailyMinistryController.createStudent)
+routes.put('/daily-ministry/students/:student_id', requirePublisher(), dailyMinistryController.updateStudent)
+routes.delete('/daily-ministry/students/:student_id', requirePublisher(), dailyMinistryController.deleteStudent)
+
+routes.post('/daily-ministry/submit-report', requirePublisher(), dailyMinistryController.submitMonthReport)
 
 /* === Grupos === */
 routes.post('/group/:group_id/add-publishers', is(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController.addPublishersGroup)
