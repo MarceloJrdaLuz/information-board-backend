@@ -26,6 +26,37 @@ export class DailyMinistryController {
         return user.publisher;
     }
 
+    // Helper privado para verificar se o mês está bloqueado (por prazo expirado do dia 20 ou porque já foi enviado)
+    private static async assertMonthNotLocked(publisherId: string, year: string | number, month: string | number) {
+        const targetYear = String(year);
+        const targetMonth = String(month).padStart(2, "0");
+
+        const startOfTargetMonth = dayjs(`${targetYear}-${targetMonth}-01`);
+        // Prazo limite: dia 20 do mês seguinte às 23:59:59
+        const deadline = startOfTargetMonth.add(1, "month").date(20).endOf("day");
+
+        const now = dayjs();
+        if (now.isAfter(deadline)) {
+            throw new BadRequestError(
+                `O prazo para registrar ou alterar o relatório de ${startOfTargetMonth.format("MM/YYYY")} encerrou em ${deadline.format("20/MM/YYYY")} (o relatório da congregação já foi enviado). Fale com o secretário caso precise de ajustes.`
+            );
+        }
+
+        const balance = await publisherMonthBalanceRepository.findOne({
+            where: {
+                publisher_id: publisherId,
+                year: targetYear,
+                month: targetMonth
+            }
+        });
+
+        if (balance?.is_closed) {
+            throw new BadRequestError(
+                `O relatório de ${startOfTargetMonth.format("MM/YYYY")} já foi enviado e está bloqueado para alterações. Fale com o secretário para fazer qualquer alteração.`
+            );
+        }
+    }
+
     /* =========================================================
      *  ESTUDANTES BÍBLICOS
      * ========================================================= */
@@ -200,12 +231,24 @@ export class DailyMinistryController {
             .filter(Boolean)
             .map(s => ({ id: s!.id, name: s!.name }));
 
+        const startOfTargetMonth = dayjs(`${targetYear}-${targetMonth}-01`);
+        const deadline = startOfTargetMonth.add(1, "month").date(20).endOf("day");
+        const isExpired = dayjs().isAfter(deadline);
+        const isClosed = Boolean(monthBalance.is_closed);
+        const isLocked = isExpired || isClosed;
+        const lockReason = isClosed ? "closed" : isExpired ? "expired" : null;
+
         return res.json({
             year: targetYear,
             month: targetMonth,
             activities,
             balance: monthBalance,
             studentsWithStudies,
+            isLocked,
+            isExpired,
+            isClosed,
+            lockReason,
+            deadlineDate: deadline.format("YYYY-MM-DD"),
             summary: {
                 transferredMinutesIn: monthBalance.transferred_minutes_in || 0,
                 totalMinistryMinutes,
@@ -224,6 +267,11 @@ export class DailyMinistryController {
         if (!date) throw new BadRequestError("A data da atividade é obrigatória");
 
         const parsedDate = dayjs(date).format("YYYY-MM-DD");
+        const actYear = dayjs(parsedDate).format("YYYY");
+        const actMonth = dayjs(parsedDate).format("MM");
+
+        await DailyMinistryController.assertMonthNotLocked(publisher.id, actYear, actMonth);
+
         const actMinutes = Math.max(0, parseInt(minutes, 10) || 0);
         const credMinutes = Math.max(0, parseInt(credit_minutes, 10) || 0);
 
@@ -265,7 +313,19 @@ export class DailyMinistryController {
 
         if (!activity) throw new NotFoundError("Atividade não encontrada");
 
-        if (date !== undefined) activity.date = dayjs(date).format("YYYY-MM-DD");
+        const oldYear = dayjs(activity.date).format("YYYY");
+        const oldMonth = dayjs(activity.date).format("MM");
+        await DailyMinistryController.assertMonthNotLocked(publisher.id, oldYear, oldMonth);
+
+        if (date !== undefined) {
+            const newYear = dayjs(date).format("YYYY");
+            const newMonth = dayjs(date).format("MM");
+            if (newYear !== oldYear || newMonth !== oldMonth) {
+                await DailyMinistryController.assertMonthNotLocked(publisher.id, newYear, newMonth);
+            }
+            activity.date = dayjs(date).format("YYYY-MM-DD");
+        }
+
         if (minutes !== undefined) activity.minutes = Math.max(0, parseInt(minutes, 10) || 0);
         if (credit_minutes !== undefined) activity.credit_minutes = Math.max(0, parseInt(credit_minutes, 10) || 0);
         if (credit_description !== undefined) activity.credit_description = credit_description?.trim() || null;
@@ -302,6 +362,10 @@ export class DailyMinistryController {
 
         if (!activity) throw new NotFoundError("Atividade não encontrada");
 
+        const actYear = dayjs(activity.date).format("YYYY");
+        const actMonth = dayjs(activity.date).format("MM");
+        await DailyMinistryController.assertMonthNotLocked(publisher.id, actYear, actMonth);
+
         await publisherFieldActivityRepository.remove(activity);
         return res.status(204).send();
     }
@@ -327,6 +391,8 @@ export class DailyMinistryController {
 
         const targetYear = String(year);
         const targetMonth = String(month).padStart(2, "0");
+
+        await DailyMinistryController.assertMonthNotLocked(publisher.id, targetYear, targetMonth);
 
         // Obter nome do enum Months para salvar na tabela Report
         const monthIndex = parseInt(targetMonth, 10) - 1;
