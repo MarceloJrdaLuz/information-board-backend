@@ -1,13 +1,27 @@
 import dayjs from "dayjs"
 import { Request } from "express"
 import { Response } from "express-serve-static-core"
-import { In, MoreThanOrEqual } from "typeorm"
-import { CongregationType } from "../../entities/Congregation"
+import { In, MoreThanOrEqual, Not } from "typeorm"
+import { Congregation, CongregationType } from "../../entities/Congregation"
+import { EmergencyContact } from "../../entities/EmergencyContact"
+import { Family } from "../../entities/Family"
+import { FieldServiceRotationMember } from "../../entities/FieldServiceRotationMember"
+import { FieldServiceSchedule } from "../../entities/FieldServiceSchedule"
+import { FieldServiceTemplate } from "../../entities/FieldServiceTemplate"
+import { Group } from "../../entities/Group"
 import { GroupOverseers } from "../../entities/GroupOverseers"
 import { HospitalityGroup } from "../../entities/HospitalityGroup."
+import { MechanicalAssignment } from "../../entities/MechanicalAssignment"
+import { MidweekMeetingPart } from "../../entities/MidweekMeetingPart"
+import { MidweekSchedule } from "../../entities/MidweekSchedule"
+import { PublicWitnessArrangementPublisher } from "../../entities/PublicWitnessArrangementPublisher"
+import { PublicWitnessAssignmentPublisher } from "../../entities/PublicWitnessAssignmentPublisher"
+import { PublicWitnessTimeSlotDefaultPublisher } from "../../entities/PublicWitnessTimeSlotDefaultPublisher"
+import { PublicWitnessTimeSlotPreference } from "../../entities/PublicWitnessTimeSlotPreference"
 import { Publisher, Situation } from "../../entities/Publisher"
 import { Speaker } from "../../entities/Speaker"
 import { User } from "../../entities/User"
+import { WeekendSchedule } from "../../entities/WeekendSchedule"
 import { convertMeetingDayPortugueseToIso } from "../../functions/cleaningFunctions"
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors"
 import { messageErrors } from "../../helpers/messageErrors"
@@ -1182,6 +1196,23 @@ class PublisherControler {
       const txGroupOverseersRepo = manager.getRepository(GroupOverseers)
       const txHospitalityGroupRepo = manager.getRepository(HospitalityGroup)
       const txUserRepo = manager.getRepository(User)
+      const txEmergencyContactRepo = manager.getRepository(EmergencyContact)
+      const txFamilyRepo = manager.getRepository(Family)
+      const txCongregationRepo = manager.getRepository(Congregation)
+      const txGroupRepo = manager.getRepository(Group)
+      const txMidweekScheduleRepo = manager.getRepository(MidweekSchedule)
+      const txMidweekMeetingPartRepo = manager.getRepository(MidweekMeetingPart)
+      const txWeekendScheduleRepo = manager.getRepository(WeekendSchedule)
+      const txMechanicalAssignmentRepo = manager.getRepository(MechanicalAssignment)
+      const txFieldServiceRotationMemberRepo = manager.getRepository(FieldServiceRotationMember)
+      const txFieldServiceTemplateRepo = manager.getRepository(FieldServiceTemplate)
+      const txFieldServiceScheduleRepo = manager.getRepository(FieldServiceSchedule)
+      const txPublicWitnessArrangementPublisherRepo = manager.getRepository(PublicWitnessArrangementPublisher)
+      const txPublicWitnessTimeSlotDefaultPublisherRepo = manager.getRepository(PublicWitnessTimeSlotDefaultPublisher)
+      const txPublicWitnessTimeSlotPreferenceRepo = manager.getRepository(PublicWitnessTimeSlotPreference)
+      const txPublicWitnessAssignmentPublisherRepo = manager.getRepository(PublicWitnessAssignmentPublisher)
+
+      const todayStr = dayjs().format("YYYY-MM-DD")
 
       for (const publisher_id of publisherIds) {
         const txPublisher = await txPublisherRepo.findOne({
@@ -1192,6 +1223,7 @@ class PublisherControler {
             "user",
             "emergencyContact",
             "congregation",
+            "family",
           ],
         })
 
@@ -1203,8 +1235,10 @@ class PublisherControler {
           continue
         }
 
+        const oldCongregationId = txPublisher.congregation?.id
+
         // Já pertence à mesma congregação
-        if (txPublisher.congregation?.id === newCongregationId) {
+        if (oldCongregationId === newCongregationId) {
           results.push({
             publisherId: publisher_id,
             status: "already_in_congregation",
@@ -1212,37 +1246,243 @@ class PublisherControler {
           continue
         }
 
-        // === LIMPEZA DAS RELAÇÕES ===
+        // === LIMPEZA DAS RELAÇÕES NA CONGREGAÇÃO ANTIGA ===
 
-        // 1 — Grupo
+        // 1 — Grupo de Campo
         txPublisher.group = null
+        if ((txPublisher as any).group_id) {
+          (txPublisher as any).group_id = null
+        }
+        txPublisher.groupOverseers = null
 
-        // 2 — Hospitality Group como host
+        // Se este publicador era superintendente de algum grupo, desassocia o grupo
+        await manager.query(
+          'UPDATE "group" SET "group_overseers_id" = NULL WHERE "group_overseers_id" IN (SELECT "id" FROM "groupOverseers" WHERE "publisher_id" = $1)',
+          [txPublisher.id]
+        )
+        const overseersDeleted = await txGroupOverseersRepo.delete({
+          publisher: { id: txPublisher.id } as any,
+        })
+
+        // 2 — Hospedagem (Hospitality Group)
         const hostGroups = await txHospitalityGroupRepo.find({
           where: { host: { id: txPublisher.id } },
         })
-
         for (const hg of hostGroups) {
           hg.host = null
           await txHospitalityGroupRepo.save(hg)
         }
-
         if (txPublisher.hospitality_group_id) {
           txPublisher.hospitality_group_id = null
         }
         txPublisher.hospitalityGroup = null
 
-        // 3 — Emergency contact
+        // 3 — Grupos de Limpeza (tabela many-to-many cleaning_group_publishers_publishers)
+        await manager.query(
+          'DELETE FROM "cleaning_group_publishers_publishers" WHERE "publishersId" = $1',
+          [txPublisher.id]
+        )
+
+        // 4 — Contatos de Emergência
         if (txPublisher.emergencyContact) {
-          txPublisher.emergencyContact = null
+          const oldContact = txPublisher.emergencyContact
+
+          // Verifica se algum outro publicador na congregação antiga ainda usa esse mesmo contato
+          const otherPublisherInOldCongregation = oldCongregationId
+            ? await txPublisherRepo.findOne({
+                where: {
+                  emergencyContact: { id: oldContact.id },
+                  congregation: { id: oldCongregationId },
+                  id: Not(In(publisherIds)),
+                },
+              })
+            : null
+
+          // Verifica se a nova congregação já tem um contato idêntico cadastrado (mesmo nome e telefone)
+          const existingInNew = await txEmergencyContactRepo.findOne({
+            where: {
+              name: oldContact.name,
+              phone: oldContact.phone,
+              congregation: { id: newCongregationId },
+            },
+          })
+
+          if (existingInNew) {
+            txPublisher.emergencyContact = existingInNew
+            // Se ninguém mais na congregação antiga usa o contato anterior, exclui para não deixar órfão
+            if (!otherPublisherInOldCongregation) {
+              await txEmergencyContactRepo.remove(oldContact)
+            }
+          } else if (!otherPublisherInOldCongregation) {
+            // Ninguém mais na antiga congregação usa: transfere o contato para a nova congregação!
+            // Assim ele sai da congregação antiga e continua com o publicador na nova.
+            oldContact.congregation = { id: newCongregationId } as any
+            await txEmergencyContactRepo.save(oldContact)
+            txPublisher.emergencyContact = oldContact
+          } else {
+            // Outro publicador que ficou na antiga congregação compartilha o contato:
+            // Mantém o original na antiga e clona um para a nova congregação.
+            const clonedContact = txEmergencyContactRepo.create({
+              name: oldContact.name,
+              phone: oldContact.phone,
+              relationship: oldContact.relationship,
+              isTj: oldContact.isTj,
+              congregation: { id: newCongregationId } as any,
+            })
+            await txEmergencyContactRepo.save(clonedContact)
+            txPublisher.emergencyContact = clonedContact
+          }
         }
 
-        // 4 — Remove group overseers
-        const overseersDeleted = await txGroupOverseersRepo.delete({
-          publisher: { id: txPublisher.id } as any,
+        // 5 — Famílias
+        await manager.query(
+          'UPDATE "families" SET "responsible_publisher_id" = NULL WHERE "responsible_publisher_id" = $1',
+          [txPublisher.id]
+        )
+        txPublisher.family = null
+        if ((txPublisher as any).family_id) {
+          (txPublisher as any).family_id = null
+        }
+
+        // 6 — Papéis de liderança na congregação antiga
+        await manager.query(
+          'UPDATE "congregation" SET "speaker_coordinator_id" = NULL WHERE "speaker_coordinator_id" = $1',
+          [txPublisher.id]
+        )
+        await manager.query(
+          'UPDATE "congregation" SET "watchtower_conductor_id" = NULL WHERE "watchtower_conductor_id" = $1',
+          [txPublisher.id]
+        )
+
+        // 7 — Testemunho Público / Carrinho
+        await txPublicWitnessArrangementPublisherRepo.delete({
+          publisher_id: txPublisher.id,
+        })
+        await txPublicWitnessTimeSlotDefaultPublisherRepo.delete({
+          publisher_id: txPublisher.id,
+        })
+        await txPublicWitnessTimeSlotPreferenceRepo.delete({
+          publisher_id: txPublisher.id,
+        })
+        await txPublicWitnessAssignmentPublisherRepo.delete({
+          publisher_id: txPublisher.id,
         })
 
-        // 5 — Update user congregation
+        // 8 — Saída de Campo
+        await manager.query(
+          'DELETE FROM "field_service_rotation_members" WHERE "publisher_id" = $1',
+          [txPublisher.id]
+        )
+        await manager.query(
+          'UPDATE "field_service_templates" SET "leader_id" = NULL WHERE "leader_id" = $1',
+          [txPublisher.id]
+        )
+        await manager.query(
+          'DELETE FROM "field_service_schedules" WHERE "leader_id" = $1 AND "date" >= $2',
+          [txPublisher.id, todayStr]
+        )
+
+        // 9 — Designações Mecânicas futuras
+        await manager.query(
+          'UPDATE "mechanical_assignments" SET "publisher_id" = NULL WHERE "publisher_id" = $1',
+          [txPublisher.id]
+        )
+
+        // 10 — Reunião Meio de Semana (Midweek) futuras na congregação antiga
+        if (oldCongregationId) {
+          const futureMidweekSchedules = await txMidweekScheduleRepo.find({
+            where: {
+              congregation_id: oldCongregationId,
+              meetingDate: MoreThanOrEqual(todayStr),
+            },
+          })
+
+          for (const schedule of futureMidweekSchedules) {
+            let changed = false
+            if (schedule.chairman_id === txPublisher.id) {
+              schedule.chairman = null
+              schedule.chairman_id = null
+              changed = true
+            }
+            if (schedule.opening_prayer_id === txPublisher.id) {
+              schedule.openingPrayer = null
+              schedule.opening_prayer_id = null
+              changed = true
+            }
+            if (schedule.closing_prayer_id === txPublisher.id) {
+              schedule.closingPrayer = null
+              schedule.closing_prayer_id = null
+              changed = true
+            }
+            if (schedule.aux_counselor_1_id === txPublisher.id) {
+              schedule.auxCounselor1 = null
+              schedule.aux_counselor_1_id = null
+              changed = true
+            }
+            if (schedule.aux_counselor_2_id === txPublisher.id) {
+              schedule.auxCounselor2 = null
+              schedule.aux_counselor_2_id = null
+              changed = true
+            }
+            if (schedule.cbs_conductor_id === txPublisher.id) {
+              schedule.cbsConductor = null
+              schedule.cbs_conductor_id = null
+              changed = true
+            }
+            if (schedule.cbs_reader_id === txPublisher.id) {
+              schedule.cbsReader = null
+              schedule.cbs_reader_id = null
+              changed = true
+            }
+            if (changed) {
+              await txMidweekScheduleRepo.save(schedule)
+            }
+          }
+
+          if (futureMidweekSchedules.length > 0) {
+            const scheduleIds = futureMidweekSchedules.map((s) => s.id)
+            await txMidweekMeetingPartRepo.update(
+              {
+                schedule: { id: In(scheduleIds) } as any,
+                assigned_publisher_id: txPublisher.id,
+              },
+              { assignedPublisher: null, assigned_publisher_id: null }
+            )
+            await txMidweekMeetingPartRepo.update(
+              {
+                schedule: { id: In(scheduleIds) } as any,
+                assistant_publisher_id: txPublisher.id,
+              },
+              { assistantPublisher: null, assistant_publisher_id: null }
+            )
+          }
+
+          // 11 — Reunião Fim de Semana (Weekend) futuras na congregação antiga
+          const futureWeekendSchedules = await txWeekendScheduleRepo.find({
+            where: {
+              congregation: { id: oldCongregationId } as any,
+              date: MoreThanOrEqual(todayStr),
+            },
+          })
+          for (const ws of futureWeekendSchedules) {
+            let wsChanged = false
+            if (ws.chairman_id === txPublisher.id) {
+              ws.chairman = null
+              ws.chairman_id = null
+              wsChanged = true
+            }
+            if (ws.reader_id === txPublisher.id) {
+              ws.reader = null
+              ws.reader_id = null
+              wsChanged = true
+            }
+            if (wsChanged) {
+              await txWeekendScheduleRepo.save(ws)
+            }
+          }
+        }
+
+        // 12 — Usuário vinculado
         let userUpdated = false
         if (txPublisher.user) {
           const txUser = await txUserRepo.findOne({
@@ -1255,22 +1495,20 @@ class PublisherControler {
           }
         }
 
-        // 6 — Speakers
+        // 13 — Oradores (Speakers)
         const speakers = await txSpeakerRepo.find({
           where: { publisher: { id: txPublisher.id } },
         })
-
         let speakerUpdatedCount = 0
         for (const sp of speakers) {
           sp.originCongregation = { id: newCongregationId } as any
-          sp.publisher = null
+          sp.creatorCongregation = { id: newCongregationId } as any
           await txSpeakerRepo.save(sp)
           speakerUpdatedCount++
         }
 
-        // 7 — Define nova congregation
+        // 14 — Atualiza para a nova congregação
         txPublisher.congregation = { id: newCongregationId } as any
-        txPublisher.groupOverseers = null
 
         await txPublisherRepo.save(txPublisher)
 

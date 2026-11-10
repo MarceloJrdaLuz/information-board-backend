@@ -6,11 +6,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const dayjs_1 = __importDefault(require("dayjs"));
 const typeorm_1 = require("typeorm");
 const Congregation_1 = require("../../entities/Congregation");
+const EmergencyContact_1 = require("../../entities/EmergencyContact");
+const Family_1 = require("../../entities/Family");
+const FieldServiceRotationMember_1 = require("../../entities/FieldServiceRotationMember");
+const FieldServiceSchedule_1 = require("../../entities/FieldServiceSchedule");
+const FieldServiceTemplate_1 = require("../../entities/FieldServiceTemplate");
+const Group_1 = require("../../entities/Group");
 const GroupOverseers_1 = require("../../entities/GroupOverseers");
 const HospitalityGroup_1 = require("../../entities/HospitalityGroup.");
+const MechanicalAssignment_1 = require("../../entities/MechanicalAssignment");
+const MidweekMeetingPart_1 = require("../../entities/MidweekMeetingPart");
+const MidweekSchedule_1 = require("../../entities/MidweekSchedule");
+const PublicWitnessArrangementPublisher_1 = require("../../entities/PublicWitnessArrangementPublisher");
+const PublicWitnessAssignmentPublisher_1 = require("../../entities/PublicWitnessAssignmentPublisher");
+const PublicWitnessTimeSlotDefaultPublisher_1 = require("../../entities/PublicWitnessTimeSlotDefaultPublisher");
+const PublicWitnessTimeSlotPreference_1 = require("../../entities/PublicWitnessTimeSlotPreference");
 const Publisher_1 = require("../../entities/Publisher");
 const Speaker_1 = require("../../entities/Speaker");
 const User_1 = require("../../entities/User");
+const WeekendSchedule_1 = require("../../entities/WeekendSchedule");
 const cleaningFunctions_1 = require("../../functions/cleaningFunctions");
 const api_errors_1 = require("../../helpers/api-errors");
 const messageErrors_1 = require("../../helpers/messageErrors");
@@ -1007,6 +1021,22 @@ class PublisherControler {
             const txGroupOverseersRepo = manager.getRepository(GroupOverseers_1.GroupOverseers);
             const txHospitalityGroupRepo = manager.getRepository(HospitalityGroup_1.HospitalityGroup);
             const txUserRepo = manager.getRepository(User_1.User);
+            const txEmergencyContactRepo = manager.getRepository(EmergencyContact_1.EmergencyContact);
+            const txFamilyRepo = manager.getRepository(Family_1.Family);
+            const txCongregationRepo = manager.getRepository(Congregation_1.Congregation);
+            const txGroupRepo = manager.getRepository(Group_1.Group);
+            const txMidweekScheduleRepo = manager.getRepository(MidweekSchedule_1.MidweekSchedule);
+            const txMidweekMeetingPartRepo = manager.getRepository(MidweekMeetingPart_1.MidweekMeetingPart);
+            const txWeekendScheduleRepo = manager.getRepository(WeekendSchedule_1.WeekendSchedule);
+            const txMechanicalAssignmentRepo = manager.getRepository(MechanicalAssignment_1.MechanicalAssignment);
+            const txFieldServiceRotationMemberRepo = manager.getRepository(FieldServiceRotationMember_1.FieldServiceRotationMember);
+            const txFieldServiceTemplateRepo = manager.getRepository(FieldServiceTemplate_1.FieldServiceTemplate);
+            const txFieldServiceScheduleRepo = manager.getRepository(FieldServiceSchedule_1.FieldServiceSchedule);
+            const txPublicWitnessArrangementPublisherRepo = manager.getRepository(PublicWitnessArrangementPublisher_1.PublicWitnessArrangementPublisher);
+            const txPublicWitnessTimeSlotDefaultPublisherRepo = manager.getRepository(PublicWitnessTimeSlotDefaultPublisher_1.PublicWitnessTimeSlotDefaultPublisher);
+            const txPublicWitnessTimeSlotPreferenceRepo = manager.getRepository(PublicWitnessTimeSlotPreference_1.PublicWitnessTimeSlotPreference);
+            const txPublicWitnessAssignmentPublisherRepo = manager.getRepository(PublicWitnessAssignmentPublisher_1.PublicWitnessAssignmentPublisher);
+            const todayStr = (0, dayjs_1.default)().format("YYYY-MM-DD");
             for (const publisher_id of publisherIds) {
                 const txPublisher = await txPublisherRepo.findOne({
                     where: { id: publisher_id },
@@ -1016,6 +1046,7 @@ class PublisherControler {
                         "user",
                         "emergencyContact",
                         "congregation",
+                        "family",
                     ],
                 });
                 if (!txPublisher) {
@@ -1025,18 +1056,28 @@ class PublisherControler {
                     });
                     continue;
                 }
+                const oldCongregationId = (_a = txPublisher.congregation) === null || _a === void 0 ? void 0 : _a.id;
                 // Já pertence à mesma congregação
-                if (((_a = txPublisher.congregation) === null || _a === void 0 ? void 0 : _a.id) === newCongregationId) {
+                if (oldCongregationId === newCongregationId) {
                     results.push({
                         publisherId: publisher_id,
                         status: "already_in_congregation",
                     });
                     continue;
                 }
-                // === LIMPEZA DAS RELAÇÕES ===
-                // 1 — Grupo
+                // === LIMPEZA DAS RELAÇÕES NA CONGREGAÇÃO ANTIGA ===
+                // 1 — Grupo de Campo
                 txPublisher.group = null;
-                // 2 — Hospitality Group como host
+                if (txPublisher.group_id) {
+                    txPublisher.group_id = null;
+                }
+                txPublisher.groupOverseers = null;
+                // Se este publicador era superintendente de algum grupo, desassocia o grupo
+                await manager.query('UPDATE "group" SET "group_overseers_id" = NULL WHERE "group_overseers_id" IN (SELECT "id" FROM "groupOverseers" WHERE "publisher_id" = $1)', [txPublisher.id]);
+                const overseersDeleted = await txGroupOverseersRepo.delete({
+                    publisher: { id: txPublisher.id },
+                });
+                // 2 — Hospedagem (Hospitality Group)
                 const hostGroups = await txHospitalityGroupRepo.find({
                     where: { host: { id: txPublisher.id } },
                 });
@@ -1048,15 +1089,170 @@ class PublisherControler {
                     txPublisher.hospitality_group_id = null;
                 }
                 txPublisher.hospitalityGroup = null;
-                // 3 — Emergency contact
+                // 3 — Grupos de Limpeza (tabela many-to-many cleaning_group_publishers_publishers)
+                await manager.query('DELETE FROM "cleaning_group_publishers_publishers" WHERE "publishersId" = $1', [txPublisher.id]);
+                // 4 — Contatos de Emergência
                 if (txPublisher.emergencyContact) {
-                    txPublisher.emergencyContact = null;
+                    const oldContact = txPublisher.emergencyContact;
+                    // Verifica se algum outro publicador na congregação antiga ainda usa esse mesmo contato
+                    const otherPublisherInOldCongregation = oldCongregationId
+                        ? await txPublisherRepo.findOne({
+                            where: {
+                                emergencyContact: { id: oldContact.id },
+                                congregation: { id: oldCongregationId },
+                                id: (0, typeorm_1.Not)((0, typeorm_1.In)(publisherIds)),
+                            },
+                        })
+                        : null;
+                    // Verifica se a nova congregação já tem um contato idêntico cadastrado (mesmo nome e telefone)
+                    const existingInNew = await txEmergencyContactRepo.findOne({
+                        where: {
+                            name: oldContact.name,
+                            phone: oldContact.phone,
+                            congregation: { id: newCongregationId },
+                        },
+                    });
+                    if (existingInNew) {
+                        txPublisher.emergencyContact = existingInNew;
+                        // Se ninguém mais na congregação antiga usa o contato anterior, exclui para não deixar órfão
+                        if (!otherPublisherInOldCongregation) {
+                            await txEmergencyContactRepo.remove(oldContact);
+                        }
+                    }
+                    else if (!otherPublisherInOldCongregation) {
+                        // Ninguém mais na antiga congregação usa: transfere o contato para a nova congregação!
+                        // Assim ele sai da congregação antiga e continua com o publicador na nova.
+                        oldContact.congregation = { id: newCongregationId };
+                        await txEmergencyContactRepo.save(oldContact);
+                        txPublisher.emergencyContact = oldContact;
+                    }
+                    else {
+                        // Outro publicador que ficou na antiga congregação compartilha o contato:
+                        // Mantém o original na antiga e clona um para a nova congregação.
+                        const clonedContact = txEmergencyContactRepo.create({
+                            name: oldContact.name,
+                            phone: oldContact.phone,
+                            relationship: oldContact.relationship,
+                            isTj: oldContact.isTj,
+                            congregation: { id: newCongregationId },
+                        });
+                        await txEmergencyContactRepo.save(clonedContact);
+                        txPublisher.emergencyContact = clonedContact;
+                    }
                 }
-                // 4 — Remove group overseers
-                const overseersDeleted = await txGroupOverseersRepo.delete({
-                    publisher: { id: txPublisher.id },
+                // 5 — Famílias
+                await manager.query('UPDATE "families" SET "responsible_publisher_id" = NULL WHERE "responsible_publisher_id" = $1', [txPublisher.id]);
+                txPublisher.family = null;
+                if (txPublisher.family_id) {
+                    txPublisher.family_id = null;
+                }
+                // 6 — Papéis de liderança na congregação antiga
+                await manager.query('UPDATE "congregation" SET "speaker_coordinator_id" = NULL WHERE "speaker_coordinator_id" = $1', [txPublisher.id]);
+                await manager.query('UPDATE "congregation" SET "watchtower_conductor_id" = NULL WHERE "watchtower_conductor_id" = $1', [txPublisher.id]);
+                // 7 — Testemunho Público / Carrinho
+                await txPublicWitnessArrangementPublisherRepo.delete({
+                    publisher_id: txPublisher.id,
                 });
-                // 5 — Update user congregation
+                await txPublicWitnessTimeSlotDefaultPublisherRepo.delete({
+                    publisher_id: txPublisher.id,
+                });
+                await txPublicWitnessTimeSlotPreferenceRepo.delete({
+                    publisher_id: txPublisher.id,
+                });
+                await txPublicWitnessAssignmentPublisherRepo.delete({
+                    publisher_id: txPublisher.id,
+                });
+                // 8 — Saída de Campo
+                await manager.query('DELETE FROM "field_service_rotation_members" WHERE "publisher_id" = $1', [txPublisher.id]);
+                await manager.query('UPDATE "field_service_templates" SET "leader_id" = NULL WHERE "leader_id" = $1', [txPublisher.id]);
+                await manager.query('DELETE FROM "field_service_schedules" WHERE "leader_id" = $1 AND "date" >= $2', [txPublisher.id, todayStr]);
+                // 9 — Designações Mecânicas futuras
+                await manager.query('UPDATE "mechanical_assignments" SET "publisher_id" = NULL WHERE "publisher_id" = $1', [txPublisher.id]);
+                // 10 — Reunião Meio de Semana (Midweek) futuras na congregação antiga
+                if (oldCongregationId) {
+                    const futureMidweekSchedules = await txMidweekScheduleRepo.find({
+                        where: {
+                            congregation_id: oldCongregationId,
+                            meetingDate: (0, typeorm_1.MoreThanOrEqual)(todayStr),
+                        },
+                    });
+                    for (const schedule of futureMidweekSchedules) {
+                        let changed = false;
+                        if (schedule.chairman_id === txPublisher.id) {
+                            schedule.chairman = null;
+                            schedule.chairman_id = null;
+                            changed = true;
+                        }
+                        if (schedule.opening_prayer_id === txPublisher.id) {
+                            schedule.openingPrayer = null;
+                            schedule.opening_prayer_id = null;
+                            changed = true;
+                        }
+                        if (schedule.closing_prayer_id === txPublisher.id) {
+                            schedule.closingPrayer = null;
+                            schedule.closing_prayer_id = null;
+                            changed = true;
+                        }
+                        if (schedule.aux_counselor_1_id === txPublisher.id) {
+                            schedule.auxCounselor1 = null;
+                            schedule.aux_counselor_1_id = null;
+                            changed = true;
+                        }
+                        if (schedule.aux_counselor_2_id === txPublisher.id) {
+                            schedule.auxCounselor2 = null;
+                            schedule.aux_counselor_2_id = null;
+                            changed = true;
+                        }
+                        if (schedule.cbs_conductor_id === txPublisher.id) {
+                            schedule.cbsConductor = null;
+                            schedule.cbs_conductor_id = null;
+                            changed = true;
+                        }
+                        if (schedule.cbs_reader_id === txPublisher.id) {
+                            schedule.cbsReader = null;
+                            schedule.cbs_reader_id = null;
+                            changed = true;
+                        }
+                        if (changed) {
+                            await txMidweekScheduleRepo.save(schedule);
+                        }
+                    }
+                    if (futureMidweekSchedules.length > 0) {
+                        const scheduleIds = futureMidweekSchedules.map((s) => s.id);
+                        await txMidweekMeetingPartRepo.update({
+                            schedule: { id: (0, typeorm_1.In)(scheduleIds) },
+                            assigned_publisher_id: txPublisher.id,
+                        }, { assignedPublisher: null, assigned_publisher_id: null });
+                        await txMidweekMeetingPartRepo.update({
+                            schedule: { id: (0, typeorm_1.In)(scheduleIds) },
+                            assistant_publisher_id: txPublisher.id,
+                        }, { assistantPublisher: null, assistant_publisher_id: null });
+                    }
+                    // 11 — Reunião Fim de Semana (Weekend) futuras na congregação antiga
+                    const futureWeekendSchedules = await txWeekendScheduleRepo.find({
+                        where: {
+                            congregation: { id: oldCongregationId },
+                            date: (0, typeorm_1.MoreThanOrEqual)(todayStr),
+                        },
+                    });
+                    for (const ws of futureWeekendSchedules) {
+                        let wsChanged = false;
+                        if (ws.chairman_id === txPublisher.id) {
+                            ws.chairman = null;
+                            ws.chairman_id = null;
+                            wsChanged = true;
+                        }
+                        if (ws.reader_id === txPublisher.id) {
+                            ws.reader = null;
+                            ws.reader_id = null;
+                            wsChanged = true;
+                        }
+                        if (wsChanged) {
+                            await txWeekendScheduleRepo.save(ws);
+                        }
+                    }
+                }
+                // 12 — Usuário vinculado
                 let userUpdated = false;
                 if (txPublisher.user) {
                     const txUser = await txUserRepo.findOne({
@@ -1068,20 +1264,19 @@ class PublisherControler {
                         userUpdated = true;
                     }
                 }
-                // 6 — Speakers
+                // 13 — Oradores (Speakers)
                 const speakers = await txSpeakerRepo.find({
                     where: { publisher: { id: txPublisher.id } },
                 });
                 let speakerUpdatedCount = 0;
                 for (const sp of speakers) {
                     sp.originCongregation = { id: newCongregationId };
-                    sp.publisher = null;
+                    sp.creatorCongregation = { id: newCongregationId };
                     await txSpeakerRepo.save(sp);
                     speakerUpdatedCount++;
                 }
-                // 7 — Define nova congregation
+                // 14 — Atualiza para a nova congregação
                 txPublisher.congregation = { id: newCongregationId };
-                txPublisher.groupOverseers = null;
                 await txPublisherRepo.save(txPublisher);
                 results.push({
                     publisherId: txPublisher.id,
