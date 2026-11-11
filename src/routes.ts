@@ -130,6 +130,7 @@ routes.post('/add-domain', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.a
 routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.updateRoles)
 routes.get('/users', is(['ADMIN']), UserController.getUsers)
 routes.get('/users/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController.getUsersByCongregation)
+routes.delete('/users/:user_id/congregation/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.revokeCongregationAccess)
 routes.patch('/users/:user_id/link-publisher', is(['ADMIN_CONGREGATION']), UserController.linkPublisherToUser)
 
 /* === Chaves de Acesso / Passkeys (área autenticada) === */

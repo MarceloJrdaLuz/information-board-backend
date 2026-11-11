@@ -438,7 +438,7 @@ class UserController {
         })
 
         if (!users || users.length === 0) {
-            throw new NotFoundError("No users found in this congregation")
+            return res.status(200).json([])
         }
 
         const safeUsers = users.map(user => ({
@@ -446,11 +446,48 @@ class UserController {
             email: user.email,
             fullName: user.fullName,
             code: user.code,
-            publisher: user.publisher ? { id: user.publisher.id, fullName: user.publisher.fullName } : null,
+            publisher: user.publisher ? { id: user.publisher.id, fullName: user.publisher.fullName, situation: user.publisher.situation } : null,
             roles: user.roles ? user.roles.map(r => ({ id: r.id, name: r.name, description: r.description })) : []
         }))
 
         return res.status(200).json(safeUsers)
+    }
+
+    async revokeCongregationAccess(req: Request, res: Response) {
+        const { user_id, congregation_id } = req.params;
+
+        if (!user_id || !congregation_id) {
+            throw new BadRequestError("user_id and congregation_id are required");
+        }
+
+        const requestingUser = await decoder(req);
+        if (requestingUser.id === user_id) {
+            throw new BadRequestError("Você não pode revogar seu próprio acesso à congregação.");
+        }
+
+        const targetUser = await userRepository.findOne({
+            where: { id: user_id },
+            relations: ["congregation", "roles", "publisher"]
+        });
+
+        if (!targetUser) {
+            throw new NotFoundError("Usuário não encontrado.");
+        }
+
+        if (targetUser.congregation?.id !== congregation_id) {
+            throw new BadRequestError("Este usuário não pertence a esta congregação.");
+        }
+
+        // Desvincula congregação e publicador
+        targetUser.congregation = null as any;
+        targetUser.publisher = null;
+
+        // Revoga roles locais da congregação (preservando apenas ADMIN global caso possua)
+        targetUser.roles = targetUser.roles ? targetUser.roles.filter(r => r.name === "ADMIN") : [];
+
+        await userRepository.save(targetUser);
+
+        return res.status(200).json({ message: "Acesso à congregação revogado com sucesso!" });
     }
 }
 

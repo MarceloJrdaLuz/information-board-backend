@@ -115,6 +115,7 @@ routes.post('/add-domain', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']
 routes.put('/user/roles', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.updateRoles);
 routes.get('/users', (0, permissions_1.is)(['ADMIN']), UserController_1.default.getUsers);
 routes.get('/users/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController_1.default.getUsersByCongregation);
+routes.delete('/users/:user_id/congregation/:congregation_id', (0, permissions_1.is)(['ADMIN', 'ADMIN_CONGREGATION']), UserController_1.default.revokeCongregationAccess);
 routes.patch('/users/:user_id/link-publisher', (0, permissions_1.is)(['ADMIN_CONGREGATION']), UserController_1.default.linkPublisherToUser);
 /* === Chaves de Acesso / Passkeys (área autenticada) === */
 routes.get('/passkey/registration/options', PasskeyController_1.default.getRegistrationOptions);
