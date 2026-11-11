@@ -10,6 +10,7 @@ const ScheduleReminderConfig_1 = require("../../entities/ScheduleReminderConfig"
 const Publisher_1 = require("../../entities/Publisher");
 const api_errors_1 = require("../../helpers/api-errors");
 const permissions_1 = require("../../middlewares/permissions");
+const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepository");
 const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
 const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 const fieldServiceTemplateRepository_1 = require("../../repositories/fieldServiceTemplateRepository");
@@ -239,23 +240,32 @@ class ScheduleReminderController {
         const alerts = [];
         // 1. Limpeza
         if (config.cleaning_enabled && daysUntilNextMonth <= config.cleaning_days_before && userCanReceiveAlert("CLEANING_MANAGER")) {
-            const cleaningCount = await cleaningScheduleRepository_1.cleaningScheduleRepository
-                .createQueryBuilder("cs")
-                .where("cs.congregation_id = :congregation_id", { congregation_id })
-                .andWhere("cs.date >= :start AND cs.date <= :end", { start: nextMonthStart, end: nextMonthEnd })
-                .getCount();
-            if (cleaningCount === 0) {
-                alerts.push({
-                    id: "cleaning",
-                    module: "CLEANING",
-                    roleRequired: "CLEANING_MANAGER",
-                    title: "Programação de Limpeza",
-                    message: `A programação de limpeza de ${capitalizedNextMonth} ainda não foi gerada.`,
-                    link: "/congregacao/programacao-limpeza",
-                    actionLabel: "Gerar Programação",
-                    daysRemaining: daysUntilNextMonth,
-                    severity: daysUntilNextMonth <= 7 ? "HIGH" : "MEDIUM"
-                });
+            // Se a congregação nunca cadastrou grupos nem gerou escalas de limpeza, ela não utiliza o módulo
+            const totalCleaningGroups = await cleaningGroupRepository_1.cleaningGroupRepository.count({
+                where: { congregation: { id: congregation_id } }
+            });
+            const totalCleaningSchedules = await cleaningScheduleRepository_1.cleaningScheduleRepository.count({
+                where: { congregation_id }
+            });
+            if (totalCleaningGroups > 0 || totalCleaningSchedules > 0) {
+                const cleaningCount = await cleaningScheduleRepository_1.cleaningScheduleRepository
+                    .createQueryBuilder("cs")
+                    .where("cs.congregation_id = :congregation_id", { congregation_id })
+                    .andWhere("cs.date >= :start AND cs.date <= :end", { start: nextMonthStart, end: nextMonthEnd })
+                    .getCount();
+                if (cleaningCount === 0) {
+                    alerts.push({
+                        id: "cleaning",
+                        module: "CLEANING",
+                        roleRequired: "CLEANING_MANAGER",
+                        title: "Programação de Limpeza",
+                        message: `A programação de limpeza de ${capitalizedNextMonth} ainda não foi gerada.`,
+                        link: "/congregacao/programacao-limpeza",
+                        actionLabel: "Gerar Programação",
+                        daysRemaining: daysUntilNextMonth,
+                        severity: daysUntilNextMonth <= 7 ? "HIGH" : "MEDIUM"
+                    });
+                }
             }
         }
         // 2. Serviço de Campo
@@ -263,7 +273,12 @@ class ScheduleReminderController {
             const templatesCount = await fieldServiceTemplateRepository_1.fieldServiceTemplateRepository.count({
                 where: { congregation_id }
             });
-            if (templatesCount > 0) {
+            const totalFieldSchedules = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository
+                .createQueryBuilder("fss")
+                .innerJoin("fss.template", "fst")
+                .where("fst.congregation_id = :congregation_id", { congregation_id })
+                .getCount();
+            if (templatesCount > 0 || totalFieldSchedules > 0) {
                 const scheduleCount = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository
                     .createQueryBuilder("fss")
                     .innerJoin("fss.template", "fst")
@@ -290,7 +305,13 @@ class ScheduleReminderController {
             const arrangementsCount = await publicWitnessArrangementRepository_1.publicWitnessArrangementRepository.count({
                 where: { congregation_id }
             });
-            if (arrangementsCount > 0) {
+            const totalPublicWitnessAssignments = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository
+                .createQueryBuilder("pwa")
+                .innerJoin("pwa.timeSlot", "ts")
+                .innerJoin("ts.arrangement", "arr")
+                .where("arr.congregation_id = :congregation_id", { congregation_id })
+                .getCount();
+            if (arrangementsCount > 0 || totalPublicWitnessAssignments > 0) {
                 const assignmentsCount = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository
                     .createQueryBuilder("pwa")
                     .innerJoin("pwa.timeSlot", "ts")
@@ -315,74 +336,86 @@ class ScheduleReminderController {
         }
         // 4. Reunião de Meio de Semana (RVM)
         if (config.midweek_meeting_enabled && daysUntilNextMonth <= config.midweek_meeting_days_before && userCanReceiveAlert("MIDWEEK_MANAGER")) {
-            const midweekCount = await midweekScheduleRepository_1.midweekScheduleRepository
-                .createQueryBuilder("ms")
-                .where("ms.congregation_id = :congregation_id", { congregation_id })
-                .andWhere("ms.meetingDate >= :start AND ms.meetingDate <= :end", { start: nextMonthStart, end: nextMonthEnd })
-                .getCount();
-            if (midweekCount === 0) {
-                alerts.push({
-                    id: "midweek_meeting",
-                    module: "MIDWEEK_MEETING",
-                    roleRequired: "MIDWEEK_MANAGER",
-                    title: "Reunião de Meio de Semana (RVM)",
-                    message: `A programação de Meio de Semana de ${capitalizedNextMonth} ainda não foi programada.`,
-                    link: "/reunioes/meiodesemana",
-                    actionLabel: "Programar Reunião",
-                    daysRemaining: daysUntilNextMonth,
-                    severity: daysUntilNextMonth <= 10 ? "HIGH" : "MEDIUM"
-                });
+            // Se a congregação nunca cadastrou nenhuma semana de meio de semana, ela não utiliza o módulo
+            const totalMidweekSchedules = await midweekScheduleRepository_1.midweekScheduleRepository.count({
+                where: { congregation_id }
+            });
+            if (totalMidweekSchedules > 0) {
+                const midweekCount = await midweekScheduleRepository_1.midweekScheduleRepository
+                    .createQueryBuilder("ms")
+                    .where("ms.congregation_id = :congregation_id", { congregation_id })
+                    .andWhere("ms.meetingDate >= :start AND ms.meetingDate <= :end", { start: nextMonthStart, end: nextMonthEnd })
+                    .getCount();
+                if (midweekCount === 0) {
+                    alerts.push({
+                        id: "midweek_meeting",
+                        module: "MIDWEEK_MEETING",
+                        roleRequired: "MIDWEEK_MANAGER",
+                        title: "Reunião de Meio de Semana (RVM)",
+                        message: `A programação de Meio de Semana de ${capitalizedNextMonth} ainda não foi programada.`,
+                        link: "/reunioes/meiodesemana",
+                        actionLabel: "Programar Reunião",
+                        daysRemaining: daysUntilNextMonth,
+                        severity: daysUntilNextMonth <= 10 ? "HIGH" : "MEDIUM"
+                    });
+                }
             }
         }
         // 5. Reunião de Fim de Semana (Discursos / Oradores)
         if (config.weekend_meeting_enabled && daysUntilNextMonth <= config.weekend_meeting_days_before && userCanReceiveAlert("TALK_MANAGER")) {
-            const weekendSchedules = await weekendScheduleRepository_1.weekendScheduleRepository
-                .createQueryBuilder("ws")
-                .where("ws.congregation_id = :congregation_id", { congregation_id })
-                .andWhere("ws.date >= :start AND ws.date <= :end", { start: nextMonthStart, end: nextMonthEnd })
-                .getMany();
-            // Busca eventos especiais do próximo mês que possam afetar a reunião pública
-            const specialEvents = await specialEventRepository_1.specialEventRepository
-                .createQueryBuilder("se")
-                .where("se.congregation_id = :congregation_id", { congregation_id })
-                .andWhere("se.startDate <= :end AND se.endDate >= :start", { start: nextMonthStart, end: nextMonthEnd })
-                .getMany();
-            const specialEventDates = new Set();
-            for (const se of specialEvents) {
-                let cur = (0, dayjs_1.default)(se.startDate);
-                const end = (0, dayjs_1.default)(se.endDate);
-                while (cur.isSameOrBefore(end)) {
-                    specialEventDates.add(cur.format("YYYY-MM-DD"));
-                    cur = cur.add(1, "day");
+            // Se a congregação nunca cadastrou nenhuma escala de fim de semana, ela não utiliza o módulo
+            const totalWeekendSchedules = await weekendScheduleRepository_1.weekendScheduleRepository.count({
+                where: { congregation: { id: congregation_id } }
+            });
+            if (totalWeekendSchedules > 0) {
+                const weekendSchedules = await weekendScheduleRepository_1.weekendScheduleRepository
+                    .createQueryBuilder("ws")
+                    .where("ws.congregation_id = :congregation_id", { congregation_id })
+                    .andWhere("ws.date >= :start AND ws.date <= :end", { start: nextMonthStart, end: nextMonthEnd })
+                    .getMany();
+                // Busca eventos especiais do próximo mês que possam afetar a reunião pública
+                const specialEvents = await specialEventRepository_1.specialEventRepository
+                    .createQueryBuilder("se")
+                    .where("se.congregation_id = :congregation_id", { congregation_id })
+                    .andWhere("se.startDate <= :end AND se.endDate >= :start", { start: nextMonthStart, end: nextMonthEnd })
+                    .getMany();
+                const specialEventDates = new Set();
+                for (const se of specialEvents) {
+                    let cur = (0, dayjs_1.default)(se.startDate);
+                    const end = (0, dayjs_1.default)(se.endDate);
+                    while (cur.isSameOrBefore(end)) {
+                        specialEventDates.add(cur.format("YYYY-MM-DD"));
+                        cur = cur.add(1, "day");
+                    }
                 }
-            }
-            if (weekendSchedules.length === 0) {
-                alerts.push({
-                    id: "weekend_meeting",
-                    module: "WEEKEND_MEETING",
-                    roleRequired: "TALK_MANAGER",
-                    title: "Reunião de Fim de Semana (Oradores)",
-                    message: `A escala de discursos públicos de ${capitalizedNextMonth} ainda não possui datas cadastradas.`,
-                    link: `/reunioes/fimdesemana/programacao?date=${nextMonthStart}`,
-                    actionLabel: "Ir para o mês",
-                    daysRemaining: daysUntilNextMonth,
-                    severity: daysUntilNextMonth <= 7 ? "HIGH" : "MEDIUM"
-                });
-            }
-            else {
-                const missingSpeakers = weekendSchedules.filter(s => !s.speaker_id && !specialEventDates.has(s.date));
-                if (missingSpeakers.length > 0) {
+                if (weekendSchedules.length === 0) {
                     alerts.push({
-                        id: "weekend_meeting_incomplete",
+                        id: "weekend_meeting",
                         module: "WEEKEND_MEETING",
                         roleRequired: "TALK_MANAGER",
                         title: "Reunião de Fim de Semana (Oradores)",
-                        message: `Há ${missingSpeakers.length} reunião(ões) em ${capitalizedNextMonth} sem orador definido.`,
+                        message: `A escala de discursos públicos de ${capitalizedNextMonth} ainda não possui datas cadastradas.`,
                         link: `/reunioes/fimdesemana/programacao?date=${nextMonthStart}`,
                         actionLabel: "Ir para o mês",
                         daysRemaining: daysUntilNextMonth,
-                        severity: "HIGH"
+                        severity: daysUntilNextMonth <= 7 ? "HIGH" : "MEDIUM"
                     });
+                }
+                else {
+                    const missingSpeakers = weekendSchedules.filter(s => !s.speaker_id && !specialEventDates.has(s.date));
+                    if (missingSpeakers.length > 0) {
+                        alerts.push({
+                            id: "weekend_meeting_incomplete",
+                            module: "WEEKEND_MEETING",
+                            roleRequired: "TALK_MANAGER",
+                            title: "Reunião de Fim de Semana (Oradores)",
+                            message: `Há ${missingSpeakers.length} reunião(ões) em ${capitalizedNextMonth} sem orador definido.`,
+                            link: `/reunioes/fimdesemana/programacao?date=${nextMonthStart}`,
+                            actionLabel: "Ir para o mês",
+                            daysRemaining: daysUntilNextMonth,
+                            severity: "HIGH"
+                        });
+                    }
                 }
             }
         }
