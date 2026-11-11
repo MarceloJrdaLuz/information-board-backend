@@ -336,17 +336,45 @@ class UserController {
             relations: ["publisher", "roles"]
         });
         if (!users || users.length === 0) {
-            throw new api_errors_1.NotFoundError("No users found in this congregation");
+            return res.status(200).json([]);
         }
         const safeUsers = users.map(user => ({
             id: user.id,
             email: user.email,
             fullName: user.fullName,
             code: user.code,
-            publisher: user.publisher ? { id: user.publisher.id, fullName: user.publisher.fullName } : null,
+            publisher: user.publisher ? { id: user.publisher.id, fullName: user.publisher.fullName, situation: user.publisher.situation } : null,
             roles: user.roles ? user.roles.map(r => ({ id: r.id, name: r.name, description: r.description })) : []
         }));
         return res.status(200).json(safeUsers);
+    }
+    async revokeCongregationAccess(req, res) {
+        var _a;
+        const { user_id, congregation_id } = req.params;
+        if (!user_id || !congregation_id) {
+            throw new api_errors_1.BadRequestError("user_id and congregation_id are required");
+        }
+        const requestingUser = await (0, permissions_1.decoder)(req);
+        if (requestingUser.id === user_id) {
+            throw new api_errors_1.BadRequestError("Você não pode revogar seu próprio acesso à congregação.");
+        }
+        const targetUser = await userRepository_1.userRepository.findOne({
+            where: { id: user_id },
+            relations: ["congregation", "roles", "publisher"]
+        });
+        if (!targetUser) {
+            throw new api_errors_1.NotFoundError("Usuário não encontrado.");
+        }
+        if (((_a = targetUser.congregation) === null || _a === void 0 ? void 0 : _a.id) !== congregation_id) {
+            throw new api_errors_1.BadRequestError("Este usuário não pertence a esta congregação.");
+        }
+        // Desvincula congregação e publicador
+        targetUser.congregation = null;
+        targetUser.publisher = null;
+        // Revoga roles locais da congregação (preservando apenas ADMIN global caso possua)
+        targetUser.roles = targetUser.roles ? targetUser.roles.filter(r => r.name === "ADMIN") : [];
+        await userRepository_1.userRepository.save(targetUser);
+        return res.status(200).json({ message: "Acesso à congregação revogado com sucesso!" });
     }
 }
 exports.default = new UserController();

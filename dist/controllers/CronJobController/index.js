@@ -36,6 +36,7 @@ const userRepository_1 = require("../../repositories/userRepository");
 const Publisher_1 = require("../../entities/Publisher");
 const enumWeekDays_1 = require("../../types/enumWeekDays");
 const mechanical_1 = require("../../types/mechanical");
+const ScheduleReminderService_1 = require("../../services/ScheduleReminderService");
 class CronJobController {
     async deleteExpiredNotices(req, res) {
         const startOfToday = (0, moment_timezone_1.default)().startOf("day").toDate();
@@ -888,6 +889,26 @@ class CronJobController {
             return res.status(500).json({
                 message: "Error dispatching daily notifications",
                 error: error.message
+            });
+        }
+    }
+    /**
+     * Cron Job diário por volta do meio-dia para disparar notificações push
+     * aos responsáveis por programações pendentes do próximo mês.
+     */
+    async dispatchScheduleReminders(req, res) {
+        try {
+            const result = await ScheduleReminderService_1.scheduleReminderService.dispatchDailyScheduleReminders();
+            return res.status(200).json({
+                message: "Lembretes de programações disparados com sucesso",
+                ...result
+            });
+        }
+        catch (error) {
+            console.error("Erro ao disparar lembretes de programações:", error);
+            return res.status(500).json({
+                message: "Erro ao disparar lembretes de programações",
+                error: (error === null || error === void 0 ? void 0 : error.message) || String(error)
             });
         }
     }

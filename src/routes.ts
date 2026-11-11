@@ -41,6 +41,7 @@ import PublisherReminderController from "./controllers/PublisherReminderControll
 import PushNotificationController from "./controllers/PushNotificationController"
 import ReportController from "./controllers/ReportController"
 import RoleController from "./controllers/RoleController"
+import { ScheduleReminderController } from "./controllers/ScheduleReminderController"
 import SpeakerController from "./controllers/SpeakerController"
 import SpecialEventController from "./controllers/SpecialEventController"
 import TalkController from "./controllers/TalkController"
@@ -56,6 +57,7 @@ import { verifyGitHubCron } from "./middlewares/gitHubCronAuth"
 const routes = Router()
 const midweekController = new MidweekScheduleController()
 const mechanicalController = new MechanicalScheduleController()
+const scheduleReminderController = new ScheduleReminderController()
 
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
@@ -128,6 +130,7 @@ routes.post('/add-domain', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.a
 routes.put('/user/roles', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.updateRoles)
 routes.get('/users', is(['ADMIN']), UserController.getUsers)
 routes.get('/users/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION', 'PUBLISHERS_MANAGER']), UserController.getUsersByCongregation)
+routes.delete('/users/:user_id/congregation/:congregation_id', is(['ADMIN', 'ADMIN_CONGREGATION']), UserController.revokeCongregationAccess)
 routes.patch('/users/:user_id/link-publisher', is(['ADMIN_CONGREGATION']), UserController.linkPublisherToUser)
 
 /* === Chaves de Acesso / Passkeys (área autenticada) === */
@@ -460,6 +463,33 @@ routes.delete(
     SpecialEventController.delete
 )
 
+/* === Lembretes e Responsáveis de Programações === */
+routes.get(
+    "/schedule-reminders/config/congregation/:congregation_id",
+    is(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER']),
+    scheduleReminderController.getConfig
+)
+routes.put(
+    "/schedule-reminders/config/congregation/:congregation_id",
+    is(['ADMIN', 'ADMIN_CONGREGATION']),
+    scheduleReminderController.updateConfig
+)
+routes.get(
+    "/schedule-reminders/responsibles/congregation/:congregation_id",
+    is(['ADMIN', 'ADMIN_CONGREGATION']),
+    scheduleReminderController.getResponsibles
+)
+routes.post(
+    "/schedule-reminders/responsibles/congregation/:congregation_id",
+    is(['ADMIN', 'ADMIN_CONGREGATION']),
+    scheduleReminderController.updateResponsibles
+)
+routes.get(
+    "/schedule-reminders/alerts/congregation/:congregation_id",
+    is(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER', 'VIEWER']),
+    scheduleReminderController.getAlerts
+)
+
 /* === Cron Jobs === */
 routes.get('/deleteExpiredNotices', verifyGitHubCron, CronJobController.deleteExpiredNotices)
 routes.delete('/cron/clean-old-territoryHistory', verifyGitHubCron, CronJobController.cleanTerritoryHistory)
@@ -468,6 +498,8 @@ routes.delete("/cron/clean-field-service-overrides", verifyGitHubCron, CronJobCo
 routes.delete("/cron/clean-publisher-reminders", verifyGitHubCron, CronJobController.cleanOldPublisherReminders)
 routes.get('/cron/daily-notifications', verifyGitHubCron, CronJobController.dispatchDailyNotifications)
 routes.post('/cron/daily-notifications', verifyGitHubCron, CronJobController.dispatchDailyNotifications)
+routes.get('/cron/schedule-reminders', verifyGitHubCron, CronJobController.dispatchScheduleReminders)
+routes.post('/cron/schedule-reminders', verifyGitHubCron, CronJobController.dispatchScheduleReminders)
 routes.get('/reportsCleanUp', verifyCronSecret, CronJobController.reportsCleanUp)
 routes.get('/backup', verifyCronSecret, CronJobController.backup)
 routes.get("/usage", is(["ADMIN"]), VercelUsageController.getUsage);

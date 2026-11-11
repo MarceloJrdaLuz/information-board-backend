@@ -486,6 +486,23 @@ class PublisherControler {
       }
     }
 
+    // Se a situação foi alterada para Removido ou Desassociado, desvincula o usuário da congregação e revoga permissões locais
+    if (situation === Situation.Removido || situation === Situation.Desassociado) {
+      const linkedUser = await userRepository.findOne({
+        where: { publisher: { id: publisher.id } },
+        relations: ["roles", "congregation"]
+      })
+
+      if (linkedUser) {
+        linkedUser.publisher = null
+        if (linkedUser.congregation?.id === publisher.congregation?.id || !linkedUser.congregation) {
+          linkedUser.congregation = null as any
+          linkedUser.roles = linkedUser.roles ? linkedUser.roles.filter(r => r.name === "ADMIN") : []
+        }
+        await userRepository.save(linkedUser)
+      }
+    }
+
     return res.status(200).json(publisher)
   }
 
@@ -495,10 +512,27 @@ class PublisherControler {
     const publisher = await publisherRepository.findOne({
       where: {
         id
-      }
+      },
+      relations: ["congregation"]
     })
 
     if (!publisher) throw new BadRequestError('Publisher not exists')
+
+    // Se o publicador possuía uma conta de usuário vinculada, desvincula da congregação e revoga roles locais
+    const linkedUser = await userRepository.findOne({
+      where: { publisher: { id } },
+      relations: ["roles", "congregation"]
+    })
+
+    if (linkedUser) {
+      linkedUser.publisher = null
+      if (linkedUser.congregation?.id === publisher.congregation?.id || !linkedUser.congregation) {
+        linkedUser.congregation = null as any
+        // Preserva apenas roles globais de sistema (ex: ADMIN), revogando todas as roles de congregação
+        linkedUser.roles = linkedUser.roles ? linkedUser.roles.filter(r => r.name === "ADMIN") : []
+      }
+      await userRepository.save(linkedUser)
+    }
 
     await publisherRepository.remove(publisher)
 
@@ -1487,9 +1521,12 @@ class PublisherControler {
         if (txPublisher.user) {
           const txUser = await txUserRepo.findOne({
             where: { id: txPublisher.user.id },
+            relations: ["roles"]
           })
           if (txUser) {
             txUser.congregation = { id: newCongregationId } as any
+            // Limpa as roles da congregação anterior (preserva apenas ADMIN global caso possua)
+            txUser.roles = txUser.roles ? txUser.roles.filter(r => r.name === "ADMIN") : []
             await txUserRepo.save(txUser)
             userUpdated = true
           }

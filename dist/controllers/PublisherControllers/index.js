@@ -170,7 +170,7 @@ class PublisherControler {
         return res.status(201).json(newPublisher);
     }
     async update(req, res) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g;
         const { publisher_id: id } = req.params;
         const { fullName, nickname, privileges, gender, hope, dateImmersed, birthDate, pioneerMonths, situation, phone, address, startPioneer, startDatePublisher, emergencyContact_id, user_id } = req.body;
         const publisher = await publisherRepository_1.publisherRepository.findOne({
@@ -398,17 +398,48 @@ class PublisherControler {
                 }
             }
         }
+        // Se a situação foi alterada para Removido ou Desassociado, desvincula o usuário da congregação e revoga permissões locais
+        if (situation === Publisher_1.Situation.Removido || situation === Publisher_1.Situation.Desassociado) {
+            const linkedUser = await userRepository_1.userRepository.findOne({
+                where: { publisher: { id: publisher.id } },
+                relations: ["roles", "congregation"]
+            });
+            if (linkedUser) {
+                linkedUser.publisher = null;
+                if (((_f = linkedUser.congregation) === null || _f === void 0 ? void 0 : _f.id) === ((_g = publisher.congregation) === null || _g === void 0 ? void 0 : _g.id) || !linkedUser.congregation) {
+                    linkedUser.congregation = null;
+                    linkedUser.roles = linkedUser.roles ? linkedUser.roles.filter(r => r.name === "ADMIN") : [];
+                }
+                await userRepository_1.userRepository.save(linkedUser);
+            }
+        }
         return res.status(200).json(publisher);
     }
     async delete(req, res) {
+        var _a, _b;
         const { publisher_id: id } = req.params;
         const publisher = await publisherRepository_1.publisherRepository.findOne({
             where: {
                 id
-            }
+            },
+            relations: ["congregation"]
         });
         if (!publisher)
             throw new api_errors_1.BadRequestError('Publisher not exists');
+        // Se o publicador possuía uma conta de usuário vinculada, desvincula da congregação e revoga roles locais
+        const linkedUser = await userRepository_1.userRepository.findOne({
+            where: { publisher: { id } },
+            relations: ["roles", "congregation"]
+        });
+        if (linkedUser) {
+            linkedUser.publisher = null;
+            if (((_a = linkedUser.congregation) === null || _a === void 0 ? void 0 : _a.id) === ((_b = publisher.congregation) === null || _b === void 0 ? void 0 : _b.id) || !linkedUser.congregation) {
+                linkedUser.congregation = null;
+                // Preserva apenas roles globais de sistema (ex: ADMIN), revogando todas as roles de congregação
+                linkedUser.roles = linkedUser.roles ? linkedUser.roles.filter(r => r.name === "ADMIN") : [];
+            }
+            await userRepository_1.userRepository.save(linkedUser);
+        }
         await publisherRepository_1.publisherRepository.remove(publisher);
         return res.status(200).end();
     }
@@ -1257,9 +1288,12 @@ class PublisherControler {
                 if (txPublisher.user) {
                     const txUser = await txUserRepo.findOne({
                         where: { id: txPublisher.user.id },
+                        relations: ["roles"]
                     });
                     if (txUser) {
                         txUser.congregation = { id: newCongregationId };
+                        // Limpa as roles da congregação anterior (preserva apenas ADMIN global caso possua)
+                        txUser.roles = txUser.roles ? txUser.roles.filter(r => r.name === "ADMIN") : [];
                         await txUserRepo.save(txUser);
                         userUpdated = true;
                     }

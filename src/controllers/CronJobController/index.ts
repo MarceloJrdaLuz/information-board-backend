@@ -32,6 +32,7 @@ import { userRepository } from "../../repositories/userRepository"
 import { Situation } from "../../entities/Publisher"
 import { Months } from "../../types/enumWeekDays"
 import { MechanicalMeetingType, MechanicalRole, MechanicalRoleLabels } from "../../types/mechanical"
+import { scheduleReminderService } from "../../services/ScheduleReminderService"
 
 class CronJobController {
     async deleteExpiredNotices(req: Request, res: Response) {
@@ -1023,6 +1024,26 @@ class CronJobController {
                 message: "Error dispatching daily notifications",
                 error: error.message
             })
+        }
+    }
+
+    /**
+     * Cron Job diário por volta do meio-dia para disparar notificações push
+     * aos responsáveis por programações pendentes do próximo mês.
+     */
+    async dispatchScheduleReminders(req: Request, res: Response) {
+        try {
+            const result = await scheduleReminderService.dispatchDailyScheduleReminders();
+            return res.status(200).json({
+                message: "Lembretes de programações disparados com sucesso",
+                ...result
+            });
+        } catch (error: any) {
+            console.error("Erro ao disparar lembretes de programações:", error);
+            return res.status(500).json({
+                message: "Erro ao disparar lembretes de programações",
+                error: error?.message || String(error)
+            });
         }
     }
 }
