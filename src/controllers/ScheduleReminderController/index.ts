@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
 import { Request, Response } from "express";
 import { ScheduleReminderConfig } from "../../entities/ScheduleReminderConfig";
+import { Situation } from "../../entities/Publisher";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { decoder } from "../../middlewares/permissions";
 import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository";
@@ -96,7 +97,23 @@ export class ScheduleReminderController {
         // Busca todos os usuários da congregação com suas roles e publisher
         const users = await userRepository.find({
             where: { congregation: { id: congregation_id } },
-            relations: ["roles", "publisher"]
+            relations: ["roles", "publisher", "publisher.congregation"]
+        });
+
+        // Filtra para exibir APENAS publicadores que ainda pertencem à congregação e estão ativos
+        const activeCongregationUsers = users.filter(u => {
+            if (!u.publisher) return false;
+
+            const pubCongId = u.publisher.congregation?.id || (u.publisher as any).congregation_id;
+            if (pubCongId && pubCongId !== congregation_id) {
+                return false;
+            }
+
+            if (u.publisher.situation === Situation.Removido || u.publisher.situation === Situation.Desassociado) {
+                return false;
+            }
+
+            return true;
         });
 
         const targetRoles = [
@@ -115,7 +132,7 @@ export class ScheduleReminderController {
             TALK_MANAGER: []
         };
 
-        users.forEach(u => {
+        activeCongregationUsers.forEach(u => {
             const displayName = u.publisher?.fullName || u.fullName || u.email;
             const roleNames = u.roles?.map(r => r.name) || [];
 
@@ -130,12 +147,14 @@ export class ScheduleReminderController {
             });
         });
 
-        // Lista simplificada de todos os usuários disponíveis na congregação para seleção
-        const allAvailableUsers = users.map(u => ({
-            id: u.id,
-            name: u.publisher?.fullName || u.fullName || u.email,
-            email: u.email
-        }));
+        // Lista simplificada de todos os publicadores válidos disponíveis, ordenada alfabeticamente
+        const allAvailableUsers = activeCongregationUsers
+            .map(u => ({
+                id: u.id,
+                name: u.publisher?.fullName || u.fullName || u.email,
+                email: u.email
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 
         return res.status(200).json({
             responsiblesByRole,
@@ -163,9 +182,22 @@ export class ScheduleReminderController {
             throw new BadRequestError(`Invalid roleName. Allowed: ${allowedRoles.join(", ")}`);
         }
 
-        const targetRole = await roleRepository.findOne({ where: { name: roleName } });
+        let targetRole = await roleRepository.findOne({ where: { name: roleName } });
         if (!targetRole) {
-            throw new NotFoundError("Role not found");
+            const descriptions: Record<string, string> = {
+                CLEANING_MANAGER: "Gerenciador de Limpeza",
+                FIELD_SERVICE_MANAGER: "Gerenciador de Campo",
+                PUBLIC_WITNESS_MANAGER: "Gerenciador de Testemunho Público",
+                MIDWEEK_MANAGER: "Gerenciador de Reunião Meio de Semana",
+                TALK_MANAGER: "Gerenciador de Discursos"
+            };
+
+            targetRole = roleRepository.create({
+                name: roleName,
+                description: descriptions[roleName] || `Gerenciador de ${roleName}`,
+                permissions: []
+            });
+            await roleRepository.save(targetRole);
         }
 
         const congregationUsers = await userRepository.find({
