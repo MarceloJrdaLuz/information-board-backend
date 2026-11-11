@@ -16,17 +16,22 @@ class GroupController {
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.congregation);
         if (!publisher_id)
             throw new api_errors_1.BadRequestError("It is necessary to have a group overseer. Create one or provide the id.");
-        const existingGroupNumber = await groupRepository_1.groupRepository.findOne({
-            where: { congregation: { id: congregation_id }, number }
+        const existingGroups = await groupRepository_1.groupRepository.find({
+            where: { congregation: { id: congregation_id } }
         });
-        const existingGroupName = await groupRepository_1.groupRepository.findOne({
-            where: { congregation: { id: congregation_id }, name }
-        });
+        // Determina o número final sequencial se não informado
+        const finalNumber = (number === null || number === void 0 ? void 0 : number.trim()) || String(existingGroups.length + 1);
+        const existingGroupNumber = existingGroups.find(g => g.number === finalNumber);
         if (existingGroupNumber) {
-            throw new api_errors_1.BadRequestError('One group with some number already exists in the congregation');
+            throw new api_errors_1.BadRequestError('Já existe um grupo com este número na congregação');
         }
-        if (existingGroupName) {
-            throw new api_errors_1.BadRequestError('One group with some name already exists in the congregation');
+        const trimmedName = name === null || name === void 0 ? void 0 : name.trim();
+        const finalName = trimmedName || `Grupo ${finalNumber}`;
+        if (trimmedName && !/^grupo\s*(?:n[º°o]?\s*)?\d+$/i.test(trimmedName)) {
+            const existingGroupName = existingGroups.find(g => g.name.trim().toLowerCase() === trimmedName.toLowerCase());
+            if (existingGroupName) {
+                throw new api_errors_1.BadRequestError('Já existe um grupo com este nome na congregação');
+            }
         }
         const publisher = await publisherRepository_1.publisherRepository.findOneBy({ id: publisher_id });
         if (!publisher)
@@ -45,8 +50,8 @@ class GroupController {
         const groupOverseers = await groupOverseersRepository_1.groupOverseersRepository.save(newGroupOverseers);
         // Crie o grupo e associe-o ao supervisor
         const newGroup = groupRepository_1.groupRepository.create({
-            name,
-            number,
+            name: finalName,
+            number: finalNumber,
             congregation,
             groupOverseers: groupOverseers // Adicione o grupo de supervisores aqui
         });
@@ -71,6 +76,8 @@ class GroupController {
         });
         if (!groups)
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.group);
+        // Ordenação numérica por número de grupo
+        groups.sort((a, b) => (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0));
         const groupWith = groups.map(group => {
             const { id, name, number, groupOverseers, publishers } = group;
             const validPublishers = (publishers || []).filter(p => (0, publisherPrivilegeHelper_1.hasPrivilege)(p, privileges_1.PrivilegeCode.PUBLISHER));
@@ -199,11 +206,16 @@ class GroupController {
         res.send();
     }
     async delete(req, res) {
+        var _a;
         const { group_id } = req.params;
-        const group = await groupRepository_1.groupRepository.findOneBy({ id: group_id });
+        const group = await groupRepository_1.groupRepository.findOne({
+            where: { id: group_id },
+            relations: ["congregation"]
+        });
         if (!group) {
             throw new api_errors_1.NotFoundError(messageErrors_1.messageErrors.notFound.group);
         }
+        const congregationId = (_a = group.congregation) === null || _a === void 0 ? void 0 : _a.id;
         const publishers = await publisherRepository_1.publisherRepository.find({
             where: {
                 group: {
@@ -217,6 +229,39 @@ class GroupController {
             await publisherRepository_1.publisherRepository.save(publisher);
         }
         await groupRepository_1.groupRepository.remove(group);
+        // Se houver congregação, reordenar e renomear os grupos restantes
+        if (congregationId) {
+            const remainingGroups = await groupRepository_1.groupRepository.find({
+                where: { congregation: { id: congregationId } }
+            });
+            // Ordena numericamente pelo número
+            remainingGroups.sort((a, b) => {
+                const numA = parseInt(a.number, 10) || 0;
+                const numB = parseInt(b.number, 10) || 0;
+                return numA - numB;
+            });
+            const updatedGroups = [];
+            for (let i = 0; i < remainingGroups.length; i++) {
+                const g = remainingGroups[i];
+                const newNum = String(i + 1);
+                const isDefaultName = !g.name || /^grupo\s*(?:n[º°o]?\s*)?\d+$/i.test(g.name.trim());
+                let changed = false;
+                if (g.number !== newNum) {
+                    g.number = newNum;
+                    changed = true;
+                }
+                if (isDefaultName && g.name !== `Grupo ${newNum}`) {
+                    g.name = `Grupo ${newNum}`;
+                    changed = true;
+                }
+                if (changed) {
+                    updatedGroups.push(g);
+                }
+            }
+            if (updatedGroups.length > 0) {
+                await groupRepository_1.groupRepository.save(updatedGroups);
+            }
+        }
         return res.status(200).end();
     }
 }
