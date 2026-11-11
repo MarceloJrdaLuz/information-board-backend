@@ -233,6 +233,7 @@ routes.get("/cleaning/groups/congregation/:congregation_id", is(['ADMIN_CONGREGA
 routes.patch("/cleaning/groups/congregation/:congregation_id/reorder", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.reorderGroups);
 routes.get("/cleaning/groups/:group_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.getGroup);
 routes.patch("/cleaning/groups/:group_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.update);
+routes.delete("/cleaning/groups/:group_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.delete);
 routes.delete("/cleaning/groups/:groupId", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.delete);
 
 /* === Exceções de Limpeza === */

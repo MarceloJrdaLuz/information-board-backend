@@ -204,6 +204,7 @@ routes.get("/cleaning/groups/congregation/:congregation_id", (0, permissions_1.i
 routes.patch("/cleaning/groups/congregation/:congregation_id/reorder", (0, permissions_1.is)(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController_1.default.reorderGroups);
 routes.get("/cleaning/groups/:group_id", (0, permissions_1.is)(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController_1.default.getGroup);
 routes.patch("/cleaning/groups/:group_id", (0, permissions_1.is)(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController_1.default.update);
+routes.delete("/cleaning/groups/:group_id", (0, permissions_1.is)(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController_1.default.delete);
 routes.delete("/cleaning/groups/:groupId", (0, permissions_1.is)(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController_1.default.delete);
 /* === Exceções de Limpeza === */
 routes.post("/cleaning-exception/congregation/:congregation_id", (0, permissions_1.is)(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningExceptionController_1.default.create);

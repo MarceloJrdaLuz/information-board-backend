@@ -7,6 +7,7 @@ const publisherRepository_1 = require("../../repositories/publisherRepository");
 const cleaningGroupRepository_1 = require("../../repositories/cleaningGroupRepository");
 const typeorm_1 = require("typeorm");
 const cleaningScheduleRepository_1 = require("../../repositories/cleaningScheduleRepository");
+const cleaningGroupUnavailabilityRepository_1 = require("../../repositories/cleaningGroupUnavailabilityRepository");
 const publisherPrivilegeHelper_1 = require("../../helpers/publisherPrivilegeHelper");
 const privileges_1 = require("../../types/privileges");
 class CleaningGroupController {
@@ -66,7 +67,10 @@ class CleaningGroupController {
     }
     async update(req, res) {
         var _a;
-        const { group_id: id } = req.params;
+        const id = req.params.group_id || req.params.groupId;
+        if (!id) {
+            throw new api_errors_1.BadRequestError("ID do grupo não informado");
+        }
         const { name, publisherIds, dayPreference } = req.body;
         const group = await cleaningGroupRepository_1.cleaningGroupRepository.findOne({
             where: { id },
@@ -108,41 +112,68 @@ class CleaningGroupController {
         return res.status(200).json(group);
     }
     async delete(req, res) {
-        const { group_id } = req.params;
+        var _a;
+        const targetId = req.params.group_id || req.params.groupId;
+        if (!targetId) {
+            throw new api_errors_1.BadRequestError("ID do grupo não informado");
+        }
         const group = await cleaningGroupRepository_1.cleaningGroupRepository.findOne({
-            where: { id: group_id },
+            where: { id: targetId },
             relations: ["congregation"]
         });
         if (!group)
             throw new api_errors_1.NotFoundError("Cleaning group not found");
+        const congregationId = (_a = group.congregation) === null || _a === void 0 ? void 0 : _a.id;
         // 🔹 Remove todos os schedules relacionados ao grupo
         const schedules = await cleaningScheduleRepository_1.cleaningScheduleRepository.find({
-            where: { group: { id: group_id } }
+            where: { group: { id: targetId } }
         });
         if (schedules.length > 0) {
             await cleaningScheduleRepository_1.cleaningScheduleRepository.remove(schedules);
         }
+        // 🔹 Remove indisponibilidades do grupo
+        const unavailabilities = await cleaningGroupUnavailabilityRepository_1.cleaningGroupUnavailabilityRepository.find({
+            where: { group: { id: targetId } }
+        });
+        if (unavailabilities.length > 0) {
+            await cleaningGroupUnavailabilityRepository_1.cleaningGroupUnavailabilityRepository.remove(unavailabilities);
+        }
         // 🔹 Agora sim pode remover o grupo
         await cleaningGroupRepository_1.cleaningGroupRepository.remove(group);
         // 🔄 Reorganiza ordens e nomes padrão após remover
-        const groups = await cleaningGroupRepository_1.cleaningGroupRepository.find({
-            where: { congregation: { id: group.congregation.id } },
-            order: { order: "ASC" }
-        });
-        groups.forEach((g, index) => {
-            const newOrder = index + 1;
-            // Se o grupo usa o nome padrão "Grupo X" ou está sem nome, sincroniza o nome com a nova ordem!
-            const isDefaultName = !g.name || /^grupo\s*\d+$/i.test(g.name.trim());
-            if (isDefaultName) {
-                g.name = `Grupo ${newOrder}`;
+        if (congregationId) {
+            const groups = await cleaningGroupRepository_1.cleaningGroupRepository.find({
+                where: { congregation: { id: congregationId } },
+                order: { order: "ASC" }
+            });
+            const updatedGroups = [];
+            groups.forEach((g, index) => {
+                const newOrder = index + 1;
+                // Se o grupo usa o nome padrão "Grupo X" ou está sem nome, sincroniza o nome com a nova ordem!
+                const isDefaultName = !g.name || /^grupo\s*\d+$/i.test(g.name.trim());
+                let changed = false;
+                if (g.order !== newOrder) {
+                    g.order = newOrder;
+                    changed = true;
+                }
+                if (isDefaultName && g.name !== `Grupo ${newOrder}`) {
+                    g.name = `Grupo ${newOrder}`;
+                    changed = true;
+                }
+                if (changed) {
+                    updatedGroups.push(g);
+                }
+            });
+            if (updatedGroups.length > 0) {
+                await cleaningGroupRepository_1.cleaningGroupRepository.save(updatedGroups);
             }
-            g.order = newOrder;
-        });
-        await cleaningGroupRepository_1.cleaningGroupRepository.save(groups);
+        }
         return res.status(200).end();
     }
     async getGroup(req, res) {
-        const { group_id: id } = req.params;
+        const id = req.params.group_id || req.params.groupId;
+        if (!id)
+            throw new api_errors_1.BadRequestError("ID do grupo não informado");
         const group = await cleaningGroupRepository_1.cleaningGroupRepository.findOne({
             where: { id },
             relations: ["publishers", "publishers.privilegesRelation", "publishers.privilegesRelation.privilege"]

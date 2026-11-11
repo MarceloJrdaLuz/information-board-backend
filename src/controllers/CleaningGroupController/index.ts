@@ -18,6 +18,7 @@ import {
 import { In, Not } from "typeorm";
 import { Publisher } from "../../entities/Publisher";
 import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository";
+import { cleaningGroupUnavailabilityRepository } from "../../repositories/cleaningGroupUnavailabilityRepository";
 import { hasPrivilege } from "../../helpers/publisherPrivilegeHelper";
 import { PrivilegeCode } from "../../types/privileges";
 
@@ -99,7 +100,10 @@ class CleaningGroupController {
     req: CustomRequestPT<ParamsCleaningGroupUpdate, BodyCleaningGroupUpdate>,
     res: Response
   ) {
-    const { group_id: id } = req.params;
+    const id = req.params.group_id || (req.params as any).groupId;
+    if (!id) {
+      throw new BadRequestError("ID do grupo não informado");
+    }
     const { name, publisherIds, dayPreference } = req.body;
 
     const group = await cleaningGroupRepository.findOne({
@@ -153,50 +157,80 @@ class CleaningGroupController {
   }
 
   async delete(req: ParamsCustomRequest<ParamsDeleteCleaningGroup>, res: Response) {
-    const { group_id } = req.params;
+    const targetId = req.params.group_id || (req.params as any).groupId;
+
+    if (!targetId) {
+      throw new BadRequestError("ID do grupo não informado");
+    }
 
     const group = await cleaningGroupRepository.findOne({
-      where: { id: group_id },
+      where: { id: targetId },
       relations: ["congregation"]
     });
 
     if (!group) throw new NotFoundError("Cleaning group not found");
 
+    const congregationId = group.congregation?.id;
+
     // 🔹 Remove todos os schedules relacionados ao grupo
     const schedules = await cleaningScheduleRepository.find({
-      where: { group: { id: group_id } }
+      where: { group: { id: targetId } }
     });
 
     if (schedules.length > 0) {
       await cleaningScheduleRepository.remove(schedules);
     }
 
+    // 🔹 Remove indisponibilidades do grupo
+    const unavailabilities = await cleaningGroupUnavailabilityRepository.find({
+      where: { group: { id: targetId } }
+    });
+
+    if (unavailabilities.length > 0) {
+      await cleaningGroupUnavailabilityRepository.remove(unavailabilities);
+    }
+
     // 🔹 Agora sim pode remover o grupo
     await cleaningGroupRepository.remove(group);
 
     // 🔄 Reorganiza ordens e nomes padrão após remover
-    const groups = await cleaningGroupRepository.find({
-      where: { congregation: { id: group.congregation.id } },
-      order: { order: "ASC" }
-    });
+    if (congregationId) {
+      const groups = await cleaningGroupRepository.find({
+        where: { congregation: { id: congregationId } },
+        order: { order: "ASC" }
+      });
 
-    groups.forEach((g, index) => {
-      const newOrder = index + 1;
-      // Se o grupo usa o nome padrão "Grupo X" ou está sem nome, sincroniza o nome com a nova ordem!
-      const isDefaultName = !g.name || /^grupo\s*\d+$/i.test(g.name.trim());
-      if (isDefaultName) {
-        g.name = `Grupo ${newOrder}`;
+      const updatedGroups: CleaningGroup[] = [];
+      groups.forEach((g, index) => {
+        const newOrder = index + 1;
+        // Se o grupo usa o nome padrão "Grupo X" ou está sem nome, sincroniza o nome com a nova ordem!
+        const isDefaultName = !g.name || /^grupo\s*\d+$/i.test(g.name.trim());
+        let changed = false;
+
+        if (g.order !== newOrder) {
+          g.order = newOrder;
+          changed = true;
+        }
+        if (isDefaultName && g.name !== `Grupo ${newOrder}`) {
+          g.name = `Grupo ${newOrder}`;
+          changed = true;
+        }
+        if (changed) {
+          updatedGroups.push(g);
+        }
+      });
+
+      if (updatedGroups.length > 0) {
+        await cleaningGroupRepository.save(updatedGroups);
       }
-      g.order = newOrder;
-    });
-
-    await cleaningGroupRepository.save(groups);
+    }
 
     return res.status(200).end();
   }
 
   async getGroup(req: ParamsCustomRequest<ParamsGetCleaningGroup>, res: Response) {
-    const { group_id: id } = req.params;
+    const id = req.params.group_id || (req.params as any).groupId;
+    if (!id) throw new BadRequestError("ID do grupo não informado");
 
     const group = await cleaningGroupRepository.findOne({
       where: { id },
