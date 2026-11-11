@@ -12,6 +12,7 @@ import { fieldServiceTemplateRepository } from "../../repositories/fieldServiceT
 import { midweekScheduleRepository } from "../../repositories/midweekScheduleRepository";
 import { publicWitnessArrangementRepository } from "../../repositories/publicWitnessArrangementRepository";
 import { publicWitnessAssignmentRepository } from "../../repositories/publicWitnessAssignmentRepository";
+import { publicWitnessTimeSlotRepository } from "../../repositories/publicWitnessTimeSlotRepository";
 import { roleRepository } from "../../repositories/roleRepository";
 import { scheduleReminderConfigRepository } from "../../repositories/scheduleReminderConfigRepository";
 import { userRepository } from "../../repositories/userRepository";
@@ -356,22 +357,22 @@ export class ScheduleReminderController {
 
         // 3. Testemunho Público
         if (config.public_witnessing_enabled && daysUntilNextMonth <= config.public_witnessing_days_before && userCanReceiveAlert("PUBLIC_WITNESS_MANAGER")) {
-            const arrangementsCount = await publicWitnessArrangementRepository.count({
-                where: { congregation_id }
-            });
-            const totalPublicWitnessAssignments = await publicWitnessAssignmentRepository
-                .createQueryBuilder("pwa")
-                .innerJoin("pwa.timeSlot", "ts")
+            // Verifica se a congregação possui horários em modo RODÍZIO (is_rotative = true).
+            // Se possuir apenas arranjos fixos (ou nenhum arranjo), não há necessidade de escala mensal.
+            const rotativeSlotsCount = await publicWitnessTimeSlotRepository
+                .createQueryBuilder("ts")
                 .innerJoin("ts.arrangement", "arr")
                 .where("arr.congregation_id = :congregation_id", { congregation_id })
+                .andWhere("ts.is_rotative = true")
                 .getCount();
 
-            if (arrangementsCount > 0 || totalPublicWitnessAssignments > 0) {
+            if (rotativeSlotsCount > 0) {
                 const assignmentsCount = await publicWitnessAssignmentRepository
                     .createQueryBuilder("pwa")
                     .innerJoin("pwa.timeSlot", "ts")
                     .innerJoin("ts.arrangement", "arr")
                     .where("arr.congregation_id = :congregation_id", { congregation_id })
+                    .andWhere("ts.is_rotative = true")
                     .andWhere("pwa.date >= :start AND pwa.date <= :end", { start: nextMonthStart, end: nextMonthEnd })
                     .getCount();
 
@@ -381,8 +382,8 @@ export class ScheduleReminderController {
                         module: "PUBLIC_WITNESS",
                         roleRequired: "PUBLIC_WITNESS_MANAGER",
                         title: "Testemunho Público",
-                        message: `A escala de testemunho público de ${capitalizedNextMonth} ainda não foi preenchida.`,
-                        link: "/testemunho-publico/escalas",
+                        message: `A escala de rodízio de testemunho público de ${capitalizedNextMonth} ainda não foi gerada.`,
+                        link: "/congregacao/testemunho-publico",
                         actionLabel: "Gerar Escala",
                         daysRemaining: daysUntilNextMonth,
                         severity: daysUntilNextMonth <= 7 ? "HIGH" : "MEDIUM"

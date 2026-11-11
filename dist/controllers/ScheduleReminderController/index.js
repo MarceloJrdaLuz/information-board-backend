@@ -15,8 +15,8 @@ const cleaningScheduleRepository_1 = require("../../repositories/cleaningSchedul
 const fieldServiceScheduleRepository_1 = require("../../repositories/fieldServiceScheduleRepository");
 const fieldServiceTemplateRepository_1 = require("../../repositories/fieldServiceTemplateRepository");
 const midweekScheduleRepository_1 = require("../../repositories/midweekScheduleRepository");
-const publicWitnessArrangementRepository_1 = require("../../repositories/publicWitnessArrangementRepository");
 const publicWitnessAssignmentRepository_1 = require("../../repositories/publicWitnessAssignmentRepository");
+const publicWitnessTimeSlotRepository_1 = require("../../repositories/publicWitnessTimeSlotRepository");
 const roleRepository_1 = require("../../repositories/roleRepository");
 const scheduleReminderConfigRepository_1 = require("../../repositories/scheduleReminderConfigRepository");
 const userRepository_1 = require("../../repositories/userRepository");
@@ -302,21 +302,21 @@ class ScheduleReminderController {
         }
         // 3. Testemunho Público
         if (config.public_witnessing_enabled && daysUntilNextMonth <= config.public_witnessing_days_before && userCanReceiveAlert("PUBLIC_WITNESS_MANAGER")) {
-            const arrangementsCount = await publicWitnessArrangementRepository_1.publicWitnessArrangementRepository.count({
-                where: { congregation_id }
-            });
-            const totalPublicWitnessAssignments = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository
-                .createQueryBuilder("pwa")
-                .innerJoin("pwa.timeSlot", "ts")
+            // Verifica se a congregação possui horários em modo RODÍZIO (is_rotative = true).
+            // Se possuir apenas arranjos fixos (ou nenhum arranjo), não há necessidade de escala mensal.
+            const rotativeSlotsCount = await publicWitnessTimeSlotRepository_1.publicWitnessTimeSlotRepository
+                .createQueryBuilder("ts")
                 .innerJoin("ts.arrangement", "arr")
                 .where("arr.congregation_id = :congregation_id", { congregation_id })
+                .andWhere("ts.is_rotative = true")
                 .getCount();
-            if (arrangementsCount > 0 || totalPublicWitnessAssignments > 0) {
+            if (rotativeSlotsCount > 0) {
                 const assignmentsCount = await publicWitnessAssignmentRepository_1.publicWitnessAssignmentRepository
                     .createQueryBuilder("pwa")
                     .innerJoin("pwa.timeSlot", "ts")
                     .innerJoin("ts.arrangement", "arr")
                     .where("arr.congregation_id = :congregation_id", { congregation_id })
+                    .andWhere("ts.is_rotative = true")
                     .andWhere("pwa.date >= :start AND pwa.date <= :end", { start: nextMonthStart, end: nextMonthEnd })
                     .getCount();
                 if (assignmentsCount === 0) {
@@ -325,8 +325,8 @@ class ScheduleReminderController {
                         module: "PUBLIC_WITNESS",
                         roleRequired: "PUBLIC_WITNESS_MANAGER",
                         title: "Testemunho Público",
-                        message: `A escala de testemunho público de ${capitalizedNextMonth} ainda não foi preenchida.`,
-                        link: "/testemunho-publico/escalas",
+                        message: `A escala de rodízio de testemunho público de ${capitalizedNextMonth} ainda não foi gerada.`,
+                        link: "/congregacao/testemunho-publico",
                         actionLabel: "Gerar Escala",
                         daysRemaining: daysUntilNextMonth,
                         severity: daysUntilNextMonth <= 7 ? "HIGH" : "MEDIUM"
