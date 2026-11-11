@@ -243,6 +243,12 @@ class CleaningScheduleController {
     async getFutureSchedules(req, res) {
         const { congregation_id } = req.params;
         const today = (0, dayjs_1.default)().format("YYYY-MM-DD");
+        const { includeHistory, monthsBack } = req.query;
+        const shouldIncludeHistory = includeHistory === "true";
+        const monthsCount = parseInt(monthsBack || "2", 10) || 2;
+        const minDate = shouldIncludeHistory
+            ? (0, dayjs_1.default)().subtract(monthsCount, "month").startOf("month").format("YYYY-MM-DD")
+            : today;
         // 1. Busca exceções manuais e eventos especiais com cancelCleaning
         const exceptions = await cleaningExceptionRepository_1.cleaningExceptionRepository.find({
             where: { congregation: { id: congregation_id } }
@@ -265,7 +271,7 @@ class CleaningScheduleController {
                 cur = cur.add(1, "day");
             }
         }
-        // 2. Se houver agendamentos em datas bloqueadas, expurga automaticamente do banco
+        // 2. Se houver agendamentos em datas bloqueadas futuras, expurga automaticamente do banco
         if (blockedDates.size > 0) {
             await cleaningScheduleRepository_1.cleaningScheduleRepository
                 .createQueryBuilder()
@@ -273,12 +279,13 @@ class CleaningScheduleController {
                 .from(CleaningSchedule_1.CleaningSchedule)
                 .where("congregation_id = :congregation_id", { congregation_id })
                 .andWhere("date IN (:...dates)", { dates: Array.from(blockedDates) })
+                .andWhere("date >= :today", { today })
                 .execute();
         }
         const schedules = await cleaningScheduleRepository_1.cleaningScheduleRepository.find({
             where: {
                 congregation_id,
-                date: (0, typeorm_1.MoreThanOrEqual)(today),
+                date: (0, typeorm_1.MoreThanOrEqual)(minDate),
             },
             relations: [
                 "group",
@@ -291,10 +298,12 @@ class CleaningScheduleController {
         const schedulesProcessed = schedules.map(schedule => {
             const orderedPublishers = (0, organizePublishersByFamily_1.organizePublishersByFamily)(schedule.group.publishers);
             const date = (0, dayjs_1.default)(schedule.date);
+            const isPast = date.isBefore((0, dayjs_1.default)(today), "day");
             return {
                 ...schedule,
                 weekdayNumber: date.isoWeekday(),
                 weekdayName: date.format("dddd"),
+                isPast,
                 group: {
                     ...schedule.group,
                     publishers: orderedPublishers
