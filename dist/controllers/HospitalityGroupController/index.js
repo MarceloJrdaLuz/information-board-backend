@@ -214,12 +214,17 @@ class HospitalityGroupController {
             if (!group) {
                 throw new api_errors_1.NotFoundError(`GroupHospitality ${id} not found in this congregation`);
             }
-            group.position = index + 1; // posição começa em 1
+            const newPos = index + 1; // posição começa em 1
+            const isDefaultName = !group.name || /^grupo\s*\d+$/i.test(group.name.trim());
+            group.position = newPos;
+            if (isDefaultName) {
+                group.name = `Grupo ${newPos}`;
+            }
             updatedGroups.push(group);
         });
         // Salva todas as alterações em uma única operação
         await hospitalityGroupRepository_1.hospitalityGroupRepository.save(updatedGroups);
-        return res.end();
+        return res.status(200).json(updatedGroups);
     }
 }
 exports.default = new HospitalityGroupController();

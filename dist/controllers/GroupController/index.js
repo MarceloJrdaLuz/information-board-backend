@@ -264,5 +264,34 @@ class GroupController {
         }
         return res.status(200).end();
     }
+    async reorderGroups(req, res) {
+        const { congregation_id } = req.params;
+        const { orderedGroupIds } = req.body;
+        if (!orderedGroupIds || !Array.isArray(orderedGroupIds) || orderedGroupIds.length === 0) {
+            throw new api_errors_1.BadRequestError("A lista de grupos não pode estar vazia");
+        }
+        const groups = await groupRepository_1.groupRepository.find({
+            where: { congregation: { id: congregation_id } },
+        });
+        if (groups.length !== orderedGroupIds.length) {
+            throw new api_errors_1.BadRequestError("A quantidade de grupos enviada não corresponde aos grupos existentes");
+        }
+        const groupMap = new Map(groups.map(g => [g.id, g]));
+        const updatedGroups = [];
+        orderedGroupIds.forEach((id, index) => {
+            const group = groupMap.get(id);
+            if (!group)
+                throw new api_errors_1.NotFoundError(`Grupo ${id} não encontrado`);
+            const newNum = String(index + 1);
+            const isDefaultName = !group.name || /^grupo\s*(?:n[º°o]?\s*)?\d+$/i.test(group.name.trim());
+            group.number = newNum;
+            if (isDefaultName) {
+                group.name = `Grupo ${newNum}`;
+            }
+            updatedGroups.push(group);
+        });
+        await groupRepository_1.groupRepository.save(updatedGroups);
+        return res.status(200).json(updatedGroups);
+    }
 }
 exports.default = new GroupController();

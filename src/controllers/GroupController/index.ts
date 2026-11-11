@@ -1,4 +1,4 @@
-import { Response } from "express-serve-static-core";
+import { Request, Response } from "express";
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 import { BodyAddPublishersGroupTypes, BodyGroupCreateTypes, BodyUpdateGroupOverseerTypes, ParamsAddPublishersGroupTypes, ParamsDeleteGroupTypes, ParamsGetGroupsTypes } from "./types";
 import { congregationRepository } from "../../repositories/congregationRepository";
@@ -322,6 +322,43 @@ class GroupController {
         }
 
         return res.status(200).end()
+    }
+
+    async reorderGroups(req: Request, res: Response) {
+        const { congregation_id } = req.params;
+        const { orderedGroupIds } = req.body as { orderedGroupIds: string[] };
+
+        if (!orderedGroupIds || !Array.isArray(orderedGroupIds) || orderedGroupIds.length === 0) {
+            throw new BadRequestError("A lista de grupos não pode estar vazia");
+        }
+
+        const groups = await groupRepository.find({
+            where: { congregation: { id: congregation_id } },
+        });
+
+        if (groups.length !== orderedGroupIds.length) {
+            throw new BadRequestError("A quantidade de grupos enviada não corresponde aos grupos existentes");
+        }
+
+        const groupMap = new Map(groups.map(g => [g.id, g]));
+        const updatedGroups: Group[] = [];
+
+        orderedGroupIds.forEach((id, index) => {
+            const group = groupMap.get(id);
+            if (!group) throw new NotFoundError(`Grupo ${id} não encontrado`);
+
+            const newNum = String(index + 1);
+            const isDefaultName = !group.name || /^grupo\s*(?:n[º°o]?\s*)?\d+$/i.test(group.name.trim());
+
+            group.number = newNum;
+            if (isDefaultName) {
+                group.name = `Grupo ${newNum}`;
+            }
+            updatedGroups.push(group);
+        });
+
+        await groupRepository.save(updatedGroups);
+        return res.status(200).json(updatedGroups);
     }
 
 }

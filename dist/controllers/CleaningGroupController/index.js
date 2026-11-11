@@ -171,5 +171,34 @@ class CleaningGroupController {
         }
         return res.status(200).json(groups);
     }
+    async reorderGroups(req, res) {
+        const { congregation_id } = req.params;
+        const { orderedGroupIds } = req.body;
+        if (!orderedGroupIds || !Array.isArray(orderedGroupIds) || orderedGroupIds.length === 0) {
+            throw new api_errors_1.BadRequestError("A lista de grupos não pode estar vazia");
+        }
+        const groups = await cleaningGroupRepository_1.cleaningGroupRepository.find({
+            where: { congregation: { id: congregation_id } },
+        });
+        if (groups.length !== orderedGroupIds.length) {
+            throw new api_errors_1.BadRequestError("A quantidade de grupos enviada não corresponde aos grupos existentes");
+        }
+        const groupMap = new Map(groups.map(g => [g.id, g]));
+        const updatedGroups = [];
+        orderedGroupIds.forEach((id, index) => {
+            const group = groupMap.get(id);
+            if (!group)
+                throw new api_errors_1.NotFoundError(`Grupo ${id} não encontrado`);
+            const newOrder = index + 1;
+            const isDefaultName = !group.name || /^grupo\s*\d+$/i.test(group.name.trim());
+            group.order = newOrder;
+            if (isDefaultName) {
+                group.name = `Grupo ${newOrder}`;
+            }
+            updatedGroups.push(group);
+        });
+        await cleaningGroupRepository_1.cleaningGroupRepository.save(updatedGroups);
+        return res.status(200).json(updatedGroups);
+    }
 }
 exports.default = new CleaningGroupController();

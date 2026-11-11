@@ -1,4 +1,5 @@
-import { Response } from "express";
+import { Request, Response } from "express";
+import { CleaningGroup } from "../../entities/CleaningGroup";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { messageErrors } from "../../helpers/messageErrors";
 import { congregationRepository } from "../../repositories/congregationRepository";
@@ -230,6 +231,43 @@ class CleaningGroupController {
     }
 
     return res.status(200).json(groups);
+  }
+
+  async reorderGroups(req: Request, res: Response) {
+    const { congregation_id } = req.params;
+    const { orderedGroupIds } = req.body as { orderedGroupIds: string[] };
+
+    if (!orderedGroupIds || !Array.isArray(orderedGroupIds) || orderedGroupIds.length === 0) {
+      throw new BadRequestError("A lista de grupos não pode estar vazia");
+    }
+
+    const groups = await cleaningGroupRepository.find({
+      where: { congregation: { id: congregation_id } },
+    });
+
+    if (groups.length !== orderedGroupIds.length) {
+      throw new BadRequestError("A quantidade de grupos enviada não corresponde aos grupos existentes");
+    }
+
+    const groupMap = new Map(groups.map(g => [g.id, g]));
+    const updatedGroups: CleaningGroup[] = [];
+
+    orderedGroupIds.forEach((id, index) => {
+      const group = groupMap.get(id);
+      if (!group) throw new NotFoundError(`Grupo ${id} não encontrado`);
+
+      const newOrder = index + 1;
+      const isDefaultName = !group.name || /^grupo\s*\d+$/i.test(group.name.trim());
+
+      group.order = newOrder;
+      if (isDefaultName) {
+        group.name = `Grupo ${newOrder}`;
+      }
+      updatedGroups.push(group);
+    });
+
+    await cleaningGroupRepository.save(updatedGroups);
+    return res.status(200).json(updatedGroups);
   }
 }
 
