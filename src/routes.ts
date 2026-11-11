@@ -213,6 +213,7 @@ routes.get('/hospitalityGroup/:hospitalityGroup_id', is(['ADMIN_CONGREGATION', "
 routes.post('/congregation/:congregation_id/hospitalityGroup', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.create)
 routes.patch('/hospitalityGroup/:hospitalityGroup_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.update)
 routes.patch('/congregation/:congregation_id/groups/reorder', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.reorderGroups)
+routes.patch('/congregation/:congregation_id/hospitalityGroups/reorder', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.reorderGroups)
 routes.delete('/hospitalityGroup/:hospitalityGroup_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), HospitalityGroupController.delete)
 
 /* === Categorias === */
@@ -229,8 +230,10 @@ routes.delete("/cleaning/schedule-config/:config_id", is(['ADMIN_CONGREGATION', 
 /* === Grupos de Limpeza === */
 routes.post("/cleaning/groups/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.create);
 routes.get("/cleaning/groups/congregation/:congregation_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.getGroups);
+routes.patch("/cleaning/groups/congregation/:congregation_id/reorder", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.reorderGroups);
 routes.get("/cleaning/groups/:group_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.getGroup);
 routes.patch("/cleaning/groups/:group_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.update);
+routes.delete("/cleaning/groups/:group_id", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.delete);
 routes.delete("/cleaning/groups/:groupId", is(['ADMIN_CONGREGATION', 'CLEANING_MANAGER']), CleaningGroupController.delete);
 
 /* === Exceções de Limpeza === */
@@ -333,6 +336,7 @@ routes.delete('/group/:group_id/remove-publishers', is(['ADMIN_CONGREGATION', 'G
 routes.delete('/group/:group_id', is(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController.delete)
 routes.post('/group', is(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController.create)
 routes.get('/groups/:congregation_id', is(['ADMIN_CONGREGATION', 'GROUPS_MANAGER', 'GROUPS_VIEWER']), GroupController.getGroups)
+routes.patch('/groups/:congregation_id/reorder', is(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController.reorderGroups)
 routes.put('/group/:group_id/change-groupOverseer', is(['ADMIN_CONGREGATION', 'GROUPS_MANAGER']), GroupController.updateGroupOverseer)
 
 /* === Assistência nas reuniões === */

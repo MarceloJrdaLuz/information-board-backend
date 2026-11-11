@@ -1,4 +1,5 @@
-import { Response } from "express";
+import { Request, Response } from "express";
+import { CleaningGroup } from "../../entities/CleaningGroup";
 import { BadRequestError, NotFoundError } from "../../helpers/api-errors";
 import { messageErrors } from "../../helpers/messageErrors";
 import { congregationRepository } from "../../repositories/congregationRepository";
@@ -17,6 +18,7 @@ import {
 import { In, Not } from "typeorm";
 import { Publisher } from "../../entities/Publisher";
 import { cleaningScheduleRepository } from "../../repositories/cleaningScheduleRepository";
+import { cleaningGroupUnavailabilityRepository } from "../../repositories/cleaningGroupUnavailabilityRepository";
 import { hasPrivilege } from "../../helpers/publisherPrivilegeHelper";
 import { PrivilegeCode } from "../../types/privileges";
 
@@ -26,10 +28,7 @@ class CleaningGroupController {
     res: Response
   ) {
     const { congregation_id } = req.params;
-    const { name, publisherIds, order, dayPreference } = req.body;
-
-    if (!order || order <= 0)
-      throw new BadRequestError("Order must be a positive integer");
+    let { name, publisherIds, order, dayPreference } = req.body;
 
     const congregation = await congregationRepository.findOneBy({ id: congregation_id });
     if (!congregation)
@@ -40,21 +39,28 @@ class CleaningGroupController {
       order: { order: "ASC" }
     });
 
-    if (existingGroups.some(g => g.name === name)) {
-      throw new BadRequestError("Cleaning group already exists in this congregation");
-    }
+    // Se a ordem não foi fornecida, assume automaticamente o próximo número na sequência
+    const finalOrder = (order && order > 0) ? order : (existingGroups.length + 1);
 
-    // Valida conflito de ordem
-    if (existingGroups.some(g => g.order === order)) {
+    // Valida conflito de ordem se o usuário tiver especificado explicitamente
+    if (order && order > 0 && existingGroups.some(g => g.order === finalOrder)) {
       throw new BadRequestError("Another group already has this order");
     }
 
-    await cleaningGroupRepository.save(existingGroups);
+    const trimmedName = name?.trim();
+    // Se o nome não foi informado ou está em branco, assume o padrão "Grupo {order}"
+    const finalName = trimmedName || `Grupo ${finalOrder}`;
+
+    // Só valida duplicidade se for um nome personalizado diferente de "Grupo X"
+    const isCustomName = trimmedName && !/^grupo\s*\d+$/i.test(trimmedName);
+    if (isCustomName && existingGroups.some(g => g.name?.trim().toLowerCase() === trimmedName.toLowerCase())) {
+      throw new BadRequestError("Cleaning group already exists in this congregation");
+    }
 
     let publishers: Publisher[] = [];
 
-
-    if (publisherIds?.length) {
+    if (publisherIds && publisherIds.length > 0) {
+      const pIds = publisherIds;
       // Busca todos os grupos da congregação com seus publishers
       const allGroups = await cleaningGroupRepository.find({
         where: { congregation: { id: congregation.id } },
@@ -63,7 +69,7 @@ class CleaningGroupController {
 
       // Checa se algum dos publishers já está em outro grupo
       const conflict = allGroups.some(group =>
-        group.publishers.some(p => publisherIds.includes(p.id))
+        group.publishers.some(p => pIds.includes(p.id))
       );
 
       if (conflict) {
@@ -72,15 +78,15 @@ class CleaningGroupController {
 
       // Se não tem conflito, busca os publishers de fato
       const rawPublishers = await publisherRepository.find({
-        where: { id: In(publisherIds), congregation: { id: congregation.id } },
+        where: { id: In(pIds), congregation: { id: congregation.id } },
         relations: ["privilegesRelation", "privilegesRelation.privilege"]
       });
       publishers = rawPublishers.filter(p => hasPrivilege(p, PrivilegeCode.PUBLISHER));
     }
 
     const newGroup = cleaningGroupRepository.create({
-      name,
-      order,
+      name: finalName,
+      order: finalOrder,
       dayPreference: dayPreference || "ALL",
       congregation,
       publishers
@@ -90,12 +96,14 @@ class CleaningGroupController {
     return res.status(201).json(newGroup);
   }
 
-
   async update(
     req: CustomRequestPT<ParamsCleaningGroupUpdate, BodyCleaningGroupUpdate>,
     res: Response
   ) {
-    const { group_id: id } = req.params;
+    const id = req.params.group_id || (req.params as any).groupId;
+    if (!id) {
+      throw new BadRequestError("ID do grupo não informado");
+    }
     const { name, publisherIds, dayPreference } = req.body;
 
     const group = await cleaningGroupRepository.findOne({
@@ -137,7 +145,11 @@ class CleaningGroupController {
       group.publishers = rawPublishers.filter(p => hasPrivilege(p, PrivilegeCode.PUBLISHER));
     }
 
-    if (name) group.name = name;
+    if (name !== undefined) {
+      const trimmed = name?.trim();
+      // Se enviado vazio ou em branco, restaura para o padrão "Grupo {order}"
+      group.name = trimmed || `Grupo ${group.order}`;
+    }
     if (dayPreference) group.dayPreference = dayPreference;
 
     await cleaningGroupRepository.save(group);
@@ -145,46 +157,80 @@ class CleaningGroupController {
   }
 
   async delete(req: ParamsCustomRequest<ParamsDeleteCleaningGroup>, res: Response) {
-    const { group_id } = req.params;
+    const targetId = req.params.group_id || (req.params as any).groupId;
+
+    if (!targetId) {
+      throw new BadRequestError("ID do grupo não informado");
+    }
 
     const group = await cleaningGroupRepository.findOne({
-      where: { id: group_id },
+      where: { id: targetId },
       relations: ["congregation"]
     });
 
     if (!group) throw new NotFoundError("Cleaning group not found");
 
+    const congregationId = group.congregation?.id;
+
     // 🔹 Remove todos os schedules relacionados ao grupo
     const schedules = await cleaningScheduleRepository.find({
-      where: { group: { id: group_id } }
+      where: { group: { id: targetId } }
     });
 
     if (schedules.length > 0) {
       await cleaningScheduleRepository.remove(schedules);
     }
 
+    // 🔹 Remove indisponibilidades do grupo
+    const unavailabilities = await cleaningGroupUnavailabilityRepository.find({
+      where: { group: { id: targetId } }
+    });
+
+    if (unavailabilities.length > 0) {
+      await cleaningGroupUnavailabilityRepository.remove(unavailabilities);
+    }
+
     // 🔹 Agora sim pode remover o grupo
     await cleaningGroupRepository.remove(group);
 
-    // 🔄 Reorganiza ordens após remover
-    const groups = await cleaningGroupRepository.find({
-      where: { congregation: { id: group.congregation.id } },
-      order: { order: "ASC" }
-    });
+    // 🔄 Reorganiza ordens e nomes padrão após remover
+    if (congregationId) {
+      const groups = await cleaningGroupRepository.find({
+        where: { congregation: { id: congregationId } },
+        order: { order: "ASC" }
+      });
 
-    groups.forEach((g, index) => {
-      g.order = index + 1;
-    });
+      const updatedGroups: CleaningGroup[] = [];
+      groups.forEach((g, index) => {
+        const newOrder = index + 1;
+        // Se o grupo usa o nome padrão "Grupo X" ou está sem nome, sincroniza o nome com a nova ordem!
+        const isDefaultName = !g.name || /^grupo\s*\d+$/i.test(g.name.trim());
+        let changed = false;
 
-    await cleaningGroupRepository.save(groups);
+        if (g.order !== newOrder) {
+          g.order = newOrder;
+          changed = true;
+        }
+        if (isDefaultName && g.name !== `Grupo ${newOrder}`) {
+          g.name = `Grupo ${newOrder}`;
+          changed = true;
+        }
+        if (changed) {
+          updatedGroups.push(g);
+        }
+      });
+
+      if (updatedGroups.length > 0) {
+        await cleaningGroupRepository.save(updatedGroups);
+      }
+    }
 
     return res.status(200).end();
   }
 
-
-
   async getGroup(req: ParamsCustomRequest<ParamsGetCleaningGroup>, res: Response) {
-    const { group_id: id } = req.params;
+    const id = req.params.group_id || (req.params as any).groupId;
+    if (!id) throw new BadRequestError("ID do grupo não informado");
 
     const group = await cleaningGroupRepository.findOne({
       where: { id },
@@ -198,7 +244,6 @@ class CleaningGroupController {
 
     return res.status(200).json(group);
   }
-
 
   async getGroups(req: ParamsCustomRequest<ParamsGetCleaningGroups>, res: Response) {
     const { congregation_id } = req.params;
@@ -220,6 +265,43 @@ class CleaningGroupController {
     }
 
     return res.status(200).json(groups);
+  }
+
+  async reorderGroups(req: Request, res: Response) {
+    const { congregation_id } = req.params;
+    const { orderedGroupIds } = req.body as { orderedGroupIds: string[] };
+
+    if (!orderedGroupIds || !Array.isArray(orderedGroupIds) || orderedGroupIds.length === 0) {
+      throw new BadRequestError("A lista de grupos não pode estar vazia");
+    }
+
+    const groups = await cleaningGroupRepository.find({
+      where: { congregation: { id: congregation_id } },
+    });
+
+    if (groups.length !== orderedGroupIds.length) {
+      throw new BadRequestError("A quantidade de grupos enviada não corresponde aos grupos existentes");
+    }
+
+    const groupMap = new Map(groups.map(g => [g.id, g]));
+    const updatedGroups: CleaningGroup[] = [];
+
+    orderedGroupIds.forEach((id, index) => {
+      const group = groupMap.get(id);
+      if (!group) throw new NotFoundError(`Grupo ${id} não encontrado`);
+
+      const newOrder = index + 1;
+      const isDefaultName = !group.name || /^grupo\s*\d+$/i.test(group.name.trim());
+
+      group.order = newOrder;
+      if (isDefaultName) {
+        group.name = `Grupo ${newOrder}`;
+      }
+      updatedGroups.push(group);
+    });
+
+    await cleaningGroupRepository.save(updatedGroups);
+    return res.status(200).json(updatedGroups);
   }
 }
 

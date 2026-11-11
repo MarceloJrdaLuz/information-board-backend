@@ -3,17 +3,17 @@ export type ParamsCleaningGroupCreate = {
 }
 
 export type BodyCleaningGroupCreate = {
-    name: string
-    publisherIds: string[]
-    order: number
+    name?: string
+    publisherIds?: string[]
+    order?: number
     dayPreference?: string
 }
 
 export type BodyCleaningGroupUpdate = Partial<BodyCleaningGroupCreate>
 
- 
 export type ParamsCleaningGroupUpdate = {
-    group_id: string
+    group_id?: string;
+    groupId?: string;
 }
 
 export type ParamsGetCleaningGroup = ParamsCleaningGroupUpdate

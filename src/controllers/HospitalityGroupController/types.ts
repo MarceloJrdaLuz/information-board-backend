@@ -11,7 +11,8 @@ export type ParamsCreateHospitalityGroupTypes = ParamsGetHospitalityGroupsTypes
 
 // ================ Body ===================
 export interface BodyHospitalityGroupCreateTypes {
-  name: string
+  name?: string
+  position?: number
   publisherHost_id?: string
   next_reception?: Date
   member_ids?: string[]
@@ -19,7 +20,7 @@ export interface BodyHospitalityGroupCreateTypes {
 
 
 export interface BodyHospitalityGroupUpdateTypes {
-  name: string
+  name?: string
   publisherHost_id?: string
   next_reception?: Date
   member_ids?: string[]

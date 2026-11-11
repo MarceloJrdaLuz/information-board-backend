@@ -1,4 +1,4 @@
-import { Response } from "express-serve-static-core";
+import { Request, Response } from "express";
 import { CustomRequest, CustomRequestPT, ParamsCustomRequest } from "../../types/customRequest";
 import { BodyAddPublishersGroupTypes, BodyGroupCreateTypes, BodyUpdateGroupOverseerTypes, ParamsAddPublishersGroupTypes, ParamsDeleteGroupTypes, ParamsGetGroupsTypes } from "./types";
 import { congregationRepository } from "../../repositories/congregationRepository";
@@ -7,6 +7,7 @@ import { groupOverseersRepository } from "../../repositories/groupOverseersRepos
 import { groupRepository } from "../../repositories/groupRepository";
 import { messageErrors } from "../../helpers/messageErrors";
 import { publisherRepository } from "../../repositories/publisherRepository";
+import { Group } from "../../entities/Group";
 import { GroupOverseers } from "../../entities/GroupOverseers";
 import { hasPrivilege } from "../../helpers/publisherPrivilegeHelper";
 import { PrivilegeCode } from "../../types/privileges";
@@ -21,20 +22,28 @@ class GroupController {
 
         if (!publisher_id) throw new BadRequestError("It is necessary to have a group overseer. Create one or provide the id.");
 
-        const existingGroupNumber = await groupRepository.findOne({
-            where: { congregation: { id: congregation_id }, number }
+        const existingGroups = await groupRepository.find({
+            where: { congregation: { id: congregation_id } }
         });
 
-        const existingGroupName = await groupRepository.findOne({
-            where: { congregation: { id: congregation_id }, name }
-        });
+        // Determina o número final sequencial se não informado
+        const finalNumber = number?.trim() || String(existingGroups.length + 1);
 
+        const existingGroupNumber = existingGroups.find(g => g.number === finalNumber);
         if (existingGroupNumber) {
-            throw new BadRequestError('One group with some number already exists in the congregation');
+            throw new BadRequestError('Já existe um grupo com este número na congregação');
         }
 
-        if (existingGroupName) {
-            throw new BadRequestError('One group with some name already exists in the congregation');
+        const trimmedName = name?.trim();
+        const finalName = trimmedName || `Grupo ${finalNumber}`;
+
+        if (trimmedName && !/^grupo\s*(?:n[º°o]?\s*)?\d+$/i.test(trimmedName)) {
+            const existingGroupName = existingGroups.find(
+                g => g.name.trim().toLowerCase() === trimmedName.toLowerCase()
+            );
+            if (existingGroupName) {
+                throw new BadRequestError('Já existe um grupo com este nome na congregação');
+            }
         }
 
         const publisher = await publisherRepository.findOneBy({ id: publisher_id });
@@ -59,8 +68,8 @@ class GroupController {
 
         // Crie o grupo e associe-o ao supervisor
         const newGroup = groupRepository.create({
-            name,
-            number,
+            name: finalName,
+            number: finalNumber,
             congregation,
             groupOverseers: groupOverseers // Adicione o grupo de supervisores aqui
         });
@@ -90,6 +99,9 @@ class GroupController {
         })
 
         if (!groups) throw new NotFoundError(messageErrors.notFound.group)
+
+        // Ordenação numérica por número de grupo
+        groups.sort((a, b) => (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0));
 
         const groupWith = groups.map(group => {
             const { id, name, number, groupOverseers, publishers } = group;
@@ -243,11 +255,16 @@ class GroupController {
     async delete(req: ParamsCustomRequest<ParamsDeleteGroupTypes>, res: Response) {
         const { group_id } = req.params
 
-        const group = await groupRepository.findOneBy({ id: group_id })
+        const group = await groupRepository.findOne({
+            where: { id: group_id },
+            relations: ["congregation"]
+        })
 
         if (!group) {
             throw new NotFoundError(messageErrors.notFound.group)
         }
+
+        const congregationId = group.congregation?.id
 
         const publishers = await publisherRepository.find({
             where: {
@@ -265,7 +282,83 @@ class GroupController {
 
         await groupRepository.remove(group)
 
+        // Se houver congregação, reordenar e renomear os grupos restantes
+        if (congregationId) {
+            const remainingGroups = await groupRepository.find({
+                where: { congregation: { id: congregationId } }
+            })
+
+            // Ordena numericamente pelo número
+            remainingGroups.sort((a, b) => {
+                const numA = parseInt(a.number, 10) || 0
+                const numB = parseInt(b.number, 10) || 0
+                return numA - numB
+            })
+
+            const updatedGroups: Group[] = []
+            for (let i = 0; i < remainingGroups.length; i++) {
+                const g = remainingGroups[i]
+                const newNum = String(i + 1)
+                const isDefaultName = !g.name || /^grupo\s*(?:n[º°o]?\s*)?\d+$/i.test(g.name.trim())
+
+                let changed = false
+                if (g.number !== newNum) {
+                    g.number = newNum
+                    changed = true
+                }
+                if (isDefaultName && g.name !== `Grupo ${newNum}`) {
+                    g.name = `Grupo ${newNum}`
+                    changed = true
+                }
+
+                if (changed) {
+                    updatedGroups.push(g)
+                }
+            }
+
+            if (updatedGroups.length > 0) {
+                await groupRepository.save(updatedGroups)
+            }
+        }
+
         return res.status(200).end()
+    }
+
+    async reorderGroups(req: Request, res: Response) {
+        const { congregation_id } = req.params;
+        const { orderedGroupIds } = req.body as { orderedGroupIds: string[] };
+
+        if (!orderedGroupIds || !Array.isArray(orderedGroupIds) || orderedGroupIds.length === 0) {
+            throw new BadRequestError("A lista de grupos não pode estar vazia");
+        }
+
+        const groups = await groupRepository.find({
+            where: { congregation: { id: congregation_id } },
+        });
+
+        if (groups.length !== orderedGroupIds.length) {
+            throw new BadRequestError("A quantidade de grupos enviada não corresponde aos grupos existentes");
+        }
+
+        const groupMap = new Map(groups.map(g => [g.id, g]));
+        const updatedGroups: Group[] = [];
+
+        orderedGroupIds.forEach((id, index) => {
+            const group = groupMap.get(id);
+            if (!group) throw new NotFoundError(`Grupo ${id} não encontrado`);
+
+            const newNum = String(index + 1);
+            const isDefaultName = !group.name || /^grupo\s*(?:n[º°o]?\s*)?\d+$/i.test(group.name.trim());
+
+            group.number = newNum;
+            if (isDefaultName) {
+                group.name = `Grupo ${newNum}`;
+            }
+            updatedGroups.push(group);
+        });
+
+        await groupRepository.save(updatedGroups);
+        return res.status(200).json(updatedGroups);
     }
 
 }

@@ -295,6 +295,13 @@ class CleaningScheduleController {
         const { congregation_id } = req.params;
 
         const today = dayjs().format("YYYY-MM-DD");
+        const { includeHistory, monthsBack } = req.query as { includeHistory?: string; monthsBack?: string };
+        const shouldIncludeHistory = includeHistory === "true";
+        const monthsCount = parseInt(monthsBack || "2", 10) || 2;
+
+        const minDate = shouldIncludeHistory
+            ? dayjs().subtract(monthsCount, "month").startOf("month").format("YYYY-MM-DD")
+            : today;
 
         // 1. Busca exceções manuais e eventos especiais com cancelCleaning
         const exceptions = await cleaningExceptionRepository.find({
@@ -321,7 +328,7 @@ class CleaningScheduleController {
             }
         }
 
-        // 2. Se houver agendamentos em datas bloqueadas, expurga automaticamente do banco
+        // 2. Se houver agendamentos em datas bloqueadas futuras, expurga automaticamente do banco
         if (blockedDates.size > 0) {
             await cleaningScheduleRepository
                 .createQueryBuilder()
@@ -329,13 +336,14 @@ class CleaningScheduleController {
                 .from(CleaningSchedule)
                 .where("congregation_id = :congregation_id", { congregation_id })
                 .andWhere("date IN (:...dates)", { dates: Array.from(blockedDates) })
+                .andWhere("date >= :today", { today })
                 .execute();
         }
 
         const schedules = await cleaningScheduleRepository.find({
             where: {
                 congregation_id,
-                date: MoreThanOrEqual(today),
+                date: MoreThanOrEqual(minDate),
             },
             relations: [
                 "group",
@@ -350,11 +358,13 @@ class CleaningScheduleController {
             const orderedPublishers = organizePublishersByFamily(schedule.group.publishers);
 
             const date = dayjs(schedule.date);
+            const isPast = date.isBefore(dayjs(today), "day");
 
             return {
                 ...schedule,
                 weekdayNumber: date.isoWeekday(),            // 1 = segunda, 7 = domingo
                 weekdayName: date.format("dddd"),            // "quarta-feira"
+                isPast,
                 group: {
                     ...schedule.group,
                     publishers: orderedPublishers

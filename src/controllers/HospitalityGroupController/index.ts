@@ -21,8 +21,8 @@ import { hospitalityGroupRepository } from "../../repositories/hospitalityGroupR
 class HospitalityGroupController {
     async create(req: CustomRequestPT<ParamsCreateHospitalityGroupTypes, BodyHospitalityGroupCreateTypes>, res: Response) {
         const { congregation_id } = req.params
-        const { name, publisherHost_id, next_reception, member_ids } = req.body
-        const nextReceptionDate = moment(next_reception).format("YYYY-MM-DD")
+        const { name, position, publisherHost_id, next_reception, member_ids } = req.body
+        const nextReceptionDate = next_reception ? moment(next_reception).format("YYYY-MM-DD") : null
 
         const congregation = await congregationRepository.findOneBy({ id: congregation_id })
         if (!congregation) throw new NotFoundError(messageErrors.notFound.congregation)
@@ -50,16 +50,29 @@ class HospitalityGroupController {
                 order: { position: "ASC" }
             });
 
-            const position = groups.length > 0
-                ? (groups[groups.length - 1].position ?? 0) + 1
-                : 1;
+            const finalPosition = position && position > 0
+                ? position
+                : (groups.length > 0 ? (groups[groups.length - 1].position ?? 0) + 1 : 1);
+
+            const trimmedName = name?.trim();
+            const finalName = trimmedName || `Grupo ${finalPosition}`;
+
+            // Valida duplicidade de nome personalizado (ignora nomes padrão "Grupo X")
+            if (trimmedName && !/^grupo\s*\d+$/i.test(trimmedName)) {
+                const existingWithName = groups.find(
+                    g => g.name.trim().toLowerCase() === trimmedName.toLowerCase()
+                );
+                if (existingWithName) {
+                    throw new BadRequestError("Já existe um grupo com este nome nesta congregação");
+                }
+            }
 
             const newGroup = hospitalityGroupRepository.create({
-                name,
+                name: finalName,
                 congregation,
                 host,
                 next_reception: nextReceptionDate || null,
-                position,
+                position: finalPosition,
                 members,
             });
 
@@ -67,7 +80,7 @@ class HospitalityGroupController {
             return res.status(201).json(newGroup);
         } catch (error: any) {
             if (error.code === "23505") { // Postgres unique violation
-                throw new BadRequestError("A group with this name already exists in this congregation");
+                throw new BadRequestError("Já existe um grupo com este nome nesta congregação");
             }
             throw error; // repassa para middleware global
         }
@@ -78,7 +91,7 @@ class HospitalityGroupController {
         const { hospitalityGroup_id } = req.params
         const { publisherHost_id, next_reception, member_ids, name } = req.body
 
-        const nextReceptionDate = moment(next_reception).format("YYYY-MM-DD")
+        const nextReceptionDate = next_reception ? moment(next_reception).format("YYYY-MM-DD") : null
 
         const group = await hospitalityGroupRepository.findOne({
             where: { id: hospitalityGroup_id },
@@ -97,7 +110,8 @@ class HospitalityGroupController {
         }
 
         if (name !== undefined) {
-            group.name = name
+            const trimmed = name.trim();
+            group.name = trimmed || `Grupo ${group.position ?? 1}`;
         }
 
         if (next_reception !== undefined) {
@@ -133,7 +147,7 @@ class HospitalityGroupController {
             return res.json(group)
         } catch (error: any) {
             if (error.code === "23505") { // Postgres unique violation
-                throw new BadRequestError("A group with this name already exists in this congregation")
+                throw new BadRequestError("Já existe um grupo com este nome nesta congregação")
             }
             throw error
         }
@@ -142,10 +156,49 @@ class HospitalityGroupController {
     async delete(req: ParamsCustomRequest<ParamsHospitalityGroupTypes>, res: Response) {
         const { hospitalityGroup_id } = req.params
 
-        const group = await hospitalityGroupRepository.findOneBy({ id: hospitalityGroup_id })
+        const group = await hospitalityGroupRepository.findOne({
+            where: { id: hospitalityGroup_id },
+            relations: ["congregation"]
+        })
         if (!group) throw new NotFoundError(messageErrors.notFound.groupHospitality)
 
+        const congregationId = group.congregation?.id
+
         await hospitalityGroupRepository.remove(group)
+
+        // Se houver congregação, reordenar e renomear os grupos restantes
+        if (congregationId) {
+            const remainingGroups = await hospitalityGroupRepository.find({
+                where: { congregation: { id: congregationId } },
+                order: { position: "ASC" }
+            })
+
+            const updatedGroups: HospitalityGroup[] = []
+            for (let i = 0; i < remainingGroups.length; i++) {
+                const g = remainingGroups[i]
+                const newPos = i + 1
+                const isDefaultName = !g.name || /^grupo\s*\d+$/i.test(g.name.trim())
+
+                let changed = false
+                if (g.position !== newPos) {
+                    g.position = newPos
+                    changed = true
+                }
+                if (isDefaultName && g.name !== `Grupo ${newPos}`) {
+                    g.name = `Grupo ${newPos}`
+                    changed = true
+                }
+
+                if (changed) {
+                    updatedGroups.push(g)
+                }
+            }
+
+            if (updatedGroups.length > 0) {
+                await hospitalityGroupRepository.save(updatedGroups)
+            }
+        }
+
         return res.status(200).end()
     }
 
@@ -201,14 +254,20 @@ class HospitalityGroupController {
             if (!group) {
                 throw new NotFoundError(`GroupHospitality ${id} not found in this congregation`)
             }
-            group.position = index + 1 // posição começa em 1
+            const newPos = index + 1 // posição começa em 1
+            const isDefaultName = !group.name || /^grupo\s*\d+$/i.test(group.name.trim())
+
+            group.position = newPos
+            if (isDefaultName) {
+                group.name = `Grupo ${newPos}`
+            }
             updatedGroups.push(group)
         })
 
         // Salva todas as alterações em uma única operação
         await hospitalityGroupRepository.save(updatedGroups)
 
-        return res.end()
+        return res.status(200).json(updatedGroups)
     }
 }
 
