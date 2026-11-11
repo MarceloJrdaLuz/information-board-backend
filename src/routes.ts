@@ -41,6 +41,7 @@ import PublisherReminderController from "./controllers/PublisherReminderControll
 import PushNotificationController from "./controllers/PushNotificationController"
 import ReportController from "./controllers/ReportController"
 import RoleController from "./controllers/RoleController"
+import { ScheduleReminderController } from "./controllers/ScheduleReminderController"
 import SpeakerController from "./controllers/SpeakerController"
 import SpecialEventController from "./controllers/SpecialEventController"
 import TalkController from "./controllers/TalkController"
@@ -56,6 +57,7 @@ import { verifyGitHubCron } from "./middlewares/gitHubCronAuth"
 const routes = Router()
 const midweekController = new MidweekScheduleController()
 const mechanicalController = new MechanicalScheduleController()
+const scheduleReminderController = new ScheduleReminderController()
 
 /* =========================================================
     ROTAS PÚBLICAS (sem autenticação)
@@ -458,6 +460,33 @@ routes.delete(
     '/special-events/:id',
     is(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER']),
     SpecialEventController.delete
+)
+
+/* === Lembretes e Responsáveis de Programações === */
+routes.get(
+    "/schedule-reminders/config/congregation/:congregation_id",
+    is(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER']),
+    scheduleReminderController.getConfig
+)
+routes.put(
+    "/schedule-reminders/config/congregation/:congregation_id",
+    is(['ADMIN', 'ADMIN_CONGREGATION']),
+    scheduleReminderController.updateConfig
+)
+routes.get(
+    "/schedule-reminders/responsibles/congregation/:congregation_id",
+    is(['ADMIN', 'ADMIN_CONGREGATION']),
+    scheduleReminderController.getResponsibles
+)
+routes.post(
+    "/schedule-reminders/responsibles/congregation/:congregation_id",
+    is(['ADMIN', 'ADMIN_CONGREGATION']),
+    scheduleReminderController.updateResponsibles
+)
+routes.get(
+    "/schedule-reminders/alerts/congregation/:congregation_id",
+    is(['ADMIN', 'ADMIN_CONGREGATION', 'MIDWEEK_MANAGER', 'TALK_MANAGER', 'CLEANING_MANAGER', 'FIELD_SERVICE_MANAGER', 'PUBLIC_WITNESS_MANAGER', 'VIEWER']),
+    scheduleReminderController.getAlerts
 )
 
 /* === Cron Jobs === */
