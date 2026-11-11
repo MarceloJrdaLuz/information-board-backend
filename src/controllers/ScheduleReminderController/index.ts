@@ -424,8 +424,8 @@ export class ScheduleReminderController {
                     roleRequired: "TALK_MANAGER",
                     title: "Reunião de Fim de Semana (Oradores)",
                     message: `A escala de discursos públicos de ${capitalizedNextMonth} ainda não possui datas cadastradas.`,
-                    link: "/reunioes/fimdesemana/administracao",
-                    actionLabel: "Cadastrar Escala",
+                    link: `/reunioes/fimdesemana/programacao?date=${nextMonthStart}`,
+                    actionLabel: "Ir para o mês",
                     daysRemaining: daysUntilNextMonth,
                     severity: daysUntilNextMonth <= 7 ? "HIGH" : "MEDIUM"
                 });
@@ -441,8 +441,8 @@ export class ScheduleReminderController {
                         roleRequired: "TALK_MANAGER",
                         title: "Reunião de Fim de Semana (Oradores)",
                         message: `Há ${missingSpeakers.length} reunião(ões) em ${capitalizedNextMonth} sem orador definido.`,
-                        link: "/reunioes/fimdesemana/administracao",
-                        actionLabel: "Definir Oradores",
+                        link: `/reunioes/fimdesemana/programacao?date=${nextMonthStart}`,
+                        actionLabel: "Ir para o mês",
                         daysRemaining: daysUntilNextMonth,
                         severity: "HIGH"
                     });
