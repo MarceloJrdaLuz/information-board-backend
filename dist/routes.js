@@ -391,6 +391,8 @@ routes.delete("/cron/clean-field-service-overrides", gitHubCronAuth_1.verifyGitH
 routes.delete("/cron/clean-publisher-reminders", gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.cleanOldPublisherReminders);
 routes.get('/cron/daily-notifications', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.dispatchDailyNotifications);
 routes.post('/cron/daily-notifications', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.dispatchDailyNotifications);
+routes.get('/cron/schedule-reminders', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.dispatchScheduleReminders);
+routes.post('/cron/schedule-reminders', gitHubCronAuth_1.verifyGitHubCron, CronJobController_1.default.dispatchScheduleReminders);
 routes.get('/reportsCleanUp', permissions_1.verifyCronSecret, CronJobController_1.default.reportsCleanUp);
 routes.get('/backup', permissions_1.verifyCronSecret, CronJobController_1.default.backup);
 routes.get("/usage", (0, permissions_1.is)(["ADMIN"]), VercelUsageController_1.default.getUsage);

@@ -1,0 +1,16 @@
+name: Schedule Reminders Push Notifications
+
+on:
+  schedule:
+    - cron: '0 15 * * *' # Todos os dias às 12:00 BRT (15:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call schedule reminders cron route
+        run: |
+          curl -s -L -X POST ${{ secrets.API_URL }}/cron/schedule-reminders \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET_GITHUB }}" \
+            -H "Cache-Control: no-cache"
