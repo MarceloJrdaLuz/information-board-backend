@@ -121,10 +121,10 @@ class ScheduleReminderService {
                         id: "field_service",
                         module: "FIELD_SERVICE",
                         roleRequired: "FIELD_SERVICE_MANAGER",
-                        title: "Saídas de Campo",
+                        title: "Programação de Campo",
                         message: `A programação de saídas de campo de ${capitalizedNextMonth} ainda não foi gerada.`,
-                        link: "/congregacao/saidas-campo",
-                        actionLabel: "Gerar Escalas",
+                        link: "/congregacao/programacao-campo",
+                        actionLabel: "Gerar Programação",
                         daysRemaining: daysUntilNextMonth,
                         severity: daysUntilNextMonth <= 7 ? "HIGH" : "MEDIUM"
                     });
