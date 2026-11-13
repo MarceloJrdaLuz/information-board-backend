@@ -385,30 +385,32 @@ export class MechanicalScheduleService {
     async updateAssignment(assignmentId: string, publisherId: string | null) {
         const assignment = await mechanicalAssignmentRepository.findOne({
             where: { id: assignmentId },
-            relations: ["schedule", "publisher"]
+            relations: ["schedule"]
         });
 
         if (!assignment) {
             throw new NotFoundError("Designação não encontrada.");
         }
 
-        assignment.publisher_id = publisherId;
-        assignment.isManual = true;
+        let validPublisherId: string | null = null;
+        if (publisherId) {
+            const pub = await publisherRepository.findOne({
+                where: { id: publisherId }
+            });
+            if (pub) {
+                validPublisherId = pub.id;
+            }
+        }
 
-        await mechanicalAssignmentRepository.save(assignment);
+        // Atualiza a designação diretamente no banco de dados para evitar conflito com relações em cache
+        await mechanicalAssignmentRepository.update(assignmentId, {
+            publisher_id: validPublisherId,
+            isManual: true
+        });
 
         // Se a congregação usa a mesma equipe a semana toda, sincroniza com a reunião irmã da mesma semana
         const config = await this.getConfig(assignment.schedule.congregation_id);
         if (config.sameTeamWholeWeek) {
-            const siblingSchedule = await mechanicalScheduleRepository.findOne({
-                where: {
-                    congregation_id: assignment.schedule.congregation_id,
-                    weekStartDate: assignment.schedule.weekStartDate
-                },
-                relations: ["assignments"]
-            });
-
-            // Se encontrou reunião irmã na mesma semana (ex: fim de semana se alterou meio de semana, ou vice-versa)
             const otherSchedules = await mechanicalScheduleRepository.find({
                 where: {
                     congregation_id: assignment.schedule.congregation_id,
@@ -429,15 +431,16 @@ export class MechanicalScheduleService {
                         schedule_id: sched.id,
                         role: assignment.role,
                         order: assignment.order,
-                        publisher_id: publisherId,
+                        publisher_id: validPublisherId,
                         isManual: true
                     });
+                    await mechanicalAssignmentRepository.save(siblingAssignment);
                 } else {
-                    siblingAssignment.publisher_id = publisherId;
-                    siblingAssignment.isManual = true;
+                    await mechanicalAssignmentRepository.update(siblingAssignment.id, {
+                        publisher_id: validPublisherId,
+                        isManual: true
+                    });
                 }
-
-                await mechanicalAssignmentRepository.save(siblingAssignment);
             }
         }
 
