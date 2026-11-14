@@ -113,6 +113,11 @@ class HospitalityController {
             relations: ["assignments", "assignments.group", "assignments.group.host"],
             order: { date: "ASC" },
         });
+        weekends.forEach(w => {
+            if (w.assignments) {
+                w.assignments = w.assignments.filter(a => !!a && !!a.group && !!a.group.id);
+            }
+        });
         return res.json(weekends);
     }
     async updateAssignmentStatus(req, res) {
