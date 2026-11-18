@@ -169,6 +169,20 @@ class FieldServiceScheduleController {
         return res.json(schedules);
     }
 
+    async getByCongregation(req: Request, res: Response) {
+        const { congregation_id } = req.params;
+
+        const schedules = await fieldServiceScheduleRepository
+            .createQueryBuilder("fss")
+            .innerJoinAndSelect("fss.template", "fst")
+            .leftJoinAndSelect("fss.leader", "leader")
+            .where("fst.congregation_id = :congregation_id", { congregation_id })
+            .orderBy("fss.date", "ASC")
+            .getMany();
+
+        return res.json(schedules);
+    }
+
     async update(
         req: CustomRequestPT<
             ParamsUpdateFieldServiceSchedule,
