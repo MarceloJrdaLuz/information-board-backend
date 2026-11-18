@@ -11,12 +11,35 @@ import { config } from './config'
 import { scheduleReminderService } from './services/ScheduleReminderService'
 
 AppDataSource.initialize().then(() => {
-    const corsOptions = {
-        origin: config.app_url
+    const allowedOrigins = [
+        config.app_url,
+        'https://quadrodeanuncios.vercel.app',
+        'https://www.quadrodeanuncios.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:3001'
+    ].filter(Boolean).map(url => url.replace(/\/$/, ''))
+
+    const corsOptions: cors.CorsOptions = {
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true)
+            const cleanOrigin = origin.replace(/\/$/, '')
+            if (
+                allowedOrigins.includes(cleanOrigin) ||
+                cleanOrigin.endsWith('.vercel.app')
+            ) {
+                return callback(null, true)
+            }
+            return callback(null, true)
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
     }
+
     const app = express()
-    app.use(express.json())
     app.use(cors(corsOptions))
+    app.options('*', cors(corsOptions))
+    app.use(express.json())
     app.use(cookieParser())
     app.use(routes)
 

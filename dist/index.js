@@ -14,12 +14,32 @@ const node_cron_1 = __importDefault(require("node-cron"));
 const config_1 = require("./config");
 const ScheduleReminderService_1 = require("./services/ScheduleReminderService");
 data_source_1.AppDataSource.initialize().then(() => {
+    const allowedOrigins = [
+        config_1.config.app_url,
+        'https://quadrodeanuncios.vercel.app',
+        'https://www.quadrodeanuncios.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:3001'
+    ].filter(Boolean).map(url => url.replace(/\/$/, ''));
     const corsOptions = {
-        origin: config_1.config.app_url
+        origin: (origin, callback) => {
+            if (!origin)
+                return callback(null, true);
+            const cleanOrigin = origin.replace(/\/$/, '');
+            if (allowedOrigins.includes(cleanOrigin) ||
+                cleanOrigin.endsWith('.vercel.app')) {
+                return callback(null, true);
+            }
+            return callback(null, true);
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
     };
     const app = (0, express_1.default)();
-    app.use(express_1.default.json());
     app.use((0, cors_1.default)(corsOptions));
+    app.options('*', (0, cors_1.default)(corsOptions));
+    app.use(express_1.default.json());
     app.use((0, cookie_parser_1.default)());
     app.use(routes_1.default);
     app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
