@@ -398,6 +398,7 @@ routes.post("/field-service/templates/:template_id/schedules", is(["ADMIN_CONGRE
 routes.post("/field-service/templates/:template_id/generate-schedules", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.generateByPeriod);
 
 routes.get("/field-service/templates/:template_id/schedules", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.getByTemplate);
+routes.get("/field-service/schedules/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.getByCongregation);
 routes.get("/field-service/schedules/pdf/congregation/:congregation_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.pdf);
 routes.get("/field-service/schedules/:schedule_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.getOne);
 routes.patch("/field-service/schedules/:schedule_id", is(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController.update)

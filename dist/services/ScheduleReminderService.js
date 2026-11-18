@@ -28,6 +28,7 @@ class ScheduleReminderService {
      * Retorna a lista de pendências/alertas de programações do próximo mês para uma congregação.
      */
     async getPendingAlertsForCongregation(congregation_id) {
+        var _a;
         let config = await scheduleReminderConfigRepository_1.scheduleReminderConfigRepository.findOne({
             where: { congregation_id }
         });
@@ -85,28 +86,40 @@ class ScheduleReminderService {
         }
         // 2. Serviço de Campo
         if (config.field_service_enabled && daysUntilNextMonth <= config.field_service_days_before) {
-            const templatesCount = await fieldServiceTemplateRepository_1.fieldServiceTemplateRepository.count({
-                where: { congregation_id }
+            // Buscar todas as saídas com rodízio ativas da congregação
+            const rotationTemplates = await fieldServiceTemplateRepository_1.fieldServiceTemplateRepository.find({
+                where: {
+                    congregation_id,
+                    type: "ROTATION",
+                    active: true
+                }
             });
-            const totalFieldSchedules = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository
-                .createQueryBuilder("fss")
-                .innerJoin("fss.template", "fst")
-                .where("fst.congregation_id = :congregation_id", { congregation_id })
-                .getCount();
-            if (templatesCount > 0 || totalFieldSchedules > 0) {
-                const scheduleCount = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository
-                    .createQueryBuilder("fss")
-                    .innerJoin("fss.template", "fst")
-                    .where("fst.congregation_id = :congregation_id", { congregation_id })
-                    .andWhere("fss.date >= :start AND fss.date <= :end", { start: nextMonthStart, end: nextMonthEnd })
-                    .getCount();
-                if (scheduleCount === 0) {
+            if (rotationTemplates.length > 0) {
+                const weekdayLabels = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+                const ungeneratedTemplates = [];
+                for (const template of rotationTemplates) {
+                    const count = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository
+                        .createQueryBuilder("fss")
+                        .where("fss.template_id = :template_id", { template_id: template.id })
+                        .andWhere("fss.date >= :start AND fss.date <= :end", { start: nextMonthStart, end: nextMonthEnd })
+                        .getCount();
+                    if (count === 0) {
+                        const dayName = (_a = weekdayLabels[template.weekday]) !== null && _a !== void 0 ? _a : `Dia ${template.weekday}`;
+                        const timeFormatted = template.time ? template.time.substring(0, 5) : "";
+                        ungeneratedTemplates.push(`${dayName}${timeFormatted ? ` às ${timeFormatted}` : ""}`);
+                    }
+                }
+                if (ungeneratedTemplates.length > 0) {
+                    let message = `A programação de saídas de campo de ${capitalizedNextMonth} ainda não foi gerada.`;
+                    if (ungeneratedTemplates.length < rotationTemplates.length) {
+                        message = `Falta gerar a escala de campo de ${capitalizedNextMonth} para: ${ungeneratedTemplates.join(", ")}.`;
+                    }
                     alerts.push({
                         id: "field_service",
                         module: "FIELD_SERVICE",
                         roleRequired: "FIELD_SERVICE_MANAGER",
                         title: "Programação de Campo",
-                        message: `A programação de saídas de campo de ${capitalizedNextMonth} ainda não foi gerada.`,
+                        message,
                         link: "/congregacao/programacao-campo",
                         actionLabel: "Gerar Programação",
                         daysRemaining: daysUntilNextMonth,

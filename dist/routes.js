@@ -341,6 +341,7 @@ routes.post("/field-service/templates/:template_id/location-overrides", (0, perm
 routes.post("/field-service/templates/:template_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.create);
 routes.post("/field-service/templates/:template_id/generate-schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.generateByPeriod);
 routes.get("/field-service/templates/:template_id/schedules", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.getByTemplate);
+routes.get("/field-service/schedules/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.getByCongregation);
 routes.get("/field-service/schedules/pdf/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.pdf);
 routes.get("/field-service/schedules/:schedule_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.getOne);
 routes.patch("/field-service/schedules/:schedule_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceScheduleController_1.default.update);

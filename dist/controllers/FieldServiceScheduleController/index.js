@@ -104,6 +104,17 @@ class FieldServiceScheduleController {
         });
         return res.json(schedules);
     }
+    async getByCongregation(req, res) {
+        const { congregation_id } = req.params;
+        const schedules = await fieldServiceScheduleRepository_1.fieldServiceScheduleRepository
+            .createQueryBuilder("fss")
+            .innerJoinAndSelect("fss.template", "fst")
+            .leftJoinAndSelect("fss.leader", "leader")
+            .where("fst.congregation_id = :congregation_id", { congregation_id })
+            .orderBy("fss.date", "ASC")
+            .getMany();
+        return res.json(schedules);
+    }
     async update(req, res) {
         const { schedule_id } = req.params;
         const data = req.body;
