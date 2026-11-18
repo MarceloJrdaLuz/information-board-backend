@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MidweekScheduleController = void 0;
+const adm_zip_1 = __importDefault(require("adm-zip"));
 const dayjs_1 = __importDefault(require("dayjs"));
 require("dayjs/locale/pt-br");
 const MidweekMeetingPart_1 = require("../../entities/MidweekMeetingPart");
@@ -24,11 +25,54 @@ class MidweekScheduleController {
     }
     async importXml(req, res) {
         if (!req.file) {
-            throw new api_errors_1.BadRequestError("Arquivo XML não enviado.");
+            throw new api_errors_1.BadRequestError("Nenhum arquivo enviado.");
         }
-        const xmlContent = req.file.buffer.toString("utf-8");
+        let xmlContent;
+        let sourceFileName = req.file.originalname;
+        const isZip = req.file.originalname.toLowerCase().endsWith(".zip") ||
+            req.file.mimetype === "application/zip" ||
+            req.file.mimetype === "application/x-zip-compressed" ||
+            req.file.mimetype === "multipart/x-zip" ||
+            (req.file.buffer.length >= 4 && req.file.buffer[0] === 0x50 && req.file.buffer[1] === 0x4B);
+        if (isZip) {
+            try {
+                const zip = new adm_zip_1.default(req.file.buffer);
+                const zipEntries = zip.getEntries();
+                // 1. Procurar exatamente MWBData_PTB.XML (Português Brasil)
+                let targetEntry = zipEntries.find((entry) => !entry.isDirectory && /mwbdata_ptb\.xml$/i.test(entry.entryName));
+                // 2. Se não encontrou o nome exato, buscar qualquer XML contendo PTB
+                if (!targetEntry) {
+                    targetEntry = zipEntries.find((entry) => !entry.isDirectory && /ptb/i.test(entry.entryName) && /\.xml$/i.test(entry.entryName));
+                }
+                // 3. Fallback: PTG (Português Portugal) se existir
+                if (!targetEntry) {
+                    targetEntry = zipEntries.find((entry) => !entry.isDirectory && /ptg/i.test(entry.entryName) && /\.xml$/i.test(entry.entryName));
+                }
+                // 4. Fallback: Qualquer arquivo .xml contido no ZIP
+                if (!targetEntry) {
+                    targetEntry = zipEntries.find((entry) => !entry.isDirectory && /\.xml$/i.test(entry.entryName));
+                }
+                if (!targetEntry) {
+                    throw new api_errors_1.BadRequestError("Não foi encontrado o arquivo da matéria em português (MWBData_PTB.XML) dentro do arquivo ZIP enviado.");
+                }
+                sourceFileName = targetEntry.name || targetEntry.entryName;
+                xmlContent = targetEntry.getData().toString("utf-8");
+            }
+            catch (err) {
+                if (err instanceof api_errors_1.BadRequestError)
+                    throw err;
+                throw new api_errors_1.BadRequestError("Falha ao ler o arquivo ZIP enviado: " + ((err === null || err === void 0 ? void 0 : err.message) || "arquivo inválido ou corrompido."));
+            }
+        }
+        else {
+            xmlContent = req.file.buffer.toString("utf-8");
+        }
         const result = await this.xmlParserService.parseAndSaveWorkbook(xmlContent);
-        return res.status(200).json(result);
+        return res.status(200).json({
+            ...result,
+            sourceFile: sourceFileName,
+            message: `Apostila importada com sucesso! (${result.importedWeeks} semanas processadas${isZip ? ` via ${sourceFileName}` : ""}).`
+        });
     }
     async getMonthSchedules(req, res) {
         const { congregation_id } = req.params;
