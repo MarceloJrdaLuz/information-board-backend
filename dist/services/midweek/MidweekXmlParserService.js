@@ -3,8 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MidweekXmlParserService = void 0;
 const fast_xml_parser_1 = require("fast-xml-parser");
 const data_source_1 = require("../../data-source");
-const MidweekMeetingPart_1 = require("../../entities/MidweekMeetingPart");
-const MidweekSchedule_1 = require("../../entities/MidweekSchedule");
 const MidweekWorkbookPart_1 = require("../../entities/MidweekWorkbookPart");
 const MidweekWorkbookWeek_1 = require("../../entities/MidweekWorkbookWeek");
 class MidweekXmlParserService {
@@ -196,79 +194,6 @@ class MidweekXmlParserService {
                 if (partsToInsert.length > 0) {
                     await transactionalEntityManager.save(MidweekWorkbookPart_1.MidweekWorkbookPart, partsToInsert);
                     totalPartsCount += partsToInsert.length;
-                }
-                // Sincroniza metadados nas congregações que já abriram a semana, preservando 100% os publicadores designados
-                const existingSchedules = await transactionalEntityManager.find(MidweekSchedule_1.MidweekSchedule, {
-                    where: { weekDate: savedWeek.weekDate },
-                    relations: ["parts"]
-                });
-                if (existingSchedules.length > 0) {
-                    const schedPartsToSave = [];
-                    for (const sched of existingSchedules) {
-                        sched.weeklyBibleReading = savedWeek.weeklyBibleReading;
-                        sched.watchtowerStudyTheme = savedWeek.watchtowerStudyTheme;
-                        sched.songOpen = savedWeek.songOpen;
-                        sched.songMiddle = savedWeek.songMiddle;
-                        sched.songEnd = savedWeek.songEnd;
-                        if (sched.parts && sched.parts.length > 0) {
-                            // Sincroniza cada seção de forma ordenada por posição relativa
-                            for (const section of [MidweekWorkbookPart_1.MidweekSection.TREASURES, MidweekWorkbookPart_1.MidweekSection.MINISTRY, MidweekWorkbookPart_1.MidweekSection.LIVING]) {
-                                const sectionWbParts = partsToInsert
-                                    .filter(wp => wp.section === section)
-                                    .sort((a, b) => a.orderIndex - b.orderIndex);
-                                const sectionMainSchedParts = sched.parts
-                                    .filter(mp => mp.section === section && mp.room === MidweekMeetingPart_1.MidweekRoom.MAIN && mp.partType !== MidweekWorkbookPart_1.MidweekPartType.CUSTOM && !mp.title.toLowerCase().includes("discurso de serviço"))
-                                    .sort((a, b) => a.orderIndex - b.orderIndex);
-                                for (let idx = 0; idx < sectionWbParts.length; idx++) {
-                                    const wbPart = sectionWbParts[idx];
-                                    const schedPart = sectionMainSchedParts[idx];
-                                    if (schedPart) {
-                                        schedPart.workbook_part_id = wbPart.id;
-                                        schedPart.title = wbPart.title;
-                                        schedPart.prompts = wbPart.prompts;
-                                        schedPart.sourceMaterial = wbPart.sourceMaterial;
-                                        schedPart.lessonNumber = wbPart.lessonNumber;
-                                        schedPart.studyPoint = wbPart.studyPoint;
-                                        schedPart.studyPointDescription = wbPart.studyPointDescription;
-                                        schedPart.brochure = wbPart.brochure;
-                                        schedPart.orderIndex = wbPart.orderIndex;
-                                        schedPart.timeMinutes = wbPart.timeMinutes;
-                                        schedPart.method = wbPart.method;
-                                        schedPart.requiresAssistant = wbPart.requiresAssistant;
-                                        schedPart.partType = wbPart.partType;
-                                        schedPartsToSave.push(schedPart);
-                                    }
-                                    // Atualiza também as salas auxiliares na mesma posição
-                                    const auxRooms = [MidweekMeetingPart_1.MidweekRoom.AUXILIARY_1, MidweekMeetingPart_1.MidweekRoom.AUXILIARY_2];
-                                    for (const room of auxRooms) {
-                                        const roomParts = sched.parts
-                                            .filter(mp => mp.section === section && mp.room === room && mp.partType !== MidweekWorkbookPart_1.MidweekPartType.CUSTOM)
-                                            .sort((a, b) => a.orderIndex - b.orderIndex);
-                                        const auxPart = roomParts[idx];
-                                        if (auxPart) {
-                                            auxPart.workbook_part_id = wbPart.id;
-                                            auxPart.title = wbPart.title;
-                                            auxPart.prompts = wbPart.prompts;
-                                            auxPart.sourceMaterial = wbPart.sourceMaterial;
-                                            auxPart.lessonNumber = wbPart.lessonNumber;
-                                            auxPart.studyPoint = wbPart.studyPoint;
-                                            auxPart.studyPointDescription = wbPart.studyPointDescription;
-                                            auxPart.brochure = wbPart.brochure;
-                                            auxPart.timeMinutes = wbPart.timeMinutes;
-                                            auxPart.method = wbPart.method;
-                                            auxPart.requiresAssistant = wbPart.requiresAssistant;
-                                            auxPart.partType = wbPart.partType;
-                                            schedPartsToSave.push(auxPart);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    await transactionalEntityManager.save(MidweekSchedule_1.MidweekSchedule, existingSchedules);
-                    if (schedPartsToSave.length > 0) {
-                        await transactionalEntityManager.save(MidweekMeetingPart_1.MidweekMeetingPart, schedPartsToSave);
-                    }
                 }
             });
             importedWeeksCount++;
