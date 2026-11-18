@@ -388,8 +388,16 @@ class MidweekScheduleService {
         }
         if (data.room !== undefined)
             part.room = data.room;
-        if (data.title !== undefined)
+        if (data.title !== undefined) {
             part.title = data.title;
+            if (part.room === MidweekMeetingPart_1.MidweekRoom.MAIN && part.orderIndex !== undefined && part.orderIndex !== null) {
+                await midweekMeetingPartRepository_1.midweekMeetingPartRepository.update({
+                    schedule_id: part.schedule_id,
+                    orderIndex: part.orderIndex,
+                    section: part.section
+                }, { title: data.title });
+            }
+        }
         if (data.sourceMaterial !== undefined)
             part.sourceMaterial = data.sourceMaterial;
         if (data.timeMinutes !== undefined)
