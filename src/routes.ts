@@ -43,6 +43,7 @@ import ReportController from "./controllers/ReportController"
 import RoleController from "./controllers/RoleController"
 import { ScheduleReminderController } from "./controllers/ScheduleReminderController"
 import SpeakerController from "./controllers/SpeakerController"
+import SpeakerShareController from "./controllers/SpeakerShareController"
 import SpecialEventController from "./controllers/SpecialEventController"
 import TalkController from "./controllers/TalkController"
 import TermsOfUseController from "./controllers/TermsOfUseController"
@@ -382,6 +383,11 @@ routes.get('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), S
 routes.post('/speaker', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.create)
 routes.patch('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.update)
 routes.delete('/speaker/:speaker_id', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController.delete)
+
+/* === Compartilhamento de Oradores entre Congregações === */
+routes.post('/speakers/share/generate', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerShareController.generateToken)
+routes.get('/speakers/share/preview/:token', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerShareController.previewByToken)
+routes.post('/speakers/share/import', is(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerShareController.importByToken)
 
 /* === Field Service Templates === */
 

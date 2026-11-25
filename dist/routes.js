@@ -47,6 +47,7 @@ const ReportController_1 = __importDefault(require("./controllers/ReportControll
 const RoleController_1 = __importDefault(require("./controllers/RoleController"));
 const ScheduleReminderController_1 = require("./controllers/ScheduleReminderController");
 const SpeakerController_1 = __importDefault(require("./controllers/SpeakerController"));
+const SpeakerShareController_1 = __importDefault(require("./controllers/SpeakerShareController"));
 const SpecialEventController_1 = __importDefault(require("./controllers/SpecialEventController"));
 const TalkController_1 = __importDefault(require("./controllers/TalkController"));
 const TermsOfUseController_1 = __importDefault(require("./controllers/TermsOfUseController"));
@@ -330,6 +331,10 @@ routes.get('/speaker/:speaker_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', 
 routes.post('/speaker', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController_1.default.create);
 routes.patch('/speaker/:speaker_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController_1.default.update);
 routes.delete('/speaker/:speaker_id', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerController_1.default.delete);
+/* === Compartilhamento de Oradores entre Congregações === */
+routes.post('/speakers/share/generate', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerShareController_1.default.generateToken);
+routes.get('/speakers/share/preview/:token', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerShareController_1.default.previewByToken);
+routes.post('/speakers/share/import', (0, permissions_1.is)(['ADMIN_CONGREGATION', "TALK_MANAGER"]), SpeakerShareController_1.default.importByToken);
 /* === Field Service Templates === */
 routes.post("/field-service/templates/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController_1.default.create);
 routes.get("/field-service/templates/congregation/:congregation_id", (0, permissions_1.is)(["ADMIN_CONGREGATION", "FIELD_SERVICE_MANAGER"]), FieldServiceTemplateController_1.default.getByCongregation);
