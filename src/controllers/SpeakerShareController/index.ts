@@ -177,8 +177,7 @@ class SpeakerShareController {
       if (c.number && user.congregation.number && c.number === user.congregation.number) return true;
       const sameName = normalizeStr(c.name) === normalizeStr(user.congregation.name);
       const sameCity = normalizeStr(c.city) === normalizeStr(user.congregation.city);
-      const sameCircuit = normalizeStr(c.circuit) === normalizeStr(user.congregation.circuit);
-      return sameName && (sameCity || sameCircuit);
+      return sameName && sameCity;
     };
 
     const isExistingInMyAux = (c: { name: string; number?: string; city?: string }) => {
